@@ -1,0 +1,12 @@
+
+= N2K gateway =
+
+The project reads a bunch of different sensors (right now just a NMEA0183 GPS from UART) and push the relevant PGNs to the N2K network.
+It also listen to the N2K, decode the CANBUS frame and push the PGNs to WiFi on UDP.
+
+The project depends on Timo Lappalainen's NMEA2000 library (and related dependencies): https://github.com/ttlappalainen/NMEA2000
+
+== Change log ==
+2020-06-22 
+- First commit
+- The dependency con MCP CAN support is hardcoded (maybe I'll useres customize in a clean way)
