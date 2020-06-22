@@ -3,15 +3,10 @@
 #include <WiFiUdp.h>
 #include "NMEA.h"
 #include "N2K.h"
-
-const char* ssid = "YOUR_SSID";
-const char* pswd = "YOUR_PWD";
+#include "constants.h"
 
 WiFiUDP udp;
 N2K n2k;
-
-#define RXD2 16
-#define TXD2 17
 
 uint g_valid_rmc = 0;
 uint g_valid_gsa = 0;
@@ -28,13 +23,10 @@ GSA g_gsa;
 
 bool g_initialized = false;
 
-#define OK 0
-#define KO -1
-
 #define TRACE
 
 void initWiFi() {
-  WiFi.begin(ssid, pswd);
+  WiFi.begin(SSID, PSWD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.println("Connecting to WiFi..");
@@ -51,7 +43,7 @@ void initGPS() {
 void sendUDPPacket(const uint8_t* bfr, int l) {
   static uint8_t term[] = {13, 10};
   Serial.printf("Sending {%s}\n", bfr);
-  udp.beginPacket("192.168.2.99", 1222);
+  udp.beginPacket(UDP_DEST, UDP_PORT);
   udp.write(bfr, l);
   udp.write(term, 2);
   udp.endPacket();
@@ -175,20 +167,18 @@ void handleMsg(const tN2kMsg &N2kMsg) {
 void setup() {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("--------------------------------------------------0");
   n2k.setup(handleMsg);
-  Serial.println("--------------------------------------------------1");
   initWiFi();
-  //initGPS();
+  initGPS();
   delay(2000);
   g_initialized = true;
 }
 
 void loop() {
   if (g_initialized) {
-    //readGPS(250000);
-    delay(1000);
-    n2k.sendTime();
+    readGPS(250000);
+    //delay(1000);
+    //n2k.sendTime();
     n2k.loop();
   }
 }
