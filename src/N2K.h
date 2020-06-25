@@ -10,6 +10,7 @@ class N2K {
         void sendCOGSOG(GSA& gsa, RMC& rmc);
         void sendTime();
         void sendTime(GSA& gsa, RMC& rmc);
+        void sendLocalTime(GSA& gsa, RMC& rmc);
         void sendPosition(GSA& gsa, RMC& rmc);
 
         int get_sent() { return g_pos_sent; }
