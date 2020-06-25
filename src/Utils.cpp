@@ -2,7 +2,7 @@
 #include "Utils.h"
 
 #define TRACE
-#define MAX_TRACE_SIZE 1024
+#define MAX_TRACE_SIZE 256
 
 void debug_println(const char *s) {
   #ifdef TRACE

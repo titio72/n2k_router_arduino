@@ -6,6 +6,7 @@
 #include <NMEA2000_CAN.h>
 #include "N2K.h"
 #include "Utils.h"
+#include <TimeLib.h>
 
 void N2K::loop() {
     NMEA2000.ParseMessages();
@@ -88,8 +89,8 @@ void N2K::sendLocalTime(GSA& gsa, RMC& rmc)
 
 void N2K::sendTime()
 {
-    time_t now = time(0);
-    tm* t = gmtime(&now);
+    time_t _now = now();
+    tm* t = gmtime(&_now);
     int days_since_1970 = NMEAUtils::getDaysSince1970(t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
     double second_since_midnight = t->tm_hour * 60 * 60 + t->tm_min * 60 + t->tm_sec;
     tN2kMsg N2kMsg;
@@ -111,7 +112,15 @@ void N2K::sendPosition(GSA& gsa, RMC& rmc)
             handle_message(N2kMsg);
         } else {
             g_pos_sent_fail++;
-        }
-            
+        }   
+    }
+}
+
+void N2K::sendPressure(const float pressure) {
+    tN2kMsg N2kMsg;
+    //SetN2kSetPressure(N2kMsg, 0, 0, N2kps_Atmospheric, pressure);
+    SetN2kEnvironmentalParameters(N2kMsg, 0, N2kts_SeaTemperature, N2kDoubleNA, N2khs_Undef, N2kDoubleNA, pressure);
+    if (NMEA2000.SendMsg(N2kMsg)) {
+        handle_message(N2kMsg);
     }
 }
