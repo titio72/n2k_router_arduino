@@ -10,21 +10,29 @@
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include "dhtAB.h"
-
-WiFiUDP udp;
-N2K n2k;
+#include "WiFiManager.h"
 
 #define I2C_SDA 22
 #define I2C_SCL 21
 #define SEALEVELPRESSURE_HPA (1013.25)
-
 #define DHTPIN 4
 
+WiFiManager* g_wifi;
+WiFiUDP udp;
+N2K n2k;
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BMP280* bmp;
-bool g_bmp_initialized = false;
-
 dht DHT;
+
+RMC g_rmc;
+GSA g_gsa;
+double g_pressure = N2kDoubleNA;
+double g_humidity = N2kDoubleNA;
+double g_temperature = N2kDoubleNA;
+
+bool g_time_set = false;
+bool g_initialized = false;
+bool g_bmp_initialized = false;
 
 struct nmea_stats {
   uint valid_rmc = 0;
@@ -33,25 +41,6 @@ struct nmea_stats {
   uint invalid_gsa = 0;
 } g_stats;
 
-RMC g_rmc;
-GSA g_gsa;
-
-double pressure = N2kDoubleNA;
-double humidity = N2kDoubleNA;
-double temperature = N2kDoubleNA;
-
-bool g_time_set = false;
-bool g_initialized = false;
-
-void initWiFi() {
-  WiFi.begin(SSID, PSWD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    debug_println("Connecting to WiFi..");
-  }
-  debug_println("Connected to the WiFi network");  
-}
-
 void initGPS() {
   Serial.print("Initializing GPS ");
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
@@ -59,12 +48,17 @@ void initGPS() {
 }
 
 void sendUDPPacket(const uint8_t* bfr, int l) {
-  static uint8_t term[] = {13,10};
-  debug_print("UDP Sending {%s}\n", bfr);
-  udp.beginPacket(UDP_DEST, UDP_PORT);
-  udp.write(bfr, l);
-  udp.write(term, 2);
-  udp.endPacket();
+  if (g_initialized) {
+    debug_print("Forwarding {%s} {%d}\n", bfr, g_wifi->is_connected());
+    if (g_wifi->is_connected()) {
+      static uint8_t term[] = {13,10};
+      //debug_print("UDP Sending {%s}\n", bfr);
+      udp.beginPacket(UDP_DEST, UDP_PORT);
+      udp.write(bfr, l);
+      udp.write(term, 2);
+      udp.endPacket();
+    }
+  }
 }
 
 void report_stats() {
@@ -88,10 +82,10 @@ int parse_and_send(const char *sentence) {
     if (NMEAUtils::is_sentence(sentence, "RMC")) {
         if (NMEAUtils::parseRMC(sentence, g_rmc) == 0) {
             if (g_rmc.valid) g_stats.valid_rmc++; else g_stats.invalid_rmc++;
-            debug_print("Process RMC {%s}\n", sentence);
+            //debug_print("Process RMC {%s}\n", sentence);
             if (!g_time_set) {
               if (g_rmc.y>0) {
-                debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", g_rmc.y, g_rmc.M, g_rmc.d, g_rmc.h, g_rmc.m, g_rmc.s);
+                //debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", g_rmc.y, g_rmc.M, g_rmc.d, g_rmc.h, g_rmc.m, g_rmc.s);
                 setTime(g_rmc.h, g_rmc.m, g_rmc.s, g_rmc.d, g_rmc.M, g_rmc.y);
                 g_time_set = true;
               }
@@ -105,7 +99,7 @@ int parse_and_send(const char *sentence) {
     } else if (NMEAUtils::is_sentence(sentence, "GSA")) {
         if (NMEAUtils::parseGSA(sentence, g_gsa) == 0) {
             if (g_gsa.valid) g_stats.valid_gsa++; else g_stats.invalid_gsa++;
-            debug_print("Process GSA {%s}\n", sentence);
+            //debug_print("Process GSA {%s}\n", sentence);
             return OK;
         }
     }
@@ -175,7 +169,6 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   n2k.setup(handleMsg);
-  initWiFi();
   initGPS();
 
   debug_print("Initializing BMP sensor ");
@@ -183,6 +176,8 @@ void setup() {
   bmp = new Adafruit_BMP280(&I2CBME);
   g_bmp_initialized = bmp->begin(0x76, 0x60);
   debug_print(" BMP280 {%d}\n", g_bmp_initialized);
+
+  g_wifi = new WiFiManager();
 
   delay(2000);
   g_initialized = true;
@@ -199,7 +194,7 @@ void send_system_time(unsigned long ms) {
 void send_env(unsigned long ms) {
   static unsigned long t0 = 0;
   if ((ms-t0)>1000) {
-    n2k.sendEnvironment(pressure, humidity, temperature);
+    n2k.sendEnvironment(g_pressure, g_humidity, g_temperature);
     t0 = ms;
   }
 }
@@ -208,8 +203,8 @@ void read_pressure(unsigned long ms) {
   static unsigned long t0 = 0;
   if ((ms-t0)>5000 && g_bmp_initialized) {
     t0 = ms;
-    pressure = bmp->readPressure();
-    debug_print("Read {%f} pressure\n", pressure);
+    g_pressure = bmp->readPressure();
+    //debug_print("Read {%f} pressure\n", g_pressure);
   }
 }
 
@@ -218,20 +213,26 @@ void read_temp_hum(unsigned long ms) {
   if ((ms-t0)>10000 && g_bmp_initialized) {
     t0 = ms;
     int chk = DHT.read11(DHTPIN);
-    switch (chk)
-    {
+    switch (chk) {
       case DHTLIB_OK:  
-        humidity = DHT.humidity;
-        temperature = DHT.temperature;
+        g_humidity = DHT.humidity;
+        g_temperature = DHT.temperature;
+        //debug_print("Read {%f} Humidity {%f} Temperature\n", g_humidity, g_temperature);
         break;
       case DHTLIB_ERROR_CHECKSUM: 
         debug_print("DHT11 Checksum error,\t"); 
+        g_humidity = N2kDoubleNA;
+        g_temperature = N2kDoubleNA;
         break;
       case DHTLIB_ERROR_TIMEOUT: 
         debug_print("DHT11 Time out error,\t"); 
+        g_humidity = N2kDoubleNA;
+        g_temperature = N2kDoubleNA;
         break;
       default: 
         debug_print("DHT11 Unknown error,\t"); 
+        g_humidity = N2kDoubleNA;
+        g_temperature = N2kDoubleNA;
         break;
     }
   }
@@ -240,6 +241,7 @@ void read_temp_hum(unsigned long ms) {
 void loop() {
   unsigned long ms = millis();
   if (g_initialized) {
+    g_wifi->start();
     readGPS(250000);
     report_stats();
     read_pressure(ms);
