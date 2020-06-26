@@ -9,6 +9,7 @@
 #include <TimeLib.h>
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
+#include "dhtAB.h"
 
 WiFiUDP udp;
 N2K n2k;
@@ -17,9 +18,13 @@ N2K n2k;
 #define I2C_SCL 21
 #define SEALEVELPRESSURE_HPA (1013.25)
 
+#define DHTPIN 4
+
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BMP280* bmp;
 bool g_bmp_initialized = false;
+
+dht DHT;
 
 struct nmea_stats {
   uint valid_rmc = 0;
@@ -30,6 +35,10 @@ struct nmea_stats {
 
 RMC g_rmc;
 GSA g_gsa;
+
+double pressure = N2kDoubleNA;
+double humidity = N2kDoubleNA;
+double temperature = N2kDoubleNA;
 
 bool g_time_set = false;
 bool g_initialized = false;
@@ -187,13 +196,44 @@ void send_system_time(unsigned long ms) {
   }
 }
 
+void send_env(unsigned long ms) {
+  static unsigned long t0 = 0;
+  if ((ms-t0)>1000) {
+    n2k.sendEnvironment(pressure, humidity, temperature);
+    t0 = ms;
+  }
+}
+
 void read_pressure(unsigned long ms) {
   static unsigned long t0 = 0;
   if ((ms-t0)>5000 && g_bmp_initialized) {
-    float pressure = bmp->readPressure();
-    Serial.printf("Read {%f} pressure\n", pressure);
-    n2k.sendPressure(pressure);
     t0 = ms;
+    pressure = bmp->readPressure();
+    debug_print("Read {%f} pressure\n", pressure);
+  }
+}
+
+void read_temp_hum(unsigned long ms) {
+  static unsigned long t0 = 0;
+  if ((ms-t0)>10000 && g_bmp_initialized) {
+    t0 = ms;
+    int chk = DHT.read11(DHTPIN);
+    switch (chk)
+    {
+      case DHTLIB_OK:  
+        humidity = DHT.humidity;
+        temperature = DHT.temperature;
+        break;
+      case DHTLIB_ERROR_CHECKSUM: 
+        debug_print("DHT11 Checksum error,\t"); 
+        break;
+      case DHTLIB_ERROR_TIMEOUT: 
+        debug_print("DHT11 Time out error,\t"); 
+        break;
+      default: 
+        debug_print("DHT11 Unknown error,\t"); 
+        break;
+    }
   }
 }
 
@@ -201,9 +241,11 @@ void loop() {
   unsigned long ms = millis();
   if (g_initialized) {
     readGPS(250000);
-    send_system_time(ms);
     report_stats();
     read_pressure(ms);
+    read_temp_hum(ms);
+    send_env(ms);
+    send_system_time(ms);
     n2k.loop();
   }
 }

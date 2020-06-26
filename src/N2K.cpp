@@ -116,10 +116,12 @@ void N2K::sendPosition(GSA& gsa, RMC& rmc)
     }
 }
 
-void N2K::sendPressure(const float pressure) {
+void N2K::sendEnvironment(const float pressureHPA, const float humidity, const float temperatureC) {
     tN2kMsg N2kMsg;
-    //SetN2kSetPressure(N2kMsg, 0, 0, N2kps_Atmospheric, pressure);
-    SetN2kEnvironmentalParameters(N2kMsg, 0, N2kts_SeaTemperature, N2kDoubleNA, N2khs_Undef, N2kDoubleNA, pressure);
+    SetN2kEnvironmentalParameters(N2kMsg, 0, 
+        N2kts_MainCabinTemperature, CToKelvin(temperatureC), 
+        N2khs_InsideHumidity, humidity, 
+        pressureHPA);
     if (NMEA2000.SendMsg(N2kMsg)) {
         handle_message(N2kMsg);
     }

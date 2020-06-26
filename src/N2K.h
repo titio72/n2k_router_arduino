@@ -12,7 +12,7 @@ class N2K {
         void sendTime(GSA& gsa, RMC& rmc);
         void sendLocalTime(GSA& gsa, RMC& rmc);
         void sendPosition(GSA& gsa, RMC& rmc);
-        void sendPressure(const float pressure);
+        void sendEnvironment(const float pressure, const float humidity, const float temperature);
 
         int get_sent() { return g_pos_sent; }
         int get_sent_fail() { return g_pos_sent_fail; }
