@@ -2,17 +2,17 @@
 #define N2K_H
 
 #include <N2kMessages.h>
-#include "NMEA.h"
+#include "Utils.h"
 
 class N2K {
 
     public:
-        void sendCOGSOG(GSA& gsa, RMC& rmc);
-        void sendTime();
-        void sendTime(GSA& gsa, RMC& rmc);
-        void sendLocalTime(GSA& gsa, RMC& rmc);
-        void sendPosition(GSA& gsa, RMC& rmc);
-        void sendEnvironment(const float pressure, const float humidity, const float temperature);
+        bool sendCOGSOG(GSA& gsa, RMC& rmc);
+        bool sendTime();
+        bool sendTime(GSA& gsa, RMC& rmc);
+        bool sendLocalTime(GSA& gsa, RMC& rmc);
+        bool sendPosition(GSA& gsa, RMC& rmc);
+        bool sendEnvironment(const float pressure, const float humidity, const float temperature);
 
         int get_sent() { return g_pos_sent; }
         int get_sent_fail() { return g_pos_sent_fail; }

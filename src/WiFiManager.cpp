@@ -26,3 +26,18 @@ void WiFiManager::start() {
 void WiFiManager::on_loop(unsigned long ms) {       
 
 }
+
+int WiFiManager::sendUDPPacket(const uint8_t* bfr, int l) {
+    if (is_connected()) {
+      static uint8_t term[] = {13,10};
+      udp.beginPacket(UDP_DEST, UDP_PORT);
+      udp.write(bfr, l);
+      udp.write(term, 2);
+      int rs = udp.endPacket();
+      if (TRACE_UDP) debug_print("UDP %s {%s}\n", rs?"Sent":"Fail", bfr);
+      return rs;
+    } else {
+      debug_println("Cannot send UDP message while disconnected");
+      return 0;
+    }
+}

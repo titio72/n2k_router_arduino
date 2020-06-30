@@ -6,33 +6,7 @@
 #ifndef NMEA_H_
 #define NMEA_H_
 
-struct GSA
-{
-    short valid;
-    int nSat;
-    int fix;
-    float hdop;
-    float vdop;
-    float pdop;
-};
-
-struct RMC
-{
-    short valid;
-    float lat;
-    float lon;
-
-    short y;
-    short M;
-    short d;
-    short h;
-    short m;
-    short s;
-    short ms;
-
-    float cog;
-    float sog;
-};
+#include "Utils.h"
 
 class NMEAUtils
 {

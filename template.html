@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <style>
+        html {
+            font-family: Helvetica;
+            display: inline-block;
+            margin: 0px auto;
+            text-align: center;
+        }
+
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 16px 40px;
+            text-decoration: none;
+            font-size: 30px;
+            margin: 2px;
+            cursor: pointer;
+        }
+
+        .button2 {
+            background-color: #555555;
+        }
+
+        .conf_cell {
+            text-align: left;
+            font-weight: bolder;
+        }
+
+        .conf_value {
+            text-align: right;
+        }
+
+        table, th, td {
+            border-collapse: collapse;
+            border: 1px solid black;
+            padding: 10px;
+        }
+        
+        table.center {
+            margin-left:auto; 
+            margin-right:auto;
+        }
+
+        th {
+            background-color: gray;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>ABoni N2K</h1>
+    <div style="align-content: center;">
+        <table class="center">
+            <tr>
+                <th class="conf_cell">Item</th>
+                <th class="conf_value">Value</th>
+            </tr>
+            <tr>
+                <td class="conf_cell">GPS</td>
+                <td class="conf_value"><a href="?GPS">__GPS__</a></td>
+            </tr>
+            <tr>
+                <td class="conf_cell">BMP280</td>
+                <td class="conf_value"><a href="?BMP280">__BMP280__</a></td>
+            </tr>
+            <tr>
+                <td class="conf_cell">DHT11</td>
+                <td class="conf_value"><a href="?DHT11">__DHT11__</a></td>
+            </tr>
+            <tr>
+                <td class="conf_cell">Sys Time</td>
+                <td class="conf_value"><a href="?SYS_TIME">__SYS_TIME__</a></td>
+            </tr>
+            <tr>
+                <td class="conf_cell">Pressure</td>
+                <td class="conf_value">__PRESSURE__</td>
+            </tr>
+            <tr>
+                <td class="conf_cell">Temp</td>
+                <td class="conf_value">__TEMPERATURE__</td>
+            </tr>
+            <tr>
+                <td class="conf_cell">Humidity</td>
+                <td class="conf_value">__HUMIDITY__</td>
+            </tr>
+        </table>
+        <p><a href=''>Refresh</a></p>
+    </div>
+</body>
+
+</html>

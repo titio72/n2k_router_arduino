@@ -6,99 +6,120 @@
 #include "constants.h"
 #include "Utils.h"
 #include <time.h>
-#include <TimeLib.h>
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include "dhtAB.h"
 #include "WiFiManager.h"
+#include "WebServer.h"
 
 #define I2C_SDA 22
 #define I2C_SCL 21
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define DHTPIN 4
 
-WiFiManager* g_wifi;
-WiFiUDP udp;
+WEBServer web;
+WiFiManager* wifi;
 N2K n2k;
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BMP280* bmp;
 dht DHT;
 
-RMC g_rmc;
-GSA g_gsa;
-double g_pressure = N2kDoubleNA;
-double g_humidity = N2kDoubleNA;
-double g_temperature = N2kDoubleNA;
+configuration conf;
+statistics stats;
+data cache;
 
-bool g_time_set = false;
-bool g_initialized = false;
-bool g_bmp_initialized = false;
+bool initialized = false;
 
-struct nmea_stats {
-  uint valid_rmc = 0;
-  uint valid_gsa = 0;
-  uint invalid_rmc = 0;
-  uint invalid_gsa = 0;
-} g_stats;
+bool bmp_initialized = false;
 
-void initGPS() {
-  Serial.print("Initializing GPS ");
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  debug_println("- OK");
-}
+bool gps_initialized;
+bool gps_time_set = false;
 
-void sendUDPPacket(const uint8_t* bfr, int l) {
-  if (g_initialized) {
-    debug_print("Forwarding {%s} {%d}\n", bfr, g_wifi->is_connected());
-    if (g_wifi->is_connected()) {
-      static uint8_t term[] = {13,10};
-      //debug_print("UDP Sending {%s}\n", bfr);
-      udp.beginPacket(UDP_DEST, UDP_PORT);
-      udp.write(bfr, l);
-      udp.write(term, 2);
-      udp.endPacket();
-    }
+int status = 0;
+
+void enableGPS() {
+  if (!gps_initialized) {
+    debug_println("Initializing GPS");
+    Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+    gps_initialized = true;
+    debug_print("  GPS {%d}\n", gps_initialized);
   }
 }
 
-void report_stats() {
-  static time_t last_report_time = 0;
-  if (g_time_set) {
-    time_t t = time(0);
-    if ((t - last_report_time) > 30) {
-        last_report_time = t;
-        debug_print("RMC %d/%d GSA %d/%d Sats %d Fix %d Sent %d/%d\n",
-              g_stats.valid_rmc, g_stats.invalid_rmc,
-              g_stats.valid_gsa, g_stats.invalid_gsa,
-              g_gsa.nSat, g_gsa.fix,
-              n2k.get_sent(), n2k.get_sent_fail());
-        memset(&g_stats, 0, sizeof(nmea_stats));
-        n2k.reset_counters();
+void disableGPS() {
+  if (gps_initialized) {
+    gps_initialized = false;
+    Serial.println("Closing GPS");
+    Serial2.end();
+  }
+}
+
+void enableBMP280() {
+  if (!bmp_initialized) {
+    debug_print("Initializing BMP sensor ");
+    bool two_wires_ok = I2CBME.begin(I2C_SDA, I2C_SCL, 100000);
+    debug_print(" TwoWires {%d} ", two_wires_ok);
+    if (two_wires_ok) {
+      bmp = new Adafruit_BMP280(&I2CBME);
+      bmp_initialized = bmp->begin(0x76, 0x60);
+      if (!bmp_initialized) {
+        delete bmp;
+      }
     }
+    debug_print(" BMP280 {%d}\n", bmp_initialized);
+  }
+}
+
+void disableBMP280() {
+  if (bmp_initialized) {
+    debug_print("Closing BMP sensor ");
+    delete bmp;
+    bmp_initialized = false;
+  }
+}
+
+void report_stats(unsigned long ms) {
+  static unsigned long last_time_stats_ms = 0;
+  if ((ms-last_time_stats_ms)>10000) {
+    if (conf.use_gps) {
+      if (gps_time_set) {
+        debug_print("Stats: RMC %d/%d GSA %d/%d Sats %d Fix %d\n",
+              stats.valid_rmc, stats.invalid_rmc,
+              stats.valid_gsa, stats.invalid_gsa,
+              cache.gsa.nSat, cache.gsa.fix);
+      }
+    }
+
+    debug_print("Stats: UDP {%d} CAN {%d %d} in 10s\n", stats.udp_sent, n2k.get_sent(), n2k.get_sent_fail());
+    
+    n2k.reset_counters();
+
+    last_time_stats_ms = ms;
+
+    memset(&stats, 0, sizeof(statistics));
   }
 }
 
 int parse_and_send(const char *sentence) {
     if (NMEAUtils::is_sentence(sentence, "RMC")) {
-        if (NMEAUtils::parseRMC(sentence, g_rmc) == 0) {
-            if (g_rmc.valid) g_stats.valid_rmc++; else g_stats.invalid_rmc++;
+        if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0) {
+            if (cache.rmc.valid) stats.valid_rmc++; else stats.invalid_rmc++;
             //debug_print("Process RMC {%s}\n", sentence);
-            if (!g_time_set) {
-              if (g_rmc.y>0) {
+            if (!gps_time_set) {
+              if (cache.rmc.y>0) {
                 //debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", g_rmc.y, g_rmc.M, g_rmc.d, g_rmc.h, g_rmc.m, g_rmc.s);
-                setTime(g_rmc.h, g_rmc.m, g_rmc.s, g_rmc.d, g_rmc.M, g_rmc.y);
-                g_time_set = true;
+                gps_time_set = true;
               }
             }
-            if (g_time_set) {
-              n2k.sendCOGSOG(g_gsa, g_rmc);
-              n2k.sendPosition(g_gsa, g_rmc);
+            if (gps_time_set && conf.use_gps) {
+              n2k.sendCOGSOG(cache.gsa, cache.rmc);
+              n2k.sendPosition(cache.gsa, cache.rmc);
             }
             return OK;
         }
     } else if (NMEAUtils::is_sentence(sentence, "GSA")) {
-        if (NMEAUtils::parseGSA(sentence, g_gsa) == 0) {
-            if (g_gsa.valid) g_stats.valid_gsa++; else g_stats.invalid_gsa++;
+        if (NMEAUtils::parseGSA(sentence, cache.gsa) == 0) {
+            if (cache.gsa.valid) stats.valid_gsa++; else stats.invalid_gsa++;
             //debug_print("Process GSA {%s}\n", sentence);
             return OK;
         }
@@ -129,8 +150,8 @@ void readGPS(long microsecs) {
 
 void handleMsg(const tN2kMsg &N2kMsg) {
   
-  //if (!g_time_set) return;   
-
+  if (!initialized) return;
+  
   int pgn = N2kMsg.PGN;
   int src = N2kMsg.Source;
   int dst = N2kMsg.Destination;
@@ -139,17 +160,13 @@ void handleMsg(const tN2kMsg &N2kMsg) {
   const unsigned char* data = N2kMsg.Data;
   unsigned long msgTime = N2kMsg.MsgTime;
 
-  time_t _now = now();
-  time_t _t0 = time(0);
-  //time, priority, pgn, source, dest, len data
-  //2011-11-24-22:42:04.388,2,127251,36,255,8,7d,0b,7d,02,00,ff,ff,ff
-  time_t ts = (msgTime / 1000) + (_now - _t0);
   int ts_millis = msgTime % 1000;
+  time_t ts = msgTime/1000;
   tm t;
   gmtime_r(&ts, &t);
 
-  char buffer[512];
-  sprintf(buffer, "%04d-%02d-%02d-%02d:%02d:%02d.%03d,%d,%d,%d,%d,%d,", 
+  char buffer[2048];
+  snprintf(buffer, 2048, "%04d-%02d-%02d-%02d:%02d:%02d.%03d,%d,%d,%d,%d,%d,", 
     t.tm_year + 2000, t.tm_mon + 1, t.tm_mday, 
     t.tm_hour, t.tm_min, t.tm_sec, ts_millis, 
     priority, pgn, src, dst, dataLen);
@@ -162,25 +179,17 @@ void handleMsg(const tN2kMsg &N2kMsg) {
       x += sizeof(char);
     }
   }
-  sendUDPPacket((uint8_t*)buffer, strlen(buffer));
+
+  stats.udp_sent += wifi->sendUDPPacket((uint8_t*)buffer, strlen(buffer));
 }
 
 void setup() {
   Serial.begin(115200);
-  delay(2000);
+  delay(1000);
   n2k.setup(handleMsg);
-  initGPS();
-
-  debug_print("Initializing BMP sensor ");
-  debug_print(" TwoWires {%d} ", I2CBME.begin(I2C_SDA, I2C_SCL, 100000));
-  bmp = new Adafruit_BMP280(&I2CBME);
-  g_bmp_initialized = bmp->begin(0x76, 0x60);
-  debug_print(" BMP280 {%d}\n", g_bmp_initialized);
-
-  g_wifi = new WiFiManager();
-
-  delay(2000);
-  g_initialized = true;
+  wifi = new WiFiManager();
+  initialized = true;
+  status = 1;
 }
 
 void send_system_time(unsigned long ms) {
@@ -191,63 +200,82 @@ void send_system_time(unsigned long ms) {
   }
 }
 
-void send_env(unsigned long ms) {
-  static unsigned long t0 = 0;
-  if ((ms-t0)>1000) {
-    n2k.sendEnvironment(g_pressure, g_humidity, g_temperature);
-    t0 = ms;
+void read_pressure() {
+  cache.pressure = N2kDoubleNA;
+  if (bmp_initialized) {
+    cache.pressure = bmp->readPressure();
+    if (TRACE_DHT11) debug_print("Press {%.1f}\n", cache.pressure);
   }
 }
 
-void read_pressure(unsigned long ms) {
-  static unsigned long t0 = 0;
-  if ((ms-t0)>5000 && g_bmp_initialized) {
-    t0 = ms;
-    g_pressure = bmp->readPressure();
-    //debug_print("Read {%f} pressure\n", g_pressure);
-  }
-}
-
-void read_temp_hum(unsigned long ms) {
-  static unsigned long t0 = 0;
-  if ((ms-t0)>10000 && g_bmp_initialized) {
-    t0 = ms;
+void read_temp_hum() {
+  cache.humidity = N2kDoubleNA;
+  cache.temperature = N2kDoubleNA;
+  if (conf.use_dht11) {
     int chk = DHT.read11(DHTPIN);
     switch (chk) {
       case DHTLIB_OK:  
-        g_humidity = DHT.humidity;
-        g_temperature = DHT.temperature;
-        //debug_print("Read {%f} Humidity {%f} Temperature\n", g_humidity, g_temperature);
+        cache.humidity = DHT.humidity;
+        cache.temperature = DHT.temperature;
+        if (TRACE_BMP280) debug_print("Temp {%.1f} Hum {%.1f}\n", cache.temperature, cache.humidity);
+        return;
         break;
       case DHTLIB_ERROR_CHECKSUM: 
-        debug_print("DHT11 Checksum error,\t"); 
-        g_humidity = N2kDoubleNA;
-        g_temperature = N2kDoubleNA;
+        debug_print("DHT11 Checksum error\n"); 
         break;
       case DHTLIB_ERROR_TIMEOUT: 
-        debug_print("DHT11 Time out error,\t"); 
-        g_humidity = N2kDoubleNA;
-        g_temperature = N2kDoubleNA;
+        debug_print("DHT11 Time out error\n"); 
         break;
       default: 
-        debug_print("DHT11 Unknown error,\t"); 
-        g_humidity = N2kDoubleNA;
-        g_temperature = N2kDoubleNA;
+        debug_print("DHT11 Unknown error\n"); 
         break;
     }
   }
 }
 
+void send_env(unsigned long ms) {
+  static unsigned long t0 = 0;
+  if ((ms-t0)>2000) {
+    read_pressure();
+    read_temp_hum();
+    if (n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature)) {
+      stats.can_sent++;
+    } else {
+      debug_println("Failed to send environment message!");
+    }
+    t0 = ms;
+  }
+}
+
+
 void loop() {
   unsigned long ms = millis();
-  if (g_initialized) {
-    g_wifi->start();
-    readGPS(250000);
-    report_stats();
-    read_pressure(ms);
-    read_temp_hum(ms);
-    send_env(ms);
-    send_system_time(ms);
+  if (initialized) {
+    wifi->start();
+    web.setup(&cache, &conf);
+
+    if (conf.use_gps) {
+      enableGPS();
+      readGPS(250000);
+    } else {
+      disableGPS();
+    }
+
+    if (conf.use_bmp280) {
+      enableBMP280();
+    } else {
+      disableBMP280();
+    }
+
+    if (conf.use_dht11 || conf.use_bmp280) {
+      send_env(ms);
+    }
+
+    if (conf.send_time) {
+      send_system_time(ms);
+    }
+    report_stats(ms);
     n2k.loop();
+    web.on_loop(ms);
   }
 }
