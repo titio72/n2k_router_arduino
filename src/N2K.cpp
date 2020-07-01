@@ -95,9 +95,8 @@ bool N2K::sendLocalTime(GSA& gsa, RMC& rmc)
     return false;
 }
 
-bool N2K::sendTime()
+bool N2K::sendTime(time_t _now)
 {
-    time_t _now = time(0);
     tm* t = gmtime(&_now);
     int days_since_1970 = getDaysSince1970(t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
     double second_since_midnight = t->tm_hour * 60 * 60 + t->tm_min * 60 + t->tm_sec;

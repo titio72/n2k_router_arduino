@@ -8,7 +8,7 @@ class N2K {
 
     public:
         bool sendCOGSOG(GSA& gsa, RMC& rmc);
-        bool sendTime();
+        bool sendTime(time_t t);
         bool sendTime(GSA& gsa, RMC& rmc);
         bool sendLocalTime(GSA& gsa, RMC& rmc);
         bool sendPosition(GSA& gsa, RMC& rmc);

@@ -37,6 +37,8 @@ bool gps_time_set = false;
 
 int status = 0;
 
+time_t delta_time = 0;
+
 void enableGPS() {
   if (!gps_initialized) {
     debug_println("Initializing GPS");
@@ -107,7 +109,17 @@ int parse_and_send(const char *sentence) {
             //debug_print("Process RMC {%s}\n", sentence);
             if (!gps_time_set) {
               if (cache.rmc.y>0) {
-                //debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", g_rmc.y, g_rmc.M, g_rmc.d, g_rmc.h, g_rmc.m, g_rmc.s);
+                tm _gps_time;
+                _gps_time.tm_hour = cache.rmc.h;
+                _gps_time.tm_min = cache.rmc.m;
+                _gps_time.tm_sec = cache.rmc.s;
+                _gps_time.tm_year = cache.rmc.y - 1900;
+                _gps_time.tm_mon = cache.rmc.M - 1;
+                _gps_time.tm_mday = cache.rmc.d;
+                time_t _gps_time_t = mktime(&_gps_time);
+                delta_time = _gps_time_t - time(0); 
+
+                debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", cache.rmc.y, cache.rmc.M, cache.rmc.d, cache.rmc.h, cache.rmc.m, cache.rmc.s);
                 gps_time_set = true;
               }
             }
@@ -183,19 +195,10 @@ void handleMsg(const tN2kMsg &N2kMsg) {
   stats.udp_sent += wifi->sendUDPPacket((uint8_t*)buffer, strlen(buffer));
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(1000);
-  n2k.setup(handleMsg);
-  wifi = new WiFiManager();
-  initialized = true;
-  status = 1;
-}
-
 void send_system_time(unsigned long ms) {
   static unsigned long t0 = 0;
   if ((ms-t0)>1000) {
-    n2k.sendTime();
+    n2k.sendTime(time(0) + delta_time);
     t0 = ms;
   }
 }
@@ -247,6 +250,14 @@ void send_env(unsigned long ms) {
   }
 }
 
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+  n2k.setup(handleMsg);
+  wifi = new WiFiManager();
+  initialized = true;
+  status = 1;
+}
 
 void loop() {
   unsigned long ms = millis();
