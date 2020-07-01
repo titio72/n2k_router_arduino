@@ -6,11 +6,12 @@
 class WEBServer {
 
 public:
-    void setup(data* cache, configuration* conf);
+    void setup(data* cache, configuration* conf, statistics* stats);
     void on_loop(unsigned long ms);
 private:
     data* cache;
     configuration* conf;
+    statistics* stats;
 
     bool started;
 

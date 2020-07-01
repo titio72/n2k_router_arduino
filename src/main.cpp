@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <EEPROM.h>
 #include "NMEA.h"
 #include "N2K.h"
 #include "constants.h"
@@ -26,6 +27,7 @@ dht DHT;
 
 configuration conf;
 statistics stats;
+statistics last_stats;
 data cache;
 
 bool initialized = false;
@@ -38,6 +40,21 @@ bool gps_time_set = false;
 int status = 0;
 
 time_t delta_time = 0;
+
+void read_conf() {
+  EEPROM.begin(1);
+  uint8_t v = EEPROM.read(0);
+  debug_print("Read conf value {%d}\n", v);
+  if (v!=0xFF) {
+      conf.use_gps = (v & 1);
+      conf.use_bmp280 = (v & 2);
+      conf.use_dht11 = (v & 4);
+      conf.send_time = (v & 8);
+      debug_print("Set conf gps {%d} bmp280 {%d} dht11 {%d} time {%d}\n", conf.use_gps, conf.use_bmp280, conf.use_dht11, conf.send_time);
+  } else {
+      debug_print("Use default conf gps {%d} bmp280 {%d} dht11 {%d} time {%d}\n", conf.use_gps, conf.use_bmp280, conf.use_dht11, conf.send_time);
+  }
+}
 
 void enableGPS() {
   if (!gps_initialized) {
@@ -92,12 +109,12 @@ void report_stats(unsigned long ms) {
       }
     }
 
-    debug_print("Stats: UDP {%d} CAN {%d %d} in 10s\n", stats.udp_sent, n2k.get_sent(), n2k.get_sent_fail());
-    
-    n2k.reset_counters();
+    debug_print("Stats: UDP {%d %d} CAN.TX {%d %d} CAN.RX {%d} in 10s\n", 
+      stats.udp_sent, stats.udp_failed, stats.can_sent, stats.can_failed, stats.can_received);
 
     last_time_stats_ms = ms;
 
+    memcpy(&last_stats, &stats, sizeof(statistics));
     memset(&stats, 0, sizeof(statistics));
   }
 }
@@ -192,7 +209,10 @@ void handleMsg(const tN2kMsg &N2kMsg) {
     }
   }
 
-  stats.udp_sent += wifi->sendUDPPacket((uint8_t*)buffer, strlen(buffer));
+  if (wifi->sendUDPPacket((uint8_t*)buffer, strlen(buffer)))
+    stats.udp_sent++;
+  else 
+    stats.udp_failed++;
 }
 
 void send_system_time(unsigned long ms) {
@@ -207,7 +227,7 @@ void read_pressure() {
   cache.pressure = N2kDoubleNA;
   if (bmp_initialized) {
     cache.pressure = bmp->readPressure();
-    if (TRACE_DHT11) debug_print("Press {%.1f}\n", cache.pressure);
+    if (TRACE_BMP280) debug_print("Press {%.1f} Temp {%.1f}\n", cache.pressure, bmp->readTemperature());
   }
 }
 
@@ -220,7 +240,7 @@ void read_temp_hum() {
       case DHTLIB_OK:  
         cache.humidity = DHT.humidity;
         cache.temperature = DHT.temperature;
-        if (TRACE_BMP280) debug_print("Temp {%.1f} Hum {%.1f}\n", cache.temperature, cache.humidity);
+        if (TRACE_DHT11) debug_print("Temp {%.1f} Hum {%.1f}\n", cache.temperature, cache.humidity);
         return;
         break;
       case DHTLIB_ERROR_CHECKSUM: 
@@ -241,11 +261,7 @@ void send_env(unsigned long ms) {
   if ((ms-t0)>2000) {
     read_pressure();
     read_temp_hum();
-    if (n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature)) {
-      stats.can_sent++;
-    } else {
-      debug_println("Failed to send environment message!");
-    }
+    n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature);
     t0 = ms;
   }
 }
@@ -253,7 +269,8 @@ void send_env(unsigned long ms) {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  n2k.setup(handleMsg);
+  read_conf();
+  n2k.setup(handleMsg, &stats);
   wifi = new WiFiManager();
   initialized = true;
   status = 1;
@@ -263,7 +280,7 @@ void loop() {
   unsigned long ms = millis();
   if (initialized) {
     wifi->start();
-    web.setup(&cache, &conf);
+    web.setup(&cache, &conf, &last_stats);
 
     if (conf.use_gps) {
       enableGPS();

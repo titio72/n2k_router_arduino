@@ -12,7 +12,10 @@ struct statistics {
   uint invalid_rmc = 0;
   uint invalid_gsa = 0;
   ulong udp_sent = 0;
+  ulong udp_failed = 0;
   ulong can_sent = 0;
+  ulong can_failed = 0;
+  ulong can_received = 0;
 };
 
 

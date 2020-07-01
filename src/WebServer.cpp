@@ -1,11 +1,11 @@
 
 #include <Arduino.h>
-// Load Wi-Fi library
 #include <WiFi.h>
 #include "constants.h"
 #include "Utils.h"
 #include "WebServer.h"
 #include <string.h>
+#include <EEPROM.h>
 
 String page("<!DOCTYPE html>  \
 <html>  \
@@ -67,47 +67,63 @@ String page("<!DOCTYPE html>  \
     <div style='align-content: center;'>  \
         <table class='center'>  \
             <tr>  \
+                <th class='conf_cell'>Conf</th>  \
+                <th class='conf_value'>Setting</th>  \
                 <th class='conf_cell'>Item</th>  \
                 <th class='conf_value'>Value</th>  \
             </tr>  \
             <tr> \
                 <td class='conf_cell'>GPS</td> \
                 <td class='conf_value'><a href='__GPS_URL__'>__GPS__</a></td> \
+                <td class='conf_cell'>Pressure</td>  \
+                <td class='conf_value'>__PRESSURE__</td>  \
             </tr> \
             <tr> \
                 <td class='conf_cell'>BMP280</td> \
                 <td class='conf_value'><a href='__BMP280_URL__'>__BMP280__</a></td> \
+                <td class='conf_cell'>Temp</td>  \
+                <td class='conf_value'>__TEMPERATURE__</td>  \
             </tr> \
             <tr> \
                 <td class='conf_cell'>DHT11</td> \
                 <td class='conf_value'><a href='__DHT11_URL__'>__DHT11__</a></td> \
+                <td class='conf_cell'>Humidity</td>  \
+                <td class='conf_value'>__HUMIDITY__</td>  \
             </tr> \
             <tr> \
                 <td class='conf_cell'>Sys Time</td> \
                 <td class='conf_value'><a href='__SYS_TIME_URL__'>__SYS_TIME__</a></td> \
-            </tr> \
-            <tr>  \
-                <td class='conf_cell'>Pressure</td>  \
-                <td class='conf_value'>__PRESSURE__</td>  \
+                <td class='conf_cell'>CAN BUS RX</td>  \
+                <td class='conf_value'>__RX__</td>  \
             </tr>  \
             <tr>  \
-                <td class='conf_cell'>Temp</td>  \
-                <td class='conf_value'>__TEMPERATURE__</td>  \
+                <td>&nbsp;</td> \
+                <td>&nbsp;</td> \
+                <td class='conf_cell'>CAN BUS TX</td>  \
+                <td class='conf_value'>__TX__ (__TX_ERR__)</td>  \
             </tr>  \
             <tr>  \
-                <td class='conf_cell'>Humidity</td>  \
-                <td class='conf_value'>__HUMIDITY__</td>  \
+                <td>&nbsp;</td> \
+                <td>&nbsp;</td> \
+                <td class='conf_cell'>UDP TX</td>  \
+                <td class='conf_value'>__UDP_TX__ (__UDP_TX_ERR__)</td>  \
+            </tr>  \
+            <tr>  \
+                <td>&nbsp;</td> \
+                <td>&nbsp;</td> \
+                <td class='conf_cell'>Feee heap</td>  \
+                <td class='conf_value'>__FREE_HEAP__</td>  \
             </tr>  \
         </table>  \
-        <p><a href=''>Refresh</a></p> \
+        <p><a href='/'>Refresh</a></p> \
     </div>  \
 </body>  \
   \
 </html>");
 
 
-char* replace_and_free(char* orig, const char* pattern, const char* new_string) {
-    char* c = replace(orig, pattern, new_string);
+char* replace_and_free(char* orig, const char* pattern, const char* new_string, bool first) {
+    char* c = replace(orig, pattern, new_string, first);
     free(orig);
     return c;
 }
@@ -133,19 +149,25 @@ void manage(String& header, configuration* c) {
     command[i-1] = 0;
     debug_print("Web UI {%s}\n", command);
 
-    if (enable(c->send_time, "systime", command)) return;
-    if (enable(c->use_bmp280, "bmp280", command)) return;
-    if (enable(c->use_dht11, "dht11", command)) return;
-    if (enable(c->use_gps, "gps", command)) return;
+    if (!enable(c->send_time, "systime", command))
+        if (!enable(c->use_bmp280, "bmp280", command))
+            if (!enable(c->use_dht11, "dht11", command))
+                if (!enable(c->use_gps, "gps", command)) return;
+
+    int new_conf = (c->use_gps?1:0) + (c->use_bmp280?2:0) + (c->use_dht11?4:0) + (c->send_time?8:0) + 16;
+    debug_print("Writing new configuration {%d}\n", (uint8_t)new_conf);
+    EEPROM.write(0, (uint8_t)new_conf);
+    EEPROM.commit();
 }
 
 
 WiFiServer server(80);WiFiClient* serving_client;
 unsigned long client_connected_time = 0;
 
-void WEBServer::setup(data* _cache, configuration* _conf) {
+void WEBServer::setup(data* _cache, configuration* _conf, statistics* _stats) {
     cache = _cache;
     conf = _conf;
+    stats = _stats;
 
     if (!started) {
         debug_println("Initializing web interface");
@@ -185,27 +207,45 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
 
                         char* c;
                         c = replace(page.c_str(), "__GPS__", conf->use_gps?"Yes":"No", true);
-                        c = replace(c, "__GPS_URL__", conf->use_gps?"disable_gps":"enable_gps", true);
+                        c = replace_and_free(c, "__GPS_URL__", conf->use_gps?"disable_gps":"enable_gps", true);
 
-                        c = replace(c, "__BMP280__", conf->use_bmp280?"Yes":"No", true);
-                        c = replace(c, "__BMP280_URL__", conf->use_bmp280?"disable_bmp280":"enable_bmp280", true);
+                        c = replace_and_free(c, "__BMP280__", conf->use_bmp280?"Yes":"No", true);
+                        c = replace_and_free(c, "__BMP280_URL__", conf->use_bmp280?"disable_bmp280":"enable_bmp280", true);
 
-                        c = replace(c, "__DHT11__", conf->use_dht11?"Yes":"No", true);
-                        c = replace(c, "__DHT11_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
+                        c = replace_and_free(c, "__DHT11__", conf->use_dht11?"Yes":"No", true);
+                        c = replace_and_free(c, "__DHT11_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
 
-                        c = replace(c, "__SYS_TIME__", conf->send_time?"Yes":"No", true);
-                        c = replace(c, "__SYS_TIME_URL__", conf->send_time?"disable_systime":"enable_systime", true);
+                        c = replace_and_free(c, "__SYS_TIME__", conf->send_time?"Yes":"No", true);
+                        c = replace_and_free(c, "__SYS_TIME_URL__", conf->send_time?"disable_systime":"enable_systime", true);
 
                         sprintf(buffer, "%.1f MB", cache->pressure/100.0);
-                        c = replace(c, "__PRESSURE__", buffer);
+                        c = replace_and_free(c, "__PRESSURE__", buffer, true);
 
                         sprintf(buffer, "%.1f C&deg;", cache->temperature);
-                        c = replace(c, "__TEMPERATURE__", buffer);
+                        c = replace_and_free(c, "__TEMPERATURE__", buffer, true);
 
                         sprintf(buffer, "%.1f %%", cache->humidity);
-                        c = replace(c, "__HUMIDITY__", buffer);
+                        c = replace_and_free(c, "__HUMIDITY__", buffer, true);
 
+                        sprintf(buffer, "%lu", stats->can_received);
+                        c = replace_and_free(c, "__RX__", buffer, true);
 
+                        sprintf(buffer, "%lu", stats->can_sent);
+                        c = replace_and_free(c, "__TX__", buffer, true);
+
+                        sprintf(buffer, "%lu", stats->can_failed);
+                        c = replace_and_free(c, "__TX_ERR__", buffer, true);
+
+                        sprintf(buffer, "%lu", stats->udp_sent);
+                        c = replace_and_free(c, "__UDP_TX__", buffer, true);
+
+                        sprintf(buffer, "%lu", stats->udp_failed);
+                        c = replace_and_free(c, "__UDP_TX_ERR__", buffer, true);
+
+                        uint32_t free_heap = ESP.getFreeHeap();
+                        sprintf(buffer, "%d", free_heap);
+                        c = replace_and_free(c, "__FREE_HEAP__", buffer, true);
+                        
                         // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
                         // and a content-type so the client knows what's coming, then a blank line:
                         serving_client->println("HTTP/1.1 200 OK");
