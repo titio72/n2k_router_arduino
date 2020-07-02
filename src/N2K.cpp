@@ -29,7 +29,7 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s) {
     debug_println("Initializing N2K Product Info");
     NMEA2000.SetProductInformation("00000001", // Manufacturer's Model serial code
                                  100, // Manufacturer's product code
-                                 "Message sender example",  // Manufacturer's Model ID
+                                 "ABN2k",  // Manufacturer's Model ID
                                  "1.0.2.25 (2019-07-07)",  // Manufacturer's Software version code
                                  "1.0.2.0 (2019-07-07)" // Manufacturer's Model version
                                  );
@@ -112,11 +112,11 @@ bool N2K::sendPosition(GSA& gsa, RMC& rmc) {
     return false;
 }
 
-bool N2K::sendEnvironment(const float pressureHPA, const float humidity, const float temperatureC) {
+bool N2K::sendEnvironment(const float pressurePA, const float humidity, const float temperatureC) {
     tN2kMsg N2kMsg;
     SetN2kEnvironmentalParameters(N2kMsg, 0, 
         N2kts_MainCabinTemperature, CToKelvin(temperatureC), 
         N2khs_InsideHumidity, humidity, 
-        pressureHPA);
+        pressurePA);
     return send_msg(N2kMsg);
 }
