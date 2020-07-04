@@ -12,6 +12,8 @@
 
 int nmea_position_parse(char *s, float *pos)
 {
+    if (s==0 || s[0]==0) return -1;
+
     char *cursor;
 
     int degrees = 0;
@@ -68,7 +70,7 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 
         // read fix
         token = strsep(&tempstr, ",");
-        gsa.fix = atoi(token);
+        if (token && token[0]) gsa.fix = atoi(token);
 
         // count sats
         gsa.nSat = 0;
@@ -81,15 +83,15 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 
         // read PDOP
         token = strsep(&tempstr, ",");
-        gsa.pdop = atof(token);
+        if (token && token[0]) gsa.pdop = atof(token); else gsa.pdop = 100.0;
 
         // read HDOP
         token = strsep(&tempstr, ",");
-        gsa.hdop = atof(token);
+        if (token && token[0]) gsa.hdop = atof(token); else gsa.hdop = 100.0;
 
         // read VDOP
         token = strsep(&tempstr, ",");
-        gsa.vdop = atof(token);
+        if (token && token[0]) gsa.vdop = atof(token); else gsa.vdop = 100.0;
 
         free(tofree);
         return 0;
@@ -120,16 +122,18 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
 
         // read UTC time
         token = strsep(&tempstr, ",");
-        if (strlen(token) > 6)
-        {
-            token[6] = 0;
-            rmc.ms = atoi(token + 7 * sizeof(char));
+        if (token && strlen(token)>=6) {
+            if (strlen(token) > 6)
+            {
+                token[6] = 0;
+                rmc.ms = atoi(token + 7 * sizeof(char));
+            }
+            rmc.s = atoi(token + 4 * sizeof(char));
+            token[4] = 0;
+            rmc.m = atoi(token + 2 * sizeof(char));
+            token[2] = 0;
+            rmc.h = atoi(token);
         }
-        rmc.s = atoi(token + 4 * sizeof(char));
-        token[4] = 0;
-        rmc.m = atoi(token + 2 * sizeof(char));
-        token[2] = 0;
-        rmc.h = atoi(token);
 
         // read validity
         token = strsep(&tempstr, ",");
@@ -171,12 +175,13 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
 
         // read date
         token = strsep(&tempstr, ",");
-        rmc.y = atoi(token + 4 * sizeof(char)) + 2000;
-        token[4] = 0;
-        rmc.M = atoi(token + 2 * sizeof(char));
-        token[2] = 0;
-        rmc.d = atoi(token);
-
+        if (token && token[0]) {
+            rmc.y = atoi(token + 4 * sizeof(char)) + 2000;
+            token[4] = 0;
+            rmc.M = atoi(token + 2 * sizeof(char));
+            token[2] = 0;
+            rmc.d = atoi(token);
+        }
         free(tofree);
         return 0;
     }

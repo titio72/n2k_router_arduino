@@ -59,7 +59,6 @@ bool N2K::send_msg(const tN2kMsg &N2kMsg) {
     }
 }
 
-
 bool N2K::sendCOGSOG(GSA& gsa, RMC& rmc) {
     if (gsa.valid && rmc.valid && gsa.fix >= 2) {
         if (isnan(rmc.sog) && isnan(rmc.cog)) return false;

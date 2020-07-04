@@ -59,7 +59,7 @@ void read_conf() {
 void enableGPS() {
   if (!gps_initialized) {
     debug_println("Initializing GPS");
-    Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+    Serial2.begin(57600, SERIAL_8N1, RXD2, TXD2);
     gps_initialized = true;
     debug_print("  GPS {%d}\n", gps_initialized);
   }
@@ -68,7 +68,7 @@ void enableGPS() {
 void disableGPS() {
   if (gps_initialized) {
     gps_initialized = false;
-    Serial.println("Closing GPS");
+    debug_println("Closing GPS");
     Serial2.end();
   }
 }
@@ -101,12 +101,10 @@ void report_stats(unsigned long ms) {
   static unsigned long last_time_stats_ms = 0;
   if ((ms-last_time_stats_ms)>10000) {
     if (conf.use_gps) {
-      if (gps_time_set) {
-        debug_print("Stats: RMC %d/%d GSA %d/%d Sats %d Fix %d\n",
-              stats.valid_rmc, stats.invalid_rmc,
-              stats.valid_gsa, stats.invalid_gsa,
-              cache.gsa.nSat, cache.gsa.fix);
-      }
+      debug_print("Stats: RMC %d/%d GSA %d/%d Sats %d Fix %d\n",
+            stats.valid_rmc, stats.invalid_rmc,
+            stats.valid_gsa, stats.invalid_gsa,
+            cache.gsa.nSat, cache.gsa.fix);
     }
 
     debug_print("Stats: UDP {%d %d} CAN.TX {%d %d} CAN.RX {%d} in 10s\n", 
@@ -120,10 +118,10 @@ void report_stats(unsigned long ms) {
 }
 
 int parse_and_send(const char *sentence) {
+    //debug_print("Process Sentence {%s}\n", sentence);
     if (NMEAUtils::is_sentence(sentence, "RMC")) {
         if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0) {
             if (cache.rmc.valid) stats.valid_rmc++; else stats.invalid_rmc++;
-            //debug_print("Process RMC {%s}\n", sentence);
             if (!gps_time_set) {
               if (cache.rmc.y>0) {
                 tm _gps_time;
@@ -149,30 +147,38 @@ int parse_and_send(const char *sentence) {
     } else if (NMEAUtils::is_sentence(sentence, "GSA")) {
         if (NMEAUtils::parseGSA(sentence, cache.gsa) == 0) {
             if (cache.gsa.valid) stats.valid_gsa++; else stats.invalid_gsa++;
-            //debug_print("Process GSA {%s}\n", sentence);
             return OK;
         }
     }
     return KO;
 }
 
-void readGPS(long microsecs) {
-  static uint8_t buffer[256];
+void readGPS(long ms) {
+  static uint8_t buffer[2048];
   static int ix = 0;
 
-  long t0GPS = micros();
-  while (Serial2.available() && (micros()-t0GPS)<microsecs) {
+  long t0GPS = millis();
+  while (Serial2.available() && (millis()-t0GPS)<=ms) {
     uint8_t c = (uint8_t)Serial2.read();
     if (c==13 || c==10) {
       if (buffer[0]!=0) {
+        //debug_print("Read gps %s\n", buffer);
+          
         parse_and_send((const char*)buffer);
         ix = 0;
         buffer[ix] = 0;
       }
     } else {        
-      buffer[ix] = c;
-      ix++;
-      buffer[ix] = 0;
+      if (ix<255) {
+        buffer[ix] = c;
+        ix++;
+        buffer[ix] = 0;
+      } else {
+        ix = 0;
+        buffer[ix] = c;
+        ix++;
+        buffer[ix] = 0;
+      }
     }
   }
 }
@@ -227,7 +233,8 @@ void read_pressure() {
   cache.pressure = N2kDoubleNA;
   if (bmp_initialized) {
     cache.pressure = bmp->readPressure();
-    if (TRACE_BMP280) debug_print("Press {%.1f} Temp {%.1f}\n", cache.pressure, bmp->readTemperature());
+    cache.temperature_el = bmp->readTemperature();
+    if (TRACE_BMP280) debug_print("Press {%.1f} Temp {%.1f}\n", cache.pressure, cache.temperature_el);
   }
 }
 
@@ -235,7 +242,7 @@ void read_temp_hum() {
   cache.humidity = N2kDoubleNA;
   cache.temperature = N2kDoubleNA;
   if (conf.use_dht11) {
-    int chk = DHT.read11(DHTPIN);
+    int chk = DHT.read22(DHTPIN);
     switch (chk) {
       case DHTLIB_OK:  
         cache.humidity = DHT.humidity;
@@ -284,7 +291,7 @@ void loop() {
 
     if (conf.use_gps) {
       enableGPS();
-      readGPS(250000);
+      readGPS(250);
     } else {
       disableGPS();
     }

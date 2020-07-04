@@ -1,10 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <Arduino.h>
+
 void debug_print(const char *fmt, ...);
 void debug_println(const char *fmt);
 int getDaysSince1970(int y, int m, int d);
-char * replace(char const * const original, char const * const pattern, char const * const replacement, bool first = false);
+char* replace(char const * const original, char const * const pattern, char const * const replacement, bool first = false);
 
 struct statistics {
   uint valid_rmc = 0;
@@ -18,7 +20,6 @@ struct statistics {
   ulong can_received = 0;
 };
 
-
 struct configuration {
   bool use_gps = false;
   bool use_bmp280 = true;
@@ -26,8 +27,7 @@ struct configuration {
   bool send_time = false;
 };
 
-struct GSA
-{
+struct GSA {
     short valid;
     int nSat;
     int fix;
@@ -36,8 +36,7 @@ struct GSA
     float pdop;
 };
 
-struct RMC
-{
+struct RMC {
     short valid;
     float lat;
     float lon;
@@ -60,6 +59,7 @@ struct data {
   double pressure;
   double humidity;
   double temperature;
+  double temperature_el;
   double latitude;
   char latitude_NS = 'N';
   double longitude;

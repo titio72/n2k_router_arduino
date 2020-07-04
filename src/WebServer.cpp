@@ -1,11 +1,11 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <string.h>
+#include <EEPROM.h>
 #include "constants.h"
 #include "Utils.h"
 #include "WebServer.h"
-#include <string.h>
-#include <EEPROM.h>
 
 String page("<!DOCTYPE html>  \
 <html>  \
@@ -19,21 +19,6 @@ String page("<!DOCTYPE html>  \
             display: inline-block;  \
             margin: 0px auto;  \
             text-align: center;  \
-        }  \
-  \
-        .button {  \
-            background-color: #4CAF50;  \
-            border: none;  \
-            color: white;  \
-            padding: 16px 40px;  \
-            text-decoration: none;  \
-            font-size: 30px;  \
-            margin: 2px;  \
-            cursor: pointer;  \
-        }  \
-  \
-        .button2 {  \
-            background-color: #555555;  \
         }  \
   \
         .conf_cell {  \
@@ -176,75 +161,28 @@ void WEBServer::setup(data* _cache, configuration* _conf, statistics* _stats) {
     }
     
 }
-// Current time
+
 unsigned long currentTime = millis();
-// Previous time
 unsigned long previousTime = 0; 
-// Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 String header;
-
 
 void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
     if (serving_client) {
         currentTime = millis();
         previousTime = currentTime;
-        debug_print("New Client %s\n", serving_client->localIP().toString().c_str());          // print a message out in the serial port
-        String currentLine = "";                // make a String to hold incoming data from the client
-        while (serving_client->connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
+        debug_print("New Client %s\n", serving_client->localIP().toString().c_str());
+        String currentLine = "";
+        while (serving_client->connected() && currentTime - previousTime <= timeoutTime) {
             currentTime = millis();
-            if (serving_client->available()) {             // if there's bytes to read from the client,
-                char c = serving_client->read();             // read a byte, then
+            if (serving_client->available()) {
+                char c = serving_client->read();
                 header += c;
-                if (c == '\n') {                    // if the byte is a newline character
-                    // if the current line is blank, you got two newline characters in a row.
-                    // that's the end of the client HTTP request, so send a response:
+                if (c == '\n') {
                     if (currentLine.length() == 0) {
 
+                        // manage commands
                         manage(header, conf);
-
-                        char buffer[128];
-
-                        char* c;
-                        c = replace(page.c_str(), "__GPS__", conf->use_gps?"Yes":"No", true);
-                        c = replace_and_free(c, "__GPS_URL__", conf->use_gps?"disable_gps":"enable_gps", true);
-
-                        c = replace_and_free(c, "__BMP280__", conf->use_bmp280?"Yes":"No", true);
-                        c = replace_and_free(c, "__BMP280_URL__", conf->use_bmp280?"disable_bmp280":"enable_bmp280", true);
-
-                        c = replace_and_free(c, "__DHT11__", conf->use_dht11?"Yes":"No", true);
-                        c = replace_and_free(c, "__DHT11_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
-
-                        c = replace_and_free(c, "__SYS_TIME__", conf->send_time?"Yes":"No", true);
-                        c = replace_and_free(c, "__SYS_TIME_URL__", conf->send_time?"disable_systime":"enable_systime", true);
-
-                        sprintf(buffer, "%.1f MB", cache->pressure/100.0);
-                        c = replace_and_free(c, "__PRESSURE__", buffer, true);
-
-                        sprintf(buffer, "%.1f C&deg;", cache->temperature);
-                        c = replace_and_free(c, "__TEMPERATURE__", buffer, true);
-
-                        sprintf(buffer, "%.1f %%", cache->humidity);
-                        c = replace_and_free(c, "__HUMIDITY__", buffer, true);
-
-                        sprintf(buffer, "%lu", stats->can_received);
-                        c = replace_and_free(c, "__RX__", buffer, true);
-
-                        sprintf(buffer, "%lu", stats->can_sent);
-                        c = replace_and_free(c, "__TX__", buffer, true);
-
-                        sprintf(buffer, "%lu", stats->can_failed);
-                        c = replace_and_free(c, "__TX_ERR__", buffer, true);
-
-                        sprintf(buffer, "%lu", stats->udp_sent);
-                        c = replace_and_free(c, "__UDP_TX__", buffer, true);
-
-                        sprintf(buffer, "%lu", stats->udp_failed);
-                        c = replace_and_free(c, "__UDP_TX_ERR__", buffer, true);
-
-                        uint32_t free_heap = ESP.getFreeHeap();
-                        sprintf(buffer, "%d", free_heap);
-                        c = replace_and_free(c, "__FREE_HEAP__", buffer, true);
                         
                         // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
                         // and a content-type so the client knows what's coming, then a blank line:
@@ -252,20 +190,32 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
                         serving_client->println("Content-type:text/html");
                         serving_client->println("Connection: close");
                         serving_client->println();
-                        if (header.indexOf("GET /26/on") >= 0) {
-                        // do something
-                        }
 
-                        serving_client->print(c);
+                        // fill page and send it to client
+                        char buffer[128];
+                        char* c;
+                        c = replace(page.c_str(), "__GPS__", conf->use_gps?"Yes":"No", true);
+                        c = replace_and_free(c, "__GPS_URL__", conf->use_gps?"disable_gps":"enable_gps", true);
+                        c = replace_and_free(c, "__BMP280__", conf->use_bmp280?"Yes":"No", true);
+                        c = replace_and_free(c, "__BMP280_URL__", conf->use_bmp280?"disable_bmp280":"enable_bmp280", true);
+                        c = replace_and_free(c, "__DHT11__", conf->use_dht11?"Yes":"No", true);
+                        c = replace_and_free(c, "__DHT11_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
+                        c = replace_and_free(c, "__SYS_TIME__", conf->send_time?"Yes":"No", true);
+                        c = replace_and_free(c, "__SYS_TIME_URL__", conf->send_time?"disable_systime":"enable_systime", true);
+                        sprintf(buffer, "%.1f MB", cache->pressure/100.0); c = replace_and_free(c, "__PRESSURE__", buffer, true);
+                        sprintf(buffer, "%.1f C&deg;", cache->temperature); c = replace_and_free(c, "__TEMPERATURE__", buffer, true);
+                        sprintf(buffer, "%.1f %%", cache->humidity); c = replace_and_free(c, "__HUMIDITY__", buffer, true);
+                        sprintf(buffer, "%lu", stats->can_received); c = replace_and_free(c, "__RX__", buffer, true);
+                        sprintf(buffer, "%lu", stats->can_sent); c = replace_and_free(c, "__TX__", buffer, true);
+                        sprintf(buffer, "%lu", stats->can_failed); c = replace_and_free(c, "__TX_ERR__", buffer, true);
+                        sprintf(buffer, "%lu", stats->udp_sent); c = replace_and_free(c, "__UDP_TX__", buffer, true);
+                        sprintf(buffer, "%lu", stats->udp_failed); c = replace_and_free(c, "__UDP_TX_ERR__", buffer, true);
+                        sprintf(buffer, "%d", ESP.getFreeHeap()); c = replace_and_free(c, "__FREE_HEAP__", buffer, true);
+                        serving_client->print(c); free(c);
                         serving_client->println();
-                        free(c);
-
-                        // The HTTP response ends with another blank line
                         serving_client->println();
-                        // Break out of the while loop
-
                         break;
-                    } else { // if you got a newline, then clear currentLine
+                    } else {
                         currentLine = "";
                     }
                 } else if (c != '\r') {  // if you got anything else but a carriage return character,
@@ -273,13 +223,10 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
                 }
             }
         }
-        // Clear the header variable
         header = "";
-        // Close the connection
         serving_client->stop();
         debug_println("Client disconnected.");
     }
-
 }
 
 void WEBServer::on_loop(unsigned long ms) {
