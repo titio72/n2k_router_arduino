@@ -20,6 +20,19 @@ void N2K::loop() {
     NMEA2000.ParseMessages();
 }
 
+bool N2K::sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload) {
+    tN2kMsg m;
+    m.Init(priority, pgn, 22, dest);
+    for (int i = 0; i<len; i++) m.AddByte(payload[i]);
+    return send_msg(m);
+}
+
+bool N2K::send126996Request(int dst) {
+    tN2kMsg N2kMsg;
+    SetN2kPGNISORequest(N2kMsg, dst, 126996);
+    return send_msg(N2kMsg);
+}
+
 void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s) {
     stats = s;
     _can_received = &(s->can_received);
@@ -29,7 +42,8 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s) {
     debug_println("Initializing N2K Product Info");
     NMEA2000.SetProductInformation("00000001", // Manufacturer's Model serial code
                                  100, // Manufacturer's product code
-                                 "ABN2k",  // Manufacturer's Model ID
+                                /*1234567890123456789012345678901234567890*/ 
+                                 "ABN2k                           ",  // Manufacturer's Model ID
                                  "1.0.2.25 (2019-07-07)",  // Manufacturer's Software version code
                                  "1.0.2.0 (2019-07-07)" // Manufacturer's Model version
                                  );
@@ -46,6 +60,7 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s) {
     NMEA2000.SetMsgHandler(private_message_handler);
     bool initialized = NMEA2000.Open();
     debug_print("Initializing N2K %s\n", initialized?"OK":"KO");
+
 }
 
 bool N2K::send_msg(const tN2kMsg &N2kMsg) {

@@ -117,36 +117,53 @@ void report_stats(unsigned long ms) {
   }
 }
 
+time_t get_time(RMC& rmc) {
+    tm _gps_time;
+    _gps_time.tm_hour = rmc.h;
+    _gps_time.tm_min = rmc.m;
+    _gps_time.tm_sec = rmc.s;
+    _gps_time.tm_year = rmc.y - 1900;
+    _gps_time.tm_mon = rmc.M - 1;
+    _gps_time.tm_mday = rmc.d;
+    return mktime(&_gps_time);
+}
+
 int parse_and_send(const char *sentence) {
     //debug_print("Process Sentence {%s}\n", sentence);
     if (NMEAUtils::is_sentence(sentence, "RMC")) {
         if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0) {
-            if (cache.rmc.valid) stats.valid_rmc++; else stats.invalid_rmc++;
-            if (!gps_time_set) {
-              if (cache.rmc.y>0) {
-                tm _gps_time;
-                _gps_time.tm_hour = cache.rmc.h;
-                _gps_time.tm_min = cache.rmc.m;
-                _gps_time.tm_sec = cache.rmc.s;
-                _gps_time.tm_year = cache.rmc.y - 1900;
-                _gps_time.tm_mon = cache.rmc.M - 1;
-                _gps_time.tm_mday = cache.rmc.d;
-                time_t _gps_time_t = mktime(&_gps_time);
-                delta_time = _gps_time_t - time(0); 
+            if (cache.rmc.valid) {
+              stats.valid_rmc++; 
 
-                debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", cache.rmc.y, cache.rmc.M, cache.rmc.d, cache.rmc.h, cache.rmc.m, cache.rmc.s);
-                gps_time_set = true;
+              if (cache.rmc.y>0) {
+                time_t _gps_time_t = get_time(cache.rmc);
+                if (conf.send_time) {
+                  n2k.sendTime(_gps_time_t);
+                }
+                if (!gps_time_set) {
+                  delta_time = _gps_time_t - time(0); 
+                  debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", cache.rmc.y, cache.rmc.M, cache.rmc.d, cache.rmc.h, cache.rmc.m, cache.rmc.s);
+                  gps_time_set = true;
+                }
               }
+              if (conf.use_gps) {
+                n2k.sendCOGSOG(cache.gsa, cache.rmc);
+                n2k.sendPosition(cache.gsa, cache.rmc);
+              }
+              return OK;
+            } else {
+              stats.invalid_rmc++;
             }
-            if (gps_time_set && conf.use_gps) {
-              n2k.sendCOGSOG(cache.gsa, cache.rmc);
-              n2k.sendPosition(cache.gsa, cache.rmc);
-            }
-            return OK;
         }
     } else if (NMEAUtils::is_sentence(sentence, "GSA")) {
         if (NMEAUtils::parseGSA(sentence, cache.gsa) == 0) {
-            if (cache.gsa.valid) stats.valid_gsa++; else stats.invalid_gsa++;
+            if (cache.gsa.valid) {
+              stats.valid_gsa++;
+              stats.gps_fix = cache.gsa.fix; 
+            } else {
+              stats.invalid_gsa++;
+              stats.gps_fix = 0;
+            }
             return OK;
         }
     }
@@ -221,14 +238,6 @@ void handleMsg(const tN2kMsg &N2kMsg) {
     stats.udp_failed++;
 }
 
-void send_system_time(unsigned long ms) {
-  static unsigned long t0 = 0;
-  if ((ms-t0)>1000) {
-    n2k.sendTime(time(0) + delta_time);
-    t0 = ms;
-  }
-}
-
 void read_pressure() {
   cache.pressure = N2kDoubleNA;
   if (bmp_initialized) {
@@ -287,7 +296,7 @@ void loop() {
   unsigned long ms = millis();
   if (initialized) {
     wifi->start();
-    web.setup(&cache, &conf, &last_stats);
+    web.setup(&cache, &conf, &last_stats, &n2k);
 
     if (conf.use_gps) {
       enableGPS();
@@ -306,9 +315,6 @@ void loop() {
       send_env(ms);
     }
 
-    if (conf.send_time) {
-      send_system_time(ms);
-    }
     report_stats(ms);
     n2k.loop();
     web.on_loop(ms);

@@ -80,6 +80,18 @@ bool EVO::SetAuto() {
 
 bool EVO::SetStandBy() {
   String standby_command = "Z,3,126208,22,204,17,01,63,ff,00,f8,04,01,3b,07,03,04,04,00,00,05,ff,ff";  //set standby
+  /*
+  "Function Code":"Command",
+  "PGN":65379,
+  "Priority":8,
+  "# of Parameters":4,
+  "list":[
+    {"Parameter":1,"Value":1851},
+    {"Parameter":3,"Value":4},
+    {"Parameter":4,"Value":0},
+    {"Parameter":0}
+  ]}
+  */
 }
 
 bool EVO::SetTrack() {

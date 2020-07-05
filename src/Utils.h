@@ -9,6 +9,7 @@ int getDaysSince1970(int y, int m, int d);
 char* replace(char const * const original, char const * const pattern, char const * const replacement, bool first = false);
 
 struct statistics {
+  uint gps_fix = 0;
   uint valid_rmc = 0;
   uint valid_gsa = 0;
   uint invalid_rmc = 0;
