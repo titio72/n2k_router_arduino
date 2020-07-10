@@ -7,6 +7,7 @@ void debug_print(const char *fmt, ...);
 void debug_println(const char *fmt);
 int getDaysSince1970(int y, int m, int d);
 char* replace(char const * const original, char const * const pattern, char const * const replacement, bool first = false);
+bool array_contains(int test, int* int_set, int sz);
 
 struct statistics {
   uint gps_fix = 0;
@@ -28,10 +29,19 @@ struct configuration {
   bool send_time = false;
 };
 
+struct sat {
+    int sat_id;
+    int elev;
+    int az;
+    int db;
+    int status;
+};
+
 struct GSA {
     short valid;
     int nSat;
     int fix;
+    int sats[12];
     float hdop;
     float vdop;
     float pdop;

@@ -103,3 +103,10 @@ int getDaysSince1970(int y, int m, int d) {
     // return difference between two counts
     return (n2 - n1);
 }
+
+bool array_contains(int test, int* int_set, int sz) {
+    for (int i=0; i<sz; i++) {
+        if (test==int_set[i]) return true;
+    }
+    return false;
+}

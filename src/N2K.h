@@ -7,18 +7,22 @@
 class N2K {
 
     public:
-        bool sendCOGSOG(GSA& gsa, RMC& rmc);
-        bool sendTime(time_t t);
-        bool sendTime(GSA& gsa, RMC& rmc);
+        bool sendCOGSOG(GSA& gsa, RMC& rmc, int sid);
+        bool sendTime(time_t t, int sid, short ms = 0);
+        bool sendTime(RMC& rmc, int sid);
         bool sendLocalTime(GSA& gsa, RMC& rmc);
         bool sendPosition(GSA& gsa, RMC& rmc);
-        bool sendEnvironment(const float pressure, const float humidity, const float temperature);
+        bool sendEnvironment(const float pressure, const float humidity, const float temperature, int sid);
+        bool sendElectronicTemperature(const float temp, int sid);
         bool send126996Request(int dst);    
 
         bool sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload);
 
+        bool sendGNSSPosition(GSA& gsa, RMC& rmc, int sid);
 
         void setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats);
+
+        bool sendSatellites(const sat* sats, uint n, int sid, GSA& gsa);
 
         void loop();
 

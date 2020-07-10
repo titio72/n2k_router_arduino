@@ -10,6 +10,25 @@
 #include <math.h>
 #include "NMEA.h"
 
+#define N_GSA 2
+
+NMEAUtils::NMEAUtils() {
+    sat_ready = false;
+
+    n_sat = 0;
+    sat_size = 0;
+    satellites = NULL;
+
+    n_snapshot_sat = 0;
+    snapshot_sat_size = 0;
+    snapshots_satellites = NULL;
+}
+
+NMEAUtils::~NMEAUtils() {
+    if (satellites) free(satellites);
+    if (snapshots_satellites) free(snapshots_satellites);
+}
+
 int nmea_position_parse(char *s, float *pos)
 {
     if (s==0 || s[0]==0) return -1;
@@ -54,14 +73,28 @@ bool NMEAUtils::is_sentence(const char* sentence, const char* sentence_id) {
     return (strcmp(id, sentence_id) == 0);
 }
 
+GSA* last_gsa = NULL;
+
 int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 {
+    static ulong last_gsa_time = 0;
+    static int gsa_count = 0;
+
+    int ret = -1;
     char *tofree = strdup(s_gsa);
     char *tempstr = tofree;
     char *token = strsep(&tempstr, ",");
     if (strlen(token) && strcmp(token + sizeof(char) * 3, "GSA") == 0)
     {
-        memset(&gsa, 0, sizeof(GSA));
+        ulong t = millis();
+        if ((t-last_gsa_time)>250) {
+            memset(&gsa, 0, sizeof(GSA));
+            gsa.nSat = 0;
+            gsa_count = 1;
+        } else {
+            gsa_count++;
+        }
+        last_gsa_time = t;
 
         gsa.valid = 1;
 
@@ -73,12 +106,13 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
         if (token && token[0]) gsa.fix = atoi(token);
 
         // count sats
-        gsa.nSat = 0;
         for (int i = 0; i < 12; i++)
         {
             token = strsep(&tempstr, ",");
-            if (token && token[0])
+            if (token && token[0]) {
+                gsa.sats[i] = atoi(token);
                 gsa.nSat++;
+            }
         }
 
         // read PDOP
@@ -93,11 +127,17 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
         token = strsep(&tempstr, ",");
         if (token && token[0]) gsa.vdop = atof(token); else gsa.vdop = 100.0;
 
-        free(tofree);
-        return 0;
+        last_gsa = &gsa;
+
+        ret = 0;
     }
     free(tofree);
-    return -1;
+    if (sat_ready && gsa_count==N_GSA) {
+        snap_sats();
+        n_sat = 0;
+        sat_ready = false;
+    }    
+    return ret;
 }
 
 void NMEAUtils::dumpRMC(RMC &rmc, char *buffer)
@@ -134,7 +174,6 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
             token[2] = 0;
             rmc.h = atoi(token);
         }
-
         // read validity
         token = strsep(&tempstr, ",");
 
@@ -189,18 +228,119 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
     return -1;
 }
 
-void test() {
-    RMC g_rmc;
-    //char rmc[] = "$GPRMC,201310.00,V,,,,,,,100620,,,N*79";
-    char x[] = "$GPRMC,181921.000,A,4357.555,N,00946.422,E,5.3,220.1,100620,000.0,W,A*18";
-    printf("%s\n", x);
-    NMEAUtils::parseRMC(x, g_rmc);
-    printf("[%d] %.4f %4f cog %.1f %.2f %d-%d-%dT%d:%d:%d.%d\n",g_rmc.valid,g_rmc.lat,g_rmc.lon,g_rmc.cog,g_rmc.sog,g_rmc.y,g_rmc.M,g_rmc.d,g_rmc.h,g_rmc.m,g_rmc.s,g_rmc.ms);
-    printf("%d %d\n", NMEAUtils::getDaysSince1970(g_rmc.y,g_rmc.M,g_rmc.d),g_rmc.h * 60 * 60 +g_rmc.m * 60 +g_rmc.s);
+/*
+$GPGSV,3,1,10,
+02,39,271,30,
+04,21,072,,
+05,28,308,25,
+06,37,218,
+*7D
+$GPGSV,3,2,10,
+07,73,148,,
+09,57,059,,
+13,03,258,,
+16,13,045,
+*7A
+$GPGSV,3,3,10,
+29,01,324,,
+30,46,198,
+*76
 
-    GSA g_gsa;
-    char y[] = "$GNGSA,A,3,80,71,73,79,69,,,,,,,,1.83,1.09,1.47*17";
-    printf("%s\n", y);
-    NMEAUtils::parseGSA(y, g_gsa);
-    printf("[%d] Fix %d NSat %d HDOP %.2f\n", g_gsa.valid, g_gsa.fix, g_gsa.nSat, g_gsa.hdop);
+$GLGSV,3,1,10,68,37,085,,69,63,359,,70,17,301,24,77,01,020,*62
+$GLGSV,3,2,10,78,43,052,,79,51,138,,80,09,182,,84,19,244,*66
+$GLGSV,3,3,10,85,24,304,,86,04,352,35*60
+*/
+
+
+sat* sats_parse(const char* gsv, int &sat_size, int &n_sat, sat* satellites, bool &sat_ready) {
+    char *tofree = strdup(gsv);
+    char *tempstr = tofree;
+    char *token = strsep(&tempstr, ",");
+    if (strlen(token) && strcmp(token + sizeof(char) * 3, "GSV") == 0)
+    {
+        token = strsep(&tempstr, ","); int n = atoi(token);       
+        token = strsep(&tempstr, ","); int c = atoi(token);
+
+        // expected number of stats in this block of sentences
+        token = strsep(&tempstr, ","); int x = atoi(token);
+
+        if (sat_size==0) {
+            n_sat = 0;
+            satellites = (sat*)malloc(x*sizeof(sat));
+            sat_size = x;
+        } else if (n_sat==sat_size) {
+            sat_size += x;
+            satellites = (sat*)realloc(satellites, sat_size*sizeof(sat));
+        }
+
+        bool stop = false;
+        while (!stop) {
+            token = strsep(&tempstr, ","); 
+            if (token) {
+                int sat_id = atoi(token);
+                if (sat_id>0) {
+                    satellites[n_sat].sat_id = sat_id;
+
+                    token = strsep(&tempstr, ",");
+                    satellites[n_sat].elev = atoi(token);
+                    
+                    token = strsep(&tempstr, ",");
+                    satellites[n_sat].az = atoi(token);
+                    
+                    token = strsep(&tempstr, ",");
+                    if (token) {
+                        char* checksum = strstr(token, "*");
+                        if (checksum) {
+                            checksum[0] = 0;
+                            stop = true;
+                        }
+                    }
+                    satellites[n_sat].db = atoi(token);
+                    
+                    if (last_gsa)
+                        satellites[n_sat].status = array_contains(satellites[n_sat].sat_id, last_gsa->sats, last_gsa->nSat)?2:0x0F;
+                    else 
+                        satellites[n_sat].status = 0x0F;
+
+                    n_sat++;
+                } else {
+                    strsep(&tempstr, ","); // skip elevation
+                    strsep(&tempstr, ","); // skip azimuth
+                    token = strsep(&tempstr, ","); // skip db
+                    stop = strstr(token, "*");
+                }
+            } else {
+                stop = true;
+            }
+        }
+        sat_ready = (n==c);
+    }
+    free(tofree);
+    return satellites;
+} 
+
+void NMEAUtils::snap_sats() {
+    if (snapshot_sat_size<sat_size) {
+        snapshot_sat_size = sat_size;
+        snapshots_satellites = (sat*)realloc(snapshots_satellites, snapshot_sat_size*sizeof(sat));
+    }
+    n_snapshot_sat = n_sat;
+    if (n_sat) {
+        memcpy(snapshots_satellites, satellites, n_sat*sizeof(sat));
+    }
+}
+
+sat* NMEAUtils::get_satellites() {
+    return snapshots_satellites;
+}
+
+int NMEAUtils::parseGSV(const char* s_gsv) {
+    unsigned long t = millis();
+    if ((t - last_gsv_time) > 800 /*ms*/) {
+        n_sat = 0;
+        sat_ready = false;
+    }
+    last_gsv_time = t;
+    satellites = sats_parse(s_gsv, sat_size, n_sat, satellites, sat_ready);
+    return 0;
 }

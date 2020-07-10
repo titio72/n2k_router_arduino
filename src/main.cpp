@@ -24,6 +24,7 @@ N2K n2k;
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BMP280* bmp;
 dht DHT;
+NMEAUtils nmea;
 
 configuration conf;
 statistics stats;
@@ -117,7 +118,7 @@ void report_stats(unsigned long ms) {
   }
 }
 
-time_t get_time(RMC& rmc) {
+time_t get_time(RMC& rmc, time_t& t, short& ms) {
     tm _gps_time;
     _gps_time.tm_hour = rmc.h;
     _gps_time.tm_min = rmc.m;
@@ -125,30 +126,41 @@ time_t get_time(RMC& rmc) {
     _gps_time.tm_year = rmc.y - 1900;
     _gps_time.tm_mon = rmc.M - 1;
     _gps_time.tm_mday = rmc.d;
-    return mktime(&_gps_time);
+    t = mktime(&_gps_time);
+    ms = rmc.ms;
+    return t;
+}
+
+bool set_system_time(int sid, RMC& rmc, bool& time_set_flag) {
+  if (rmc.y>0) {
+    time_t _gps_time_t;
+    short _gps_ms;
+    get_time(rmc, _gps_time_t, _gps_ms);
+    if (conf.send_time) {
+      n2k.sendTime(rmc, sid);
+    }
+    if (!time_set_flag) {
+      delta_time = _gps_time_t - time(0); 
+      debug_print("Setting time to {%d-%d-%d %d:%d:%d.%d}}\n", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
+      time_set_flag = true;
+    }
+  }
+  return false;
 }
 
 int parse_and_send(const char *sentence) {
-    //debug_print("Process Sentence {%s}\n", sentence);
+    static unsigned char sid = 0;
+    sid++;
+    debug_print("Process Sentence {%s}\n", sentence);
     if (NMEAUtils::is_sentence(sentence, "RMC")) {
         if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0) {
+            set_system_time(sid, cache.rmc, gps_time_set);
             if (cache.rmc.valid) {
               stats.valid_rmc++; 
-
-              if (cache.rmc.y>0) {
-                time_t _gps_time_t = get_time(cache.rmc);
-                if (conf.send_time) {
-                  n2k.sendTime(_gps_time_t);
-                }
-                if (!gps_time_set) {
-                  delta_time = _gps_time_t - time(0); 
-                  debug_print("Setting time to {%d-%d-%d %d:%d:%d}}\n", cache.rmc.y, cache.rmc.M, cache.rmc.d, cache.rmc.h, cache.rmc.m, cache.rmc.s);
-                  gps_time_set = true;
-                }
-              }
               if (conf.use_gps) {
-                n2k.sendCOGSOG(cache.gsa, cache.rmc);
+                n2k.sendCOGSOG(cache.gsa, cache.rmc, sid);
                 n2k.sendPosition(cache.gsa, cache.rmc);
+                n2k.sendGNSSPosition(cache.gsa, cache.rmc, sid);
               }
               return OK;
             } else {
@@ -156,7 +168,7 @@ int parse_and_send(const char *sentence) {
             }
         }
     } else if (NMEAUtils::is_sentence(sentence, "GSA")) {
-        if (NMEAUtils::parseGSA(sentence, cache.gsa) == 0) {
+        if (nmea.parseGSA(sentence, cache.gsa) == 0) {
             if (cache.gsa.valid) {
               stats.valid_gsa++;
               stats.gps_fix = cache.gsa.fix; 
@@ -166,6 +178,8 @@ int parse_and_send(const char *sentence) {
             }
             return OK;
         }
+    } else if (NMEAUtils::is_sentence(sentence, "GSV")) {
+      nmea.parseGSV(sentence);
     }
     return KO;
 }
@@ -274,11 +288,24 @@ void read_temp_hum() {
 
 void send_env(unsigned long ms) {
   static unsigned long t0 = 0;
-  if ((ms-t0)>2000) {
+  static unsigned char sid = 0;
+  if ((ms-t0)>=2000) {
     read_pressure();
     read_temp_hum();
-    n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature);
+    n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature, sid);
+    n2k.sendElectronicTemperature(cache.temperature_el, sid);
     t0 = ms;
+    sid++;
+  }
+}
+
+void send_gsv(ulong ms) {
+  static unsigned char sid = 0;
+  sid++;
+  static ulong last_sent = 0;
+  if ((ms-last_sent) >= 1000) {
+    last_sent = ms;
+    n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, cache.gsa);
   }
 }
 
@@ -313,6 +340,10 @@ void loop() {
 
     if (conf.use_dht11 || conf.use_bmp280) {
       send_env(ms);
+    }
+
+    if (conf.use_gps) {
+      send_gsv(ms);
     }
 
     report_stats(ms);
