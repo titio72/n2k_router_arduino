@@ -1,40 +1,43 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <WiFiUdp.h>
-#include <EEPROM.h>
-#include "NMEA.h"
-#include "N2K.h"
 #include "constants.h"
-#include "Utils.h"
-#include <time.h>
+
+#ifdef ESP32_ARCH
+#include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include "dhtAB.h"
-#include "WiFiManager.h"
-#include "WebServer.h"
+#endif
 
-#define I2C_SDA 22
-#define I2C_SCL 21
-#define SEALEVELPRESSURE_HPA (1013.25)
-#define DHTPIN 4
+#include "NMEA.h"
+#include "Conf.h"
+#include "N2K.h"
+#include "Ports.h"
+#include "Utils.h"
+#include "Network.h"
+#include "Log.h"
+#include "Log.h"
+#include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-WEBServer web;
-WiFiManager* wifi;
-N2K n2k;
-TwoWire I2CBME = TwoWire(0);
-Adafruit_BMP280* bmp;
-dht DHT;
-NMEAUtils nmea;
-
-configuration conf;
+Configuration conf;
 statistics stats;
 statistics last_stats;
 data cache;
 
+#ifdef ESP32_ARCH
+TwoWire I2CBME = TwoWire(0);
+Adafruit_BMP280 *bmp;
+dht DHT;
+#endif
+
+N2K n2k;
+NMEAUtils nmea;
+Port p("/dev/ttyUSB1");
+NetworkHub ntwrk(UDP_PORT, UDP_DEST, &cache, &conf, &last_stats, &n2k);
+
 bool initialized = false;
-
 bool bmp_initialized = false;
-
 bool gps_initialized;
 bool gps_time_set = false;
 
@@ -42,74 +45,80 @@ int status = 0;
 
 time_t delta_time = 0;
 
-void read_conf() {
-  EEPROM.begin(1);
-  uint8_t v = EEPROM.read(0);
-  debug_print("Read conf value {%d}\n", v);
-  if (v!=0xFF) {
-      conf.use_gps = (v & 1);
-      conf.use_bmp280 = (v & 2);
-      conf.use_dht11 = (v & 4);
-      conf.send_time = (v & 8);
-      debug_print("Set conf gps {%d} bmp280 {%d} dht11 {%d} time {%d}\n", conf.use_gps, conf.use_bmp280, conf.use_dht11, conf.send_time);
-  } else {
-      debug_print("Use default conf gps {%d} bmp280 {%d} dht11 {%d} time {%d}\n", conf.use_gps, conf.use_bmp280, conf.use_dht11, conf.send_time);
-  }
+void read_conf()
+{
+  conf.load();
 }
 
-void enableGPS() {
-  if (!gps_initialized) {
-    debug_println("Initializing GPS");
-    Serial2.begin(57600, SERIAL_8N1, RXD2, TXD2);
+void enableGPS()
+{
+  if (!gps_initialized)
+  {
     gps_initialized = true;
-    debug_print("  GPS {%d}\n", gps_initialized);
   }
 }
 
-void disableGPS() {
-  if (gps_initialized) {
+void disableGPS()
+{
+  if (gps_initialized)
+  {
     gps_initialized = false;
-    debug_println("Closing GPS");
-    Serial2.end();
+    p.close();
   }
 }
 
-void enableBMP280() {
-  if (!bmp_initialized) {
-    debug_print("Initializing BMP sensor ");
+void enableBMP280()
+{
+#ifdef ESP32_ARCH
+  if (!bmp_initialized)
+  {
+    Log::trace("[BMP] ");
     bool two_wires_ok = I2CBME.begin(I2C_SDA, I2C_SCL, 100000);
-    debug_print(" TwoWires {%d} ", two_wires_ok);
-    if (two_wires_ok) {
+    Log::trace(" TwoWires {%d} ", two_wires_ok);
+    if (two_wires_ok)
+    {
       bmp = new Adafruit_BMP280(&I2CBME);
       bmp_initialized = bmp->begin(0x76, 0x60);
-      if (!bmp_initialized) {
+      if (!bmp_initialized)
+      {
         delete bmp;
       }
     }
-    debug_print(" BMP280 {%d}\n", bmp_initialized);
+    Log::trace(" {%d}\n", bmp_initialized);
   }
+#endif
 }
 
-void disableBMP280() {
-  if (bmp_initialized) {
-    debug_print("Closing BMP sensor ");
+void disableBMP280()
+{
+#ifdef ESP32_ARCH
+  if (bmp_initialized)
+  {
+    Log::trace("[BMP] Closing sensor ");
     delete bmp;
     bmp_initialized = false;
   }
+#endif
 }
 
-void report_stats(unsigned long ms) {
+void report_stats(unsigned long ms)
+{
   static unsigned long last_time_stats_ms = 0;
-  if ((ms-last_time_stats_ms)>10000) {
-    if (conf.use_gps) {
-      debug_print("Stats: RMC %d/%d GSA %d/%d Sats %d Fix %d\n",
-            stats.valid_rmc, stats.invalid_rmc,
-            stats.valid_gsa, stats.invalid_gsa,
-            cache.gsa.nSat, cache.gsa.fix);
+  if ((ms - last_time_stats_ms) > 10000)
+  {
+    if (conf.use_gps)
+    {
+      Log::trace("[STATS] GPS: RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} in 10s - Sats {%d} Fix {%d}\n",
+                 stats.valid_rmc, stats.invalid_rmc,
+                 stats.valid_gsa, stats.invalid_gsa,
+                 stats.valid_gsv, stats.invalid_gsv,
+                 cache.gsa.nSat, cache.gsa.fix);
     }
 
-    debug_print("Stats: UDP {%d %d} CAN.TX {%d %d} CAN.RX {%d} in 10s\n", 
-      stats.udp_sent, stats.udp_failed, stats.can_sent, stats.can_failed, stats.can_received);
+    Log::trace("[STATS] Bus: UDP {%d/%d} CAN.TX {%d/%d} CAN.RX {%d} UART {%d B} in 10s\n",
+               stats.udp_sent, stats.udp_failed, stats.can_sent, stats.can_failed, stats.can_received, stats.bytes_uart);
+
+    Log::trace("[STATS] OPS: Cycles {%d} Pauses {%d} in 10s\n", stats.cycles, stats.pauses);
 
     last_time_stats_ms = ms;
 
@@ -118,178 +127,162 @@ void report_stats(unsigned long ms) {
   }
 }
 
-time_t get_time(RMC& rmc, time_t& t, short& ms) {
-    tm _gps_time;
-    _gps_time.tm_hour = rmc.h;
-    _gps_time.tm_min = rmc.m;
-    _gps_time.tm_sec = rmc.s;
-    _gps_time.tm_year = rmc.y - 1900;
-    _gps_time.tm_mon = rmc.M - 1;
-    _gps_time.tm_mday = rmc.d;
-    t = mktime(&_gps_time);
-    ms = rmc.ms;
-    return t;
+time_t get_time(RMC &rmc, time_t &t, short &ms)
+{
+  tm _gps_time;
+  _gps_time.tm_hour = rmc.h;
+  _gps_time.tm_min = rmc.m;
+  _gps_time.tm_sec = rmc.s;
+  _gps_time.tm_year = rmc.y - 1900;
+  _gps_time.tm_mon = rmc.M - 1;
+  _gps_time.tm_mday = rmc.d;
+  t = mktime(&_gps_time);
+  ms = rmc.ms;
+  return t;
 }
 
-bool set_system_time(int sid, RMC& rmc, bool& time_set_flag) {
-  if (rmc.y>0) {
+bool set_system_time(int sid, RMC &rmc, bool &time_set_flag)
+{
+  if (rmc.y > 0)
+  {
     time_t _gps_time_t;
     short _gps_ms;
     get_time(rmc, _gps_time_t, _gps_ms);
-    if (conf.send_time) {
+    if (conf.send_time)
+    {
       n2k.sendTime(rmc, sid);
     }
-    if (!time_set_flag) {
-      delta_time = _gps_time_t - time(0); 
-      debug_print("Setting time to {%d-%d-%d %d:%d:%d.%d}}\n", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
+    if (!time_set_flag)
+    {
+      delta_time = _gps_time_t - time(0);
+      Log::trace("[GPS] Setting time to {%d-%d-%d %d:%d:%d.%d}}\n", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
       time_set_flag = true;
     }
   }
   return false;
 }
 
-int parse_and_send(const char *sentence) {
-    static unsigned char sid = 0;
-    sid++;
-    debug_print("Process Sentence {%s}\n", sentence);
-    if (NMEAUtils::is_sentence(sentence, "RMC")) {
-        if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0) {
-            set_system_time(sid, cache.rmc, gps_time_set);
-            if (cache.rmc.valid) {
-              stats.valid_rmc++; 
-              if (conf.use_gps) {
-                n2k.sendCOGSOG(cache.gsa, cache.rmc, sid);
-                n2k.sendPosition(cache.gsa, cache.rmc);
-                n2k.sendGNSSPosition(cache.gsa, cache.rmc, sid);
-              }
-              return OK;
-            } else {
-              stats.invalid_rmc++;
-            }
+int parse_and_send(const char *sentence)
+{
+  static unsigned char sid = 0;
+  sid++;
+  Log::debug("[GPS] Process Sentence {%s}\n", sentence);
+  if (NMEAUtils::is_sentence(sentence, "RMC"))
+  {
+    if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0)
+    {
+      set_system_time(sid, cache.rmc, gps_time_set);
+      if (cache.rmc.valid)
+      {
+        n2k.sendCOGSOG(cache.gsa, cache.rmc, sid);
+        n2k.sendPosition(cache.gsa, cache.rmc);
+        static ulong t0 = millis();
+        ulong t = millis();
+        if ((t - t0) > 900)
+        {
+          n2k.sendGNSSPosition(cache.gsa, cache.rmc, sid);
+          t0 = t;
         }
-    } else if (NMEAUtils::is_sentence(sentence, "GSA")) {
-        if (nmea.parseGSA(sentence, cache.gsa) == 0) {
-            if (cache.gsa.valid) {
-              stats.valid_gsa++;
-              stats.gps_fix = cache.gsa.fix; 
-            } else {
-              stats.invalid_gsa++;
-              stats.gps_fix = 0;
-            }
-            return OK;
-        }
-    } else if (NMEAUtils::is_sentence(sentence, "GSV")) {
-      nmea.parseGSV(sentence);
-    }
-    return KO;
-}
-
-void readGPS(long ms) {
-  static uint8_t buffer[2048];
-  static int ix = 0;
-
-  long t0GPS = millis();
-  while (Serial2.available() && (millis()-t0GPS)<=ms) {
-    uint8_t c = (uint8_t)Serial2.read();
-    if (c==13 || c==10) {
-      if (buffer[0]!=0) {
-        //debug_print("Read gps %s\n", buffer);
-          
-        parse_and_send((const char*)buffer);
-        ix = 0;
-        buffer[ix] = 0;
+        stats.valid_rmc++;
+        return 0;
       }
-    } else {        
-      if (ix<255) {
-        buffer[ix] = c;
-        ix++;
-        buffer[ix] = 0;
-      } else {
-        ix = 0;
-        buffer[ix] = c;
-        ix++;
-        buffer[ix] = 0;
+      else
+      {
+        stats.invalid_rmc++;
       }
     }
   }
-}
-
-void handleMsg(const tN2kMsg &N2kMsg) {
-  
-  if (!initialized) return;
-  
-  int pgn = N2kMsg.PGN;
-  int src = N2kMsg.Source;
-  int dst = N2kMsg.Destination;
-  int priority = N2kMsg.Priority;
-  int dataLen = N2kMsg.DataLen;
-  const unsigned char* data = N2kMsg.Data;
-  unsigned long msgTime = N2kMsg.MsgTime;
-
-  int ts_millis = msgTime % 1000;
-  time_t ts = msgTime/1000;
-  tm t;
-  gmtime_r(&ts, &t);
-
-  char buffer[2048];
-  snprintf(buffer, 2048, "%04d-%02d-%02d-%02d:%02d:%02d.%03d,%d,%d,%d,%d,%d,", 
-    t.tm_year + 2000, t.tm_mon + 1, t.tm_mday, 
-    t.tm_hour, t.tm_min, t.tm_sec, ts_millis, 
-    priority, pgn, src, dst, dataLen);
-  char* x = buffer + strlen(buffer);
-  for (int i = 0; i<dataLen; i++) {
-    sprintf(x, "%02x", data[i]);
-    x += sizeof(char)*2;
-    if (i!=(dataLen-1)) {
-      sprintf(x, ",");
-      x += sizeof(char);
+  else if (NMEAUtils::is_sentence(sentence, "GSA"))
+  {
+    if (nmea.parseGSA(sentence, cache.gsa) == 0)
+    {
+      if (cache.gsa.valid)
+      {
+        stats.valid_gsa++;
+        stats.gps_fix = cache.gsa.fix;
+      }
+      else
+      {
+        stats.invalid_gsa++;
+        stats.gps_fix = 0;
+      }
+      return 0;
     }
   }
-
-  if (wifi->sendUDPPacket((uint8_t*)buffer, strlen(buffer)))
-    stats.udp_sent++;
-  else 
-    stats.udp_failed++;
+  else if (NMEAUtils::is_sentence(sentence, "GSV"))
+  {
+    if (nmea.parseGSV(sentence) == 0)
+    {
+      stats.valid_gsv++;
+    }
+    else
+    {
+      stats.invalid_gsv++;
+    }
+  }
+  return -1;
 }
 
-void read_pressure() {
+void send_gsv(ulong ms)
+{
+  static unsigned char sid = 0;
+  sid++;
+  static ulong last_sent = 0;
+  if ((ms - last_sent) >= 900)
+  {
+    last_sent = ms;
+    n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, cache.gsa);
+  }
+}
+
+void read_pressure()
+{
+#ifdef ESP32_ARCH
   cache.pressure = N2kDoubleNA;
-  if (bmp_initialized) {
+  if (bmp_initialized)
+  {
     cache.pressure = bmp->readPressure();
     cache.temperature_el = bmp->readTemperature();
-    if (TRACE_BMP280) debug_print("Press {%.1f} Temp {%.1f}\n", cache.pressure, cache.temperature_el);
   }
+#endif
 }
 
-void read_temp_hum() {
+void read_temp_hum()
+{
+#ifdef ESP32_ARCH
   cache.humidity = N2kDoubleNA;
   cache.temperature = N2kDoubleNA;
-  if (conf.use_dht11) {
-    int chk = DHT.read22(DHTPIN);
-    switch (chk) {
-      case DHTLIB_OK:  
-        cache.humidity = DHT.humidity;
-        cache.temperature = DHT.temperature;
-        if (TRACE_DHT11) debug_print("Temp {%.1f} Hum {%.1f}\n", cache.temperature, cache.humidity);
-        return;
-        break;
-      case DHTLIB_ERROR_CHECKSUM: 
-        debug_print("DHT11 Checksum error\n"); 
-        break;
-      case DHTLIB_ERROR_TIMEOUT: 
-        debug_print("DHT11 Time out error\n"); 
-        break;
-      default: 
-        debug_print("DHT11 Unknown error\n"); 
-        break;
+  if (conf.use_dht11)
+  {
+    int chk = conf.dht11_dht22==0?DHT.read11(DHTPIN):DHT.read22(DHTPIN);
+    switch (chk)
+    {
+    case DHTLIB_OK:
+      cache.humidity = DHT.humidity;
+      cache.temperature = DHT.temperature;
+      return;
+      break;
+    case DHTLIB_ERROR_CHECKSUM:
+      Log::trace("[DHTxx] Checksum error\n");
+      break;
+    case DHTLIB_ERROR_TIMEOUT:
+      Log::trace("[DHTxx] Time out error\n");
+      break;
+    default:
+      Log::trace("[DHTxx] Unknown error\n");
+      break;
     }
   }
+#endif
 }
 
-void send_env(unsigned long ms) {
+void send_env(unsigned long ms)
+{
+#ifdef ESP32_ARCH
   static unsigned long t0 = 0;
   static unsigned char sid = 0;
-  if ((ms-t0)>=2000) {
+  if ((ms - t0) >= 2000)
+  {
     read_pressure();
     read_temp_hum();
     n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature, sid);
@@ -297,57 +290,123 @@ void send_env(unsigned long ms) {
     t0 = ms;
     sid++;
   }
+#endif
 }
 
-void send_gsv(ulong ms) {
-  static unsigned char sid = 0;
-  sid++;
-  static ulong last_sent = 0;
-  if ((ms-last_sent) >= 1000) {
-    last_sent = ms;
-    n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, cache.gsa);
+void msg_handler(const tN2kMsg &N2kMsg)
+{
+
+  if (!initialized)
+    return;
+
+  int pgn = N2kMsg.PGN;
+  int src = N2kMsg.Source;
+  int dst = N2kMsg.Destination;
+  int priority = N2kMsg.Priority;
+  int dataLen = N2kMsg.DataLen;
+  const unsigned char *data = N2kMsg.Data;
+  unsigned long msgTime = N2kMsg.MsgTime;
+
+  int ts_millis = msgTime % 1000;
+  time_t ts = msgTime / 1000;
+  tm t;
+  gmtime_r(&ts, &t);
+
+  static char buffer[2048];
+  snprintf(buffer, 2048, "%04d-%02d-%02d-%02d:%02d:%02d.%03d,%d,%d,%d,%d,%d,",
+           t.tm_year + 2000, t.tm_mon + 1, t.tm_mday,
+           t.tm_hour, t.tm_min, t.tm_sec, ts_millis,
+           priority, pgn, src, dst, dataLen);
+  char *x = buffer + strlen(buffer);
+  for (int i = 0; i < dataLen; i++)
+  {
+    sprintf(x, "%02x", data[i]);
+    x += sizeof(char) * 2;
+    if (i != (dataLen - 1))
+    {
+      sprintf(x, ",");
+      x += sizeof(char);
+    }
   }
+
+  if (ntwrk.send_udp(buffer, strlen(buffer)))
+    stats.udp_sent++;
+  else
+    stats.udp_failed++;
 }
 
-void setup() {
+void setup()
+{
+#ifdef ESP32_ARCH
   Serial.begin(115200);
   delay(1000);
   read_conf();
-  n2k.setup(handleMsg, &stats);
-  wifi = new WiFiManager();
-  initialized = true;
+#endif
+  ntwrk.begin();
   status = 1;
+  n2k.setup(msg_handler, &stats);
+  p.set_handler(parse_and_send);
+
+  initialized = true;
 }
 
-void loop() {
-  unsigned long ms = millis();
-  if (initialized) {
-    wifi->start();
-    web.setup(&cache, &conf, &last_stats, &n2k);
+void loop()
+{
+  stats.cycles++;
 
-    if (conf.use_gps) {
-      enableGPS();
-      readGPS(250);
-    } else {
-      disableGPS();
+  static ulong t0 = _millis();
+  ulong t = _millis();
+  if ((t - t0) < 25)
+  {
+    stats.pauses++;
+    msleep(25);
+  }
+  t0 = t;
+
+  if (initialized)
+  {
+    ntwrk.loop(t);
+    n2k.loop();
+
+    if (conf.use_gps)
+    {
+      p.set_speed(atoi(UART_SPEED[conf.uart_speed]));
+      p.listen(250);
+      stats.bytes_uart += p.get_bytes();
+      p.reset_bytes();
+      send_gsv(t);
+    }
+    else
+    {
+      p.close();
     }
 
-    if (conf.use_bmp280) {
+    if (conf.use_bmp280)
+    {
       enableBMP280();
-    } else {
+    }
+    else
+    {
       disableBMP280();
     }
 
-    if (conf.use_dht11 || conf.use_bmp280) {
-      send_env(ms);
+    if (conf.use_dht11 || conf.use_bmp280)
+    {
+      send_env(t);
     }
 
-    if (conf.use_gps) {
-      send_gsv(ms);
-    }
-
-    report_stats(ms);
-    n2k.loop();
-    web.on_loop(ms);
+    report_stats(t);
   }
 }
+
+#ifndef ESP32_ARCH
+int main(int argc, const char **argv)
+{
+
+  setup();
+  while (1)
+  {
+    loop();
+  }
+}
+#endif

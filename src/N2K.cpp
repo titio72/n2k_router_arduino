@@ -1,13 +1,18 @@
-#include <Arduino.h>
+#include "constants.h"
+#ifdef ESP32_ARCH
 #define USE_N2K_CAN USE_N2K_MCP_CAN
 #define N2k_SPI_CS_PIN 5
 #define N2k_CAN_INT_PIN 0xff
 #define USE_MCP_CAN_CLOCK_SET 8
+#else
+#define SOCKET_CAN_PORT "vcan0"
+#endif
 #include <NMEA2000_CAN.h>
 #include <time.h>
 #include <math.h>
 #include "N2K.h"
 #include "Utils.h"
+#include "Log.h"
 
 ulong* _can_received;
 void (*_handler)(const tN2kMsg &N2kMsg);
@@ -38,9 +43,9 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s) {
     stats = s;
     _can_received = &(s->can_received);
     _handler = _MsgHandler;
-    debug_println("Initializing N2K");
+    Log::trace("Initializing N2K\n");
     NMEA2000.SetN2kCANSendFrameBufSize(250);
-    debug_println("Initializing N2K Product Info");
+    Log::trace("Initializing N2K Product Info\n");
     NMEA2000.SetProductInformation("00000001", // Manufacturer's Model serial code
                                  100, // Manufacturer's product code
                                 /*1234567890123456789012345678901234567890*/ 
@@ -48,19 +53,19 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s) {
                                  "1.0.2.25 (2019-07-07)",  // Manufacturer's Software version code
                                  "1.0.2.0 (2019-07-07)" // Manufacturer's Model version
                                  );
-    debug_println("Initializing N2K Device Info");
+    Log::trace("Initializing N2K Device Info\n");
     NMEA2000.SetDeviceInformation(1, // Unique number. Use e.g. Serial number.
                                 132, // Device function=Analog to NMEA 2000 Gateway. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                 25, // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                 2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf                               
                                );
-    debug_println("Initializing N2K mode");
+    Log::trace("Initializing N2K mode\n");
     NMEA2000.SetMode(tNMEA2000::N2km_ListenAndNode, 22);
     NMEA2000.EnableForward(false); // Disable all msg forwarding to USB (=Serial)
-    debug_println("Initializing N2K Port & Handlers");
+    Log::trace("Initializing N2K Port & Handlers\n");
     NMEA2000.SetMsgHandler(private_message_handler);
     bool initialized = NMEA2000.Open();
-    debug_print("Initializing N2K %s\n", initialized?"OK":"KO");
+    Log::trace("Initializing N2K %s\n", initialized?"OK":"KO");
 
 }
 
@@ -103,7 +108,6 @@ bool N2K::sendTime(RMC& rmc, int sid) {
     tN2kMsg N2kMsg(22);
     int days_since_1970 = getDaysSince1970(rmc.y, rmc.M, rmc.d);
     double second_since_midnight = rmc.h * 60 * 60 + rmc.m * 60 + rmc.s + rmc.ms / 1000.0;
-    debug_print("%02d:%02d:%02d.%03d\n", rmc.h, rmc.m, rmc.s, rmc.ms);
     SetN2kSystemTime(N2kMsg, sid, days_since_1970, second_since_midnight);
     return send_msg(N2kMsg);
 }
@@ -174,8 +178,6 @@ bool N2K::sendEnvironment(const float pressurePA, const float humidity, const fl
 
 bool N2K::sendSatellites(const sat* sats, uint n, int sid, GSA& gsa) {
     if (n>0) {
-        //debug_print("Number of sats %d\n", n);
-        
         tN2kMsg m(22);
         m.Init(6, 129540, 22, 255);
         m.AddByte((unsigned char)sid);
@@ -190,11 +192,7 @@ bool N2K::sendSatellites(const sat* sats, uint n, int sid, GSA& gsa) {
             if (s.db) m.Add2ByteUInt((int)(s.db / 0.01)); else m.Add2ByteUInt(N2kUInt16NA); 
             m.Add4ByteUInt(N2kInt32NA);
             m.AddByte((s.status & 0x0F) | 0xF0);    
-            
-            //debug_print("%d %d %d %d\n", s.sat_id, s.elev, s.az, s.db);
         }
-
-        //debug_print("packet message length %d\n", m.DataLen);
         return send_msg(m);
         
     }

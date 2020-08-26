@@ -5,10 +5,10 @@ class WiFiManager {
 
 public:
     void start();
-    void on_loop(unsigned long ms);
+    void loop(unsigned long ms);
     bool is_connected();
 
-    int sendUDPPacket(const uint8_t* bfr, int l);
+    int sendUDPPacket(const char* bfr, unsigned int l);
 
 
 private:

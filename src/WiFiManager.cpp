@@ -1,43 +1,61 @@
-#include <Arduino.h>                // needed for the WiFi communication
-#include <WiFi.h>                // needed for the WiFi communication
+#include <Arduino.h> // needed for the WiFi communication
+#include <WiFi.h>    // needed for the WiFi communication
 #include "WiFiManager.h"
 #include "constants.h"
 #include "Utils.h"
+#include "Log.h"
 
-bool WiFiManager::is_connected() {
+#define WIFI_TIMEOUT_MS 20000      // 20 second WiFi connection timeout
+#define WIFI_RECOVER_TIME_MS 30000 // Wait 30 seconds after a failed connection attempt
+
+static bool connecting = false;
+
+bool WiFiManager::is_connected()
+{
   return WiFi.status() == WL_CONNECTED;
 }
 
-void WiFiManager::start() {
-  if (WiFi.status() != WL_CONNECTED) {
-    if (conn_stat!=1) {
-      WiFi.begin(SSID, PSWD);
-      conn_stat = 1;
-    }
-    while (WiFi.status() != WL_CONNECTED) {
+void WiFiManager::start()
+{
+  static ulong last_try = 0;
+  if (WiFi.status()!=WL_CONNECTED && (last_try==0 || (millis()-last_try)>WIFI_RECOVER_TIME_MS)) {
+    Log::trace("[WIFI] Connecting {%s}\n", MY_SSID);
+    WiFi.begin(MY_SSID, MY_PSWD);
+    connecting = true;
+    ulong t0 = millis();
+    last_try = t0;
+    while (WiFi.status()!=WL_CONNECTED || (millis()-t0)>WIFI_TIMEOUT_MS) {
       delay(500);
-      debug_print("Connecting to WiFi.. %s\n", SSID);
+      Log::trace("[WIFI] Connecting....\n");
     }
-    debug_print("Connected to the WiFi network %s\n", WiFi.localIP().toString().c_str());   
-    conn_stat = 2;
+    if (WiFi.status()==WL_CONNECTED)
+      Log::trace("[WIFI] Connected {%s}\n", WiFi.localIP().toString().c_str());
+    else 
+      Log::trace("[WIFI] Connection failed {%s}\n", MY_SSID);
   }
 }
 
-void WiFiManager::on_loop(unsigned long ms) {       
-
+void WiFiManager::loop(unsigned long ms)
+{
+  start();
 }
 
-int WiFiManager::sendUDPPacket(const uint8_t* bfr, int l) {
-    if (is_connected()) {
-      static uint8_t term[] = {13,10};
-      udp.beginPacket(UDP_DEST, UDP_PORT);
-      udp.write(bfr, l);
-      udp.write(term, 2);
-      int rs = udp.endPacket();
-      if (TRACE_UDP) debug_print("UDP %s {%s}\n", rs?"Sent":"Fail", bfr);
-      return rs;
-    } else {
-      debug_println("Cannot send UDP message while disconnected");
-      return 0;
-    }
+int WiFiManager::sendUDPPacket(const char *bfr, unsigned int l)
+{
+  if (is_connected())
+  {
+    static uint8_t term[] = {13, 10};
+    udp.beginPacket(UDP_DEST, UDP_PORT);
+    udp.write((const uint8_t *)bfr, l);
+    udp.write(term, 2);
+    int rs = udp.endPacket();
+    if (TRACE_UDP)
+      Log::trace("UDP %s {%s}\n", rs ? "Sent" : "Fail", bfr);
+    return rs;
+  }
+  else
+  {
+    Log::trace("Cannot send UDP message while disconnected\n");
+    return 0;
+  }
 }

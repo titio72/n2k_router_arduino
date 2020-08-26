@@ -3,16 +3,17 @@
 
 #include <string.h>
 #include "N2K.h"
+#include "Conf.h"
 
 class WEBServer {
 
 public:
-    void setup(data* cache, configuration* conf, statistics* stats, N2K* n2k);
-    void on_loop(unsigned long ms);
+    void setup(data* cache, Configuration* conf, statistics* stats, N2K* n2k);
+    void loop(unsigned long ms);
 
 private:
     data* cache;
-    configuration* conf;
+    Configuration* conf;
     statistics* stats;
     N2K* n2k;
     bool started;

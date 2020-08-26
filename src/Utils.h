@@ -1,32 +1,34 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#ifdef ESP32_ARCH
 #include <Arduino.h>
+#endif
 
-void debug_print(const char *fmt, ...);
-void debug_println(const char *fmt);
+#include <stdlib.h>
+
 int getDaysSince1970(int y, int m, int d);
 char* replace(char const * const original, char const * const pattern, char const * const replacement, bool first = false);
 bool array_contains(int test, int* int_set, int sz);
+ulong _millis();
+int msleep(long msec);
 
 struct statistics {
   uint gps_fix = 0;
   uint valid_rmc = 0;
   uint valid_gsa = 0;
+  uint valid_gsv = 0;
   uint invalid_rmc = 0;
   uint invalid_gsa = 0;
+  uint invalid_gsv = 0;
   ulong udp_sent = 0;
   ulong udp_failed = 0;
   ulong can_sent = 0;
   ulong can_failed = 0;
   ulong can_received = 0;
-};
-
-struct configuration {
-  bool use_gps = false;
-  bool use_bmp280 = true;
-  bool use_dht11 = true;
-  bool send_time = false;
+  ulong bytes_uart = 0;
+  ulong cycles = 0;
+  ulong pauses = 0;
 };
 
 struct sat {

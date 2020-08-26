@@ -5,6 +5,7 @@
 #include <EEPROM.h>
 #include "constants.h"
 #include "Utils.h"
+#include "Log.h"
 #include "WebServer.h"
 #include "N2K.h"
 
@@ -71,8 +72,8 @@ String page("<!DOCTYPE html>  \
                 <td class='conf_value'>__TEMPERATURE__</td>  \
             </tr> \
             <tr> \
-                <td class='conf_cell'>DHT11</td> \
-                <td class='conf_value'><a href='__DHT11_URL__'>__DHT11__</a></td> \
+                <td class='conf_cell'>DHTxx</td> \
+                <td class='conf_value'><a href='__DHT_URL__'>__DHT__</a></td> \
                 <td class='conf_cell'>Humidity</td>  \
                 <td class='conf_value'>__HUMIDITY__</td>  \
             </tr> \
@@ -83,16 +84,22 @@ String page("<!DOCTYPE html>  \
                 <td class='conf_value'>__RX__</td>  \
             </tr>  \
             <tr>  \
-                <td class='conf_cell'>&nbsp;</td> \
-                <td class='conf_value'>&nbsp;</td> \
+                <td class='conf_cell'>DHT Type</td> \
+                <td class='conf_value'><a href='__DHT_TYPE_URL__'>__DHT_TYPE__</a></td> \
                 <td class='conf_cell'>CAN BUS TX</td>  \
                 <td class='conf_value'>__TX__ (__TX_ERR__)</td>  \
             </tr>  \
             <tr>  \
-                <td class='conf_cell'>GPS Fix</td> \
-                <td class='conf_value'>__GPS_FIX__</td> \
+                <td class='conf_cell'>GPS UART</td> \
+                <td class='conf_value'><a href='__GPS_UART_URL__'>__GPS_UART__</a></td> \
                 <td class='conf_cell'>UDP TX</td>  \
                 <td class='conf_value'>__UDP_TX__ (__UDP_TX_ERR__)</td>  \
+            </tr>  \
+            <tr>  \
+                <td class='conf_cell'>GPS Fix</td> \
+                <td class='conf_value'>__GPS_FIX__</td> \
+                <td class='conf_cell'>&nbsp;</td>  \
+                <td class='conf_value'>&nbsp;</td>  \
             </tr>  \
             <tr>  \
                 <td class='conf_cell'>Internal Temp.</td> \
@@ -116,10 +123,36 @@ char* replace_and_free(char* orig, const char* pattern, const char* new_string, 
 
 
 bool enable(bool& cfg, const char* service, const char* command) {
-    if (strstr(command, service)) {
+    if (strstr(command, service) && strstr(command, "able_")) {
         bool enable = strstr(command, "enable");
-        debug_print("%s %s\n", enable?"Enabling":"Disabling", service);
+        Log::trace("%s %s\n", enable?"Enabling":"Disabling", service);
         cfg = enable;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool set_uart(uint8_t& cfg, const char* command)
+{
+    for (int i = 0; i<UART_SPEEDS; i++) 
+    {
+        char temp[16];
+        sprintf(temp, "set_uart_%s", UART_SPEED[i]);        
+        if (strcmp(temp, command)==0) {
+            cfg = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool setDHT(uint8_t& cfg, const char* command) {
+    if (strcmp("set_dht11", command)==0) {
+        cfg = DHT11;
+        return true;
+    } else if (strcmp("set_dht22", command)==0) {
+        cfg = DHT22;
         return true;
     } else {
         return false;
@@ -137,14 +170,14 @@ char* read_param(const char* param, const char* s, int len) {
     return NULL;
 }
 
-bool manage(String& header, configuration* c, N2K* n2k) {
-    //debug_println(header.c_str());
+bool manage(String& header, Configuration* c, N2K* n2k) {
+    //Log::trace("%s\n", header.c_str());
     //GET /?SYS_TIME HTTP/1.1
     int i = header.indexOf("HTTP");
     char* command = new char[i];
     memcpy(command, header.c_str() + 5, i - 6);
     command[i-6] = 0;
-    debug_print("Web UI {%s}\n", command);
+    Log::trace("Web UI {%s}\n", command);
 
     bool showPage = true;
 
@@ -179,35 +212,27 @@ bool manage(String& header, configuration* c, N2K* n2k) {
                 data[i/2] = b;
             }
         }
-        debug_print("Request to send message pgn {%d} dest {%d} data {%s}\n", pgn, dest, temp);
-        debug_print("Message sent {%d}\n", n2k->sendMessage(dest, pgn, priority, data_len, data));
+        Log::trace("Request to send message pgn {%d} dest {%d} data {%s}\n", pgn, dest, temp);
+        Log::trace("Message sent {%d}\n", n2k->sendMessage(dest, pgn, priority, data_len, data));
     } else if (enable(c->send_time, "systime", command) || enable(c->use_bmp280, "bmp280", command) || 
-            enable(c->use_dht11, "dht11", command) || enable(c->use_gps, "gps", command)) {
-        int new_conf = (c->use_gps?1:0) + (c->use_bmp280?2:0) + (c->use_dht11?4:0) + (c->send_time?8:0) + 16;
-        debug_print("Writing new configuration {%d}\n", (uint8_t)new_conf);
-        EEPROM.write(0, (uint8_t)new_conf);
-        EEPROM.commit();
+            enable(c->use_dht11, "dht11", command) || enable(c->use_gps, "gps", command) ||
+            setDHT(c->dht11_dht22, command) || set_uart(c->uart_speed, command)) {
+        c->save();
     }
     free(command);
     return showPage;
 }
 
 
-WiFiServer server(80);WiFiClient* serving_client;
+WiFiServer server(80);
+WiFiClient* serving_client;
 unsigned long client_connected_time = 0;
 
-void WEBServer::setup(data* _cache, configuration* _conf, statistics* _stats, N2K* _n2k) {
+void WEBServer::setup(data* _cache, Configuration* _conf, statistics* _stats, N2K* _n2k) {
     cache = _cache;
     conf = _conf;
     stats = _stats;
     n2k = _n2k;
-
-    if (!started) {
-        debug_println("Initializing web interface");
-        started = true;
-        server.begin();
-    }
-    
 }
 
 unsigned long currentTime = millis();
@@ -220,7 +245,7 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
     if (serving_client) {
         currentTime = millis();
         previousTime = currentTime;
-        debug_print("New Client %s\n", serving_client->localIP().toString().c_str());
+        Log::trace("New Client %s\n", serving_client->localIP().toString().c_str());
         String currentLine = "";
         while (serving_client->connected() && currentTime - previousTime <= timeoutTime) {
             currentTime = millis();
@@ -248,8 +273,16 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
                             c = replace_and_free(c, "__GPS_URL__", conf->use_gps?"disable_gps":"enable_gps", true);
                             c = replace_and_free(c, "__BMP280__", conf->use_bmp280?"Yes":"No", true);
                             c = replace_and_free(c, "__BMP280_URL__", conf->use_bmp280?"disable_bmp280":"enable_bmp280", true);
-                            c = replace_and_free(c, "__DHT11__", conf->use_dht11?"Yes":"No", true);
-                            c = replace_and_free(c, "__DHT11_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
+                            c = replace_and_free(c, "__DHT__", conf->use_dht11?"Yes":"No", true);
+                            c = replace_and_free(c, "__DHT_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
+                            
+                            c = replace_and_free(c, "__DHT_TYPE__", DHTxx[conf->dht11_dht22], true);
+                            c = replace_and_free(c, "__DHT_TYPE_URL__", conf->dht11_dht22?"set_dht11":"set_dht22", true);
+
+                            char set_uart[16]; sprintf(set_uart, "set_uart_%s", UART_SPEED[(conf->uart_speed + 1)%UART_SPEEDS]);
+                            c = replace_and_free(c, "__GPS_UART__", UART_SPEED[conf->uart_speed], true);
+                            c = replace_and_free(c, "__GPS_UART_URL__", set_uart, true);
+                            
                             c = replace_and_free(c, "__SYS_TIME__", conf->send_time?"Yes":"No", true);
                             c = replace_and_free(c, "__SYS_TIME_URL__", conf->send_time?"disable_systime":"enable_systime", true);
                             sprintf(buffer, "%.1f MB", cache->pressure/100.0); c = replace_and_free(c, "__PRESSURE__", buffer, true);
@@ -289,11 +322,22 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
         }
         header = "";
         serving_client->stop();
-        debug_println("Client disconnected.");
+        Log::trace("Client disconnected.\n");
     }
 }
 
-void WEBServer::on_loop(unsigned long ms) {
+void WEBServer::loop(unsigned long ms) {
+
+    if (!started) {
+        Log::trace("[WEB] Initializing web interface\n");
+        if (WiFi.status()==WL_CONNECTED) {
+            server.begin();
+            started = true;
+        }
+    } else {
+        started = (WiFi.status()==WL_CONNECTED);
+    }
+
     WiFiClient client = server.available();   // Listen for incoming clients
     if (client) {                             // If a new client connects,
         handle_client(&client, ms);

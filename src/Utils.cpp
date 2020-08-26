@@ -1,24 +1,56 @@
-#include <Arduino.h>
+#include "constants.h"
 #include "Utils.h"
+#include "errno.h"
+#include <time.h>
+#include <math.h>
+#include <string.h>
 
-#define TRACE
-#define MAX_TRACE_SIZE 256
+ulong _millis(void)
+{
+  #ifndef ESP32_ARCH
+  long            ms; // Milliseconds
+  time_t          s;  // Seconds
+  struct timespec spec;
 
-void debug_println(const char *s) {
-  #ifdef TRACE
-  Serial.println(s);
+  clock_gettime(CLOCK_REALTIME, &spec);
+
+  s  = spec.tv_sec;
+  ms = round(spec.tv_nsec / 1.0e6); // Convert nanoseconds to milliseconds
+  if (ms > 999) {
+      s++;
+      ms = 0;
+  }
+
+  return s * 1000 + ms;
+  #else
+  return millis();
   #endif
 }
 
-void debug_print(const char *fmt, ...) {
-  #ifdef TRACE
-  static char buffer[MAX_TRACE_SIZE];    
-  va_list argptr;
-  va_start(argptr, fmt);
-  vsnprintf(buffer, MAX_TRACE_SIZE, fmt, argptr);
-  va_end(argptr);
-  Serial.print(buffer);
-  #endif
+int msleep(long msec)
+{
+  #ifndef ESP32_ARCH
+    struct timespec ts;
+    int res;
+
+    if (msec < 0)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+
+    do {
+        res = nanosleep(&ts, &ts);
+    } while (res && errno == EINTR);
+
+    return res;
+    #else
+    delay(msec);
+    return 0;
+    #endif
 }
 
 char * replace(char const * const original, char const * const pattern, char const * const replacement, bool first) {

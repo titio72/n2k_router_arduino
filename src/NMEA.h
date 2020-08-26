@@ -27,13 +27,12 @@ public:
 private:
     void snap_sats();
 
-    sat* snapshots_satellites;
+    sat snapshots_satellites[12];
     int n_snapshot_sat;
-    int snapshot_sat_size;
 
-    sat* satellites;
+    sat satellites[12];
     int n_sat;
-    int sat_size;
+
     bool sat_ready;
     unsigned long last_gsv_time;
 };
