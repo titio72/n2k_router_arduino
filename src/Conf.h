@@ -8,8 +8,8 @@
 #define B57600 4
 #define B115200 5
 
-#define DHT11 0
-#define DHT22 1
+#define CONF_DHT11 0
+#define CONF_DHT22 1
 
 static const int UART_SPEEDS = 6;
 static const char* UART_SPEED[] = {"4800", "9600", "19200", "38400", "57600", "115200"};
@@ -30,7 +30,7 @@ public:
   bool use_bmp280 = false;
   bool use_dht11 = false;
   bool send_time = true;
-  unsigned char dht11_dht22 = DHT11;
+  unsigned char dht11_dht22 = CONF_DHT11;
   unsigned char uart_speed = B9600;
 };
 

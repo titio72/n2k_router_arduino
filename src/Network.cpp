@@ -32,7 +32,7 @@ bool NetworkHub::end() {
 }
 
 bool NetworkHub::send_udp(const char* message, unsigned int len) {
-    return wifi.sendUDPPacket(message, len)==0;
+    return wifi.sendUDPPacket(message, len);
 }
 
 void NetworkHub::loop(unsigned long t) {
@@ -44,7 +44,7 @@ void NetworkHub::loop(unsigned long t) {
 
 UDPSrv srv(UDP_PORT, UDP_DEST);
 
-NetworkHub::NetworkHub(unsigned int p, const char* d, data* cache, configuration* conf, statistics* stats, N2K* n2k) {
+NetworkHub::NetworkHub(unsigned int p, const char* d, data* cache, Configuration* conf, statistics* stats, N2K* n2k) {
     port = p;
     destination = strdup(d);
 }

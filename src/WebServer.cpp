@@ -149,10 +149,10 @@ bool set_uart(uint8_t& cfg, const char* command)
 
 bool setDHT(uint8_t& cfg, const char* command) {
     if (strcmp("set_dht11", command)==0) {
-        cfg = DHT11;
+        cfg = CONF_DHT11;
         return true;
     } else if (strcmp("set_dht22", command)==0) {
-        cfg = DHT22;
+        cfg = CONF_DHT22;
         return true;
     } else {
         return false;

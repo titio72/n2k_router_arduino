@@ -7,6 +7,7 @@ add_executable(gps_adapter
   Utils.cpp
   Log.cpp
   N2K.cpp
+  Conf.cpp
 )
 
 include_directories(../src)

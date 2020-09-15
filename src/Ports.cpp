@@ -47,18 +47,16 @@ int Port::process_char(unsigned char c)
 	{
 		read_buffer[pos] = c;
 		pos++;
-		pos %= 1024; // avoid buffer overrun
+		pos %= PORT_BUFFER_SIZE; // avoid buffer overrun
 	}
 	else if (pos != 0)
 	{
-		static char sentence_copy[128];
-		strcpy(sentence_copy, (const char *)read_buffer);
 		if (fun)
 		{
-			(*fun)(sentence_copy);
+			(*fun)(read_buffer);
 		}
 		//if (trace) {
-		//	Log::trace("Read {%s}\n", sentence_copy);
+		//	Log::trace("Read {%s}\n", read_buffer);
 		//}
 		pos = 0;
 		res = 1;
@@ -167,12 +165,12 @@ void Port::listen(uint ms)
 			int _c = Serial2.read();
 			int bread = (_c != -1) ? 1 : 0;
 			int errno = (_c != -1) ? 0 : 11; // simulate
+			c = (unsigned char)_c;
 #else
 			ssize_t bread = read(tty_fd, &c, 1);
 #endif
 			if (bread > 0)
 			{
-				c = (unsigned char)_c;
 				bytes_read_since_reset += bread;
 				if (process_char(c))
 				{
@@ -181,11 +179,9 @@ void Port::listen(uint ms)
 						stop = true;
 					}
 				}
-				//Log::trace("%d", _c);
 			}
 			else
 			{
-				//Log::trace("*");
 				if (errno == 11)
 				{
 					// nothing to read

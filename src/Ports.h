@@ -10,6 +10,8 @@
 
 #include <stdlib.h>
 
+#define PORT_BUFFER_SIZE 1024
+
 class Port {
 
 public:
@@ -37,7 +39,7 @@ private:
 
 	int tty_fd = 0;
 
-	char read_buffer[128];
+	char read_buffer[PORT_BUFFER_SIZE];
 	unsigned int pos = 0;
 
 	const char* port = NULL;
@@ -52,4 +54,4 @@ private:
 	unsigned long bytes_read_since_reset;
 };
 
-#endif // PORTS_H_ 
+#endif // PORTS_H_

@@ -1,8 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#define RXD2 12
-#define TXD2 14
+#define RXD2 16
+#define TXD2 17
 #define MY_SSID "myssid"
 #define MY_PSWD "mypwd"
 #define UDP_DEST "192.168.2.99"

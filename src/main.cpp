@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
-#include "dhtAB.h"
+#include "DHTesp.h"
 #endif
 
 #include "NMEA.h"
@@ -28,7 +28,7 @@ data cache;
 #ifdef ESP32_ARCH
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BMP280 *bmp;
-dht DHT;
+DHTesp DHT;
 #endif
 
 N2K n2k;
@@ -247,30 +247,19 @@ void read_pressure()
 #endif
 }
 
-void read_temp_hum()
+void read_temp_hum(ulong ms)
 {
 #ifdef ESP32_ARCH
+  static ulong last_dht_time = 0;
   cache.humidity = N2kDoubleNA;
   cache.temperature = N2kDoubleNA;
   if (conf.use_dht11)
   {
-    int chk = conf.dht11_dht22==0?DHT.read11(DHTPIN):DHT.read22(DHTPIN);
-    switch (chk)
-    {
-    case DHTLIB_OK:
-      cache.humidity = DHT.humidity;
-      cache.temperature = DHT.temperature;
-      return;
-      break;
-    case DHTLIB_ERROR_CHECKSUM:
-      Log::trace("[DHTxx] Checksum error\n");
-      break;
-    case DHTLIB_ERROR_TIMEOUT:
-      Log::trace("[DHTxx] Time out error\n");
-      break;
-    default:
-      Log::trace("[DHTxx] Unknown error\n");
-      break;
+    if ((ms - last_dht_time)>DHT.getMinimumSamplingPeriod()) {
+      TempAndHumidity th = DHT.getTempAndHumidity();
+      cache.humidity = th.humidity;
+      cache.temperature = th.temperature;
+      DHT.getTempAndHumidity();
     }
   }
 #endif
@@ -284,7 +273,7 @@ void send_env(unsigned long ms)
   if ((ms - t0) >= 2000)
   {
     read_pressure();
-    read_temp_hum();
+    read_temp_hum(ms);
     n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature, sid);
     n2k.sendElectronicTemperature(cache.temperature_el, sid);
     t0 = ms;
@@ -346,7 +335,7 @@ void setup()
   status = 1;
   n2k.setup(msg_handler, &stats);
   p.set_handler(parse_and_send);
-
+  DHT.setup(DHTPIN, (conf.dht11_dht22==CONF_DHT11)?DHTesp::DHT11:DHTesp::DHT22);
   initialized = true;
 }
 
