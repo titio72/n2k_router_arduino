@@ -145,7 +145,7 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
         {
             token = get_next_token(s_gsa, start, len, tempBuffer, ',');
             if (token && token[0]) {
-                gsa.sats[i] = atoi(token);
+                gsa.sats[gsa.nSat] = atoi(token);
                 gsa.nSat++;
             }
         }

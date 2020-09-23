@@ -13,6 +13,8 @@ bool array_contains(int test, int* int_set, int sz);
 ulong _millis();
 int msleep(long msec);
 
+void format_thousands_sep(char* buffer, long l);
+
 struct statistics {
   uint gps_fix = 0;
   uint valid_rmc = 0;
@@ -43,7 +45,7 @@ struct GSA {
     short valid;
     int nSat;
     int fix;
-    int sats[12];
+    int sats[24];
     float hdop;
     float vdop;
     float pdop;

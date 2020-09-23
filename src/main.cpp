@@ -164,6 +164,7 @@ bool set_system_time(int sid, RMC &rmc, bool &time_set_flag)
 
 int parse_and_send(const char *sentence)
 {
+  //Serial.println(sentence);
   static unsigned char sid = 0;
   sid++;
   Log::debug("[GPS] Process Sentence {%s}\n", sentence);
@@ -318,10 +319,12 @@ void msg_handler(const tN2kMsg &N2kMsg)
     }
   }
 
-  if (ntwrk.send_udp(buffer, strlen(buffer)))
-    stats.udp_sent++;
-  else
-    stats.udp_failed++;
+  if (conf.wifi_broadcast) {
+    if (ntwrk.send_udp(buffer, strlen(buffer)))
+      stats.udp_sent++;
+    else
+      stats.udp_failed++;
+  }
 }
 
 void setup()

@@ -30,6 +30,7 @@ public:
   bool use_bmp280 = false;
   bool use_dht11 = false;
   bool send_time = true;
+  bool wifi_broadcast = true;
   unsigned char dht11_dht22 = CONF_DHT11;
   unsigned char uart_speed = B9600;
 };

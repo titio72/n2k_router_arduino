@@ -60,6 +60,12 @@ String page("<!DOCTYPE html>  \
                 <th class='conf_value'>Value</th>  \
             </tr>  \
             <tr> \
+                <td class='conf_cell'>WiFi</td> \
+                <td class='conf_value'><a href='__WIFI_URL__'>__WIFI__</a></td> \
+                <td class='conf_cell'>Internal Temp.</td> \
+                <td class='conf_value'>__INTERNAL_TEMP__</td> \
+            </tr> \
+            <tr> \
                 <td class='conf_cell'>GPS</td> \
                 <td class='conf_value'><a href='__GPS_URL__'>__GPS__</a></td> \
                 <td class='conf_cell'>Pressure</td>  \
@@ -96,16 +102,16 @@ String page("<!DOCTYPE html>  \
                 <td class='conf_value'>__UDP_TX__ (__UDP_TX_ERR__)</td>  \
             </tr>  \
             <tr>  \
+                <td class='conf_cell'>&nbsp;</td> \
+                <td class='conf_value'>&nbsp;</td> \
                 <td class='conf_cell'>GPS Fix</td> \
                 <td class='conf_value'>__GPS_FIX__</td> \
-                <td class='conf_cell'>&nbsp;</td>  \
-                <td class='conf_value'>&nbsp;</td>  \
             </tr>  \
             <tr>  \
-                <td class='conf_cell'>Internal Temp.</td> \
-                <td class='conf_value'>__INTERNAL_TEMP__</td> \
+                <td class='conf_cell'>&nbsp;</td> \
+                <td class='conf_value'>&nbsp;</td> \
                 <td class='conf_cell'>Feee heap</td>  \
-                <td class='conf_value'>__FREE_HEAP__</td>  \
+                <td class='conf_value'>__FREE_HEAP__ B</td>  \
             </tr>  \
         </table>  \
         <p><a href='/'>Refresh</a></p> \
@@ -135,10 +141,10 @@ bool enable(bool& cfg, const char* service, const char* command) {
 
 bool set_uart(uint8_t& cfg, const char* command)
 {
-    for (int i = 0; i<UART_SPEEDS; i++) 
+    for (int i = 0; i<UART_SPEEDS; i++)
     {
         char temp[16];
-        sprintf(temp, "set_uart_%s", UART_SPEED[i]);        
+        sprintf(temp, "set_uart_%s", UART_SPEED[i]);
         if (strcmp(temp, command)==0) {
             cfg = i;
             return true;
@@ -184,7 +190,7 @@ bool manage(String& header, Configuration* c, N2K* n2k) {
     char* temp;
     if ((temp=strstr(command, "message"))) {
         showPage = false;
-    //GET /message?pgn=123456&dest=255&priority=6&data=A1A2A3A4A5A6A7A8 HTTP/1.1
+        //GET /message?pgn=123456&dest=255&priority=6&data=A1A2A3A4A5A6A7A8 HTTP/1.1
         int len = strlen(temp);
         char* x = temp + 8 * sizeof(char);
         for (int i = 0; i<len; i++) {
@@ -192,13 +198,10 @@ bool manage(String& header, Configuration* c, N2K* n2k) {
         }
         temp = read_param("pgn", x, len);
         ulong pgn = temp?atol(temp):0;
-        
         temp = read_param("priority", x, len);
         int priority = temp?atoi(temp):8;
-        
         temp = read_param("dest", x, len);
         int dest = temp?atoi(temp):255;
-        
         temp = read_param("data", x, len);
         int data_len = 0;
         unsigned char* data = NULL;
@@ -216,7 +219,8 @@ bool manage(String& header, Configuration* c, N2K* n2k) {
         Log::trace("Message sent {%d}\n", n2k->sendMessage(dest, pgn, priority, data_len, data));
     } else if (enable(c->send_time, "systime", command) || enable(c->use_bmp280, "bmp280", command) || 
             enable(c->use_dht11, "dht11", command) || enable(c->use_gps, "gps", command) ||
-            setDHT(c->dht11_dht22, command) || set_uart(c->uart_speed, command)) {
+            enable(c->wifi_broadcast, "wifi", command) || setDHT(c->dht11_dht22, command) || 
+            set_uart(c->uart_speed, command)) {
         c->save();
     }
     free(command);
@@ -236,7 +240,7 @@ void WEBServer::setup(data* _cache, Configuration* _conf, statistics* _stats, N2
 }
 
 unsigned long currentTime = millis();
-unsigned long previousTime = 0; 
+unsigned long previousTime = 0;
 const long timeoutTime = 2000;
 String header;
 
@@ -257,7 +261,6 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
 
                         // manage commands
                         bool sendPage = manage(header, conf, n2k);
-                        
                         if (sendPage) {
                             // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
                             // and a content-type so the client knows what's coming, then a blank line:
@@ -271,18 +274,17 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
                             char* c;
                             c = replace(page.c_str(), "__GPS__", conf->use_gps?"Yes":"No", true);
                             c = replace_and_free(c, "__GPS_URL__", conf->use_gps?"disable_gps":"enable_gps", true);
+                            c = replace_and_free(c, "__WIFI__", conf->wifi_broadcast?"Yes":"No", true);
+                            c = replace_and_free(c, "__WIFI_URL__", conf->wifi_broadcast?"disable_wifi":"enable_wifi", true);
                             c = replace_and_free(c, "__BMP280__", conf->use_bmp280?"Yes":"No", true);
                             c = replace_and_free(c, "__BMP280_URL__", conf->use_bmp280?"disable_bmp280":"enable_bmp280", true);
                             c = replace_and_free(c, "__DHT__", conf->use_dht11?"Yes":"No", true);
                             c = replace_and_free(c, "__DHT_URL__", conf->use_dht11?"disable_dht11":"enable_dht11", true);
-                            
                             c = replace_and_free(c, "__DHT_TYPE__", DHTxx[conf->dht11_dht22], true);
                             c = replace_and_free(c, "__DHT_TYPE_URL__", conf->dht11_dht22?"set_dht11":"set_dht22", true);
-
                             char set_uart[16]; sprintf(set_uart, "set_uart_%s", UART_SPEED[(conf->uart_speed + 1)%UART_SPEEDS]);
                             c = replace_and_free(c, "__GPS_UART__", UART_SPEED[conf->uart_speed], true);
                             c = replace_and_free(c, "__GPS_UART_URL__", set_uart, true);
-                            
                             c = replace_and_free(c, "__SYS_TIME__", conf->send_time?"Yes":"No", true);
                             c = replace_and_free(c, "__SYS_TIME_URL__", conf->send_time?"disable_systime":"enable_systime", true);
                             sprintf(buffer, "%.1f MB", cache->pressure/100.0); c = replace_and_free(c, "__PRESSURE__", buffer, true);
@@ -294,8 +296,8 @@ void WEBServer::handle_client(WiFiClient* serving_client, unsigned long ms) {
                             sprintf(buffer, "%lu", stats->udp_sent); c = replace_and_free(c, "__UDP_TX__", buffer, true);
                             sprintf(buffer, "%lu", stats->udp_failed); c = replace_and_free(c, "__UDP_TX_ERR__", buffer, true);
                             sprintf(buffer, "%d", stats->gps_fix); c = replace_and_free(c, "__GPS_FIX__", buffer, true);
-                            sprintf(buffer, "%.1f", cache->temperature_el); c = replace_and_free(c, "__INTERNAL_TEMP__", buffer, true);
-                            sprintf(buffer, "%d", ESP.getFreeHeap()); c = replace_and_free(c, "__FREE_HEAP__", buffer, true);
+                            sprintf(buffer, "%.1f C &deg", cache->temperature_el); c = replace_and_free(c, "__INTERNAL_TEMP__", buffer, true);
+                            format_thousands_sep(buffer, ESP.getFreeHeap()); c = replace_and_free(c, "__FREE_HEAP__", buffer, true);
                             serving_client->print(c); free(c);
                             serving_client->println();
                             serving_client->println();

@@ -53,6 +53,43 @@ int msleep(long msec)
     #endif
 }
 
+void format_thousands_sep(char* final, long toBeFormatted)
+{
+    // Get the string representation as is
+    static char buffer[32];
+    sprintf(buffer, "%ld", toBeFormatted);
+
+    // Calculate how much commas there will be
+    unsigned int buff_length = strlen(buffer);
+    unsigned int num_commas = buff_length / 3;
+    unsigned int digits_left = buff_length % 3;
+    if (digits_left == 0)
+    {
+        num_commas--;
+    }
+
+    // Allocate space for final string representation
+    unsigned int final_length = buff_length + num_commas + 1;
+
+    // Parse strings from last to first to count positions
+    int final_pos = final_length - 2;
+    int buff_pos = buff_length - 1;
+    int i = 0;
+    int commas = 0;
+    while(final_pos >= 0)
+    {
+        final[final_pos--] = buffer[buff_pos--];
+        i++;
+        if (i % 3 == 0 && commas < num_commas)
+        {
+          commas++;
+          final[final_pos--] = ',';
+        }
+    }
+    final[final_length - 1] = 0;
+}
+
+
 char * replace(char const * const original, char const * const pattern, char const * const replacement, bool first) {
   size_t const replen = strlen(replacement);
   size_t const patlen = strlen(pattern);
