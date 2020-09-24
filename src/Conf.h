@@ -33,6 +33,7 @@ public:
   bool wifi_broadcast = true;
   unsigned char dht11_dht22 = CONF_DHT11;
   unsigned char uart_speed = B9600;
+  unsigned char src = ABSOURCE;
 };
 
 

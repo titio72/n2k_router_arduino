@@ -1,11 +1,13 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#define ABSOURCE 22
+
 #define RXD2 16
 #define TXD2 17
 #define MY_SSID "myssid"
 #define MY_PSWD "mypwd"
-#define UDP_DEST "192.168.2.99"
+#define UDP_DEST "192.168.3.255"
 #define UDP_PORT 1222
 
 #define TRACE_DHT11   1

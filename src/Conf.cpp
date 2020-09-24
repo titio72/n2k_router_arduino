@@ -13,10 +13,10 @@ Configuration::~Configuration() {}
 int Configuration::load()
 {
 #ifdef ESP32_ARCH
-    EEPROM.begin(2);
+    EEPROM.begin(3);
     uint8_t v = EEPROM.read(0);
     uint8_t w = EEPROM.read(1);
-    Log::trace("[CONF] Read value: {%d %d}\n", v, w);
+    Log::trace("[CONF] Read value: {%d %d %d}\n", v, w);
     if (v != 0xFF)
     {
         use_gps = (v & 1);
@@ -30,8 +30,19 @@ int Configuration::load()
     }
     else
     {
-        Log::trace("[CONF] Use default conf: wifi {%d} gps {%d} bmp280 {%d} dht11 {%d} time {%d} dht {%d} uart {%d\n", wifi_broadcast, use_gps, use_bmp280, use_dht11, send_time, dht11_dht22, uart_speed);
+        Log::trace("[CONF] Use default conf: wifi {%d} gps {%d} bmp280 {%d} dht11 {%d} time {%d} dht {%d} uart {%d}\n", wifi_broadcast, use_gps, use_bmp280, use_dht11, send_time, dht11_dht22, uart_speed);
     }
+
+    uint8_t s = EEPROM.read(2);
+    if (s != 0xFF) {
+        src = s;
+        Log::trace("[CONF] N2K Src {%d}\n", src);
+    }
+    else
+    {
+        Log::trace("[CONF] Use default conf: N2K Src {%d}\n", src);
+    }
+
 #endif
     return 0;
 }
@@ -42,7 +53,7 @@ int Configuration::save()
     int new_conf = ((use_gps ? 1 : 0) +
                    (use_bmp280 ? 2 : 0) +
                    (use_dht11 ? 4 : 0) +
-                   (send_time ? 8 : 0) + 
+                   (send_time ? 8 : 0) +
                    (dht11_dht22 << 4) +
                    (uart_speed << 5)) & 0xFF;
     int new_conf_1 = wifi_broadcast & 0x01;

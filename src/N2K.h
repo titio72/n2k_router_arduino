@@ -14,19 +14,22 @@ class N2K {
         bool sendPosition(GSA& gsa, RMC& rmc);
         bool sendEnvironment(const float pressure, const float humidity, const float temperature, int sid);
         bool sendElectronicTemperature(const float temp, int sid);
-        bool send126996Request(int dst);    
+        bool send126996Request(int dst);
 
         bool sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload);
 
         bool sendGNSSPosition(GSA& gsa, RMC& rmc, int sid);
 
-        void setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats);
+        bool sendGNNSStatus(GSA& gsa, int sid);
+
+        void setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats, uint8_t src);
 
         bool sendSatellites(const sat* sats, uint n, int sid, GSA& gsa);
 
         void loop();
 
     private:
+        uint8_t src;
         statistics* stats;
         bool send_msg(const tN2kMsg &N2kMsg);
 };

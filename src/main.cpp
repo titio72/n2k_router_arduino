@@ -232,6 +232,7 @@ void send_gsv(ulong ms)
   if ((ms - last_sent) >= 900)
   {
     last_sent = ms;
+    n2k.sendGNNSStatus(cache.gsa, sid);
     n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, cache.gsa);
   }
 }
