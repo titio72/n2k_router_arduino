@@ -4,7 +4,7 @@
 class WiFiManager {
 
 public:
-    void start();
+    void start(unsigned long ms);
     void loop(unsigned long ms);
     bool is_connected();
 

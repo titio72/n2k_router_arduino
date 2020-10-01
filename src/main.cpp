@@ -337,7 +337,7 @@ void setup()
 #endif
   ntwrk.begin();
   status = 1;
-  n2k.setup(msg_handler, &stats);
+  n2k.setup(msg_handler, &stats, conf.src);
   p.set_handler(parse_and_send);
   DHT.setup(DHTPIN, (conf.dht11_dht22==CONF_DHT11)?DHTesp::DHT11:DHTesp::DHT22);
   initialized = true;
@@ -359,6 +359,7 @@ void loop()
   if (initialized)
   {
     ntwrk.loop(t);
+
     n2k.loop();
 
     if (conf.use_gps)

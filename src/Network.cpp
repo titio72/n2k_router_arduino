@@ -22,7 +22,7 @@ NetworkHub::~NetworkHub() {
 }
 
 bool NetworkHub::begin() {
-    wifi.start();
+    wifi.start(millis());
     return true;
 }
 
@@ -37,7 +37,7 @@ bool NetworkHub::send_udp(const char* message, unsigned int len) {
 
 void NetworkHub::loop(unsigned long t) {
     wifi.loop(t);
-    webui.loop(t);
+    if (wifi.is_connected()) webui.loop(t);
 }
 #else
 #include "UDPServer.h"

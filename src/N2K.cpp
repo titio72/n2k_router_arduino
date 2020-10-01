@@ -11,6 +11,9 @@
 #else
 #define SOCKET_CAN_PORT "vcan0"
 #endif
+
+#define NODE_ONLY
+
 #include <NMEA2000_CAN.h>
 #include <time.h>
 #include <math.h>
@@ -67,10 +70,14 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s, uint8
                                 2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf                               
                                );
     Log::trace("Initializing N2K mode\n");
+    #ifdef NODE_ONLY
+    NMEA2000.SetMode(tNMEA2000::N2km_NodeOnly, src);
+    #else
     NMEA2000.SetMode(tNMEA2000::N2km_ListenAndNode, src);
+    NMEA2000.SetMsgHandler(private_message_handler);
+    #endif
     NMEA2000.EnableForward(false); // Disable all msg forwarding to USB (=Serial)
     Log::trace("Initializing N2K Port & Handlers\n");
-    NMEA2000.SetMsgHandler(private_message_handler);
     bool initialized = NMEA2000.Open();
     Log::trace("Initializing N2K %s\n", initialized?"OK":"KO");
 

@@ -11,6 +11,8 @@
 #define CONF_DHT11 0
 #define CONF_DHT22 1
 
+#define ABSOURCE 22
+
 static const int UART_SPEEDS = 6;
 static const char* UART_SPEED[] = {"4800", "9600", "19200", "38400", "57600", "115200"};
 static const char* DHTxx[] = {"DHT11", "DHT22"};
