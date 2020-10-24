@@ -276,7 +276,9 @@ void send_env(unsigned long ms)
   {
     read_pressure();
     read_temp_hum(ms);
-    n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature, sid);
+    n2k.sendPressure(cache.pressure, sid);
+    n2k.sendTemperature(cache.temperature, sid);
+    n2k.sendHumidity(cache.humidity, sid);
     n2k.sendElectronicTemperature(cache.temperature_el, sid);
     t0 = ms;
     sid++;

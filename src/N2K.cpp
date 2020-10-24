@@ -117,7 +117,13 @@ bool N2K::sendGNNSStatus(GSA& gsa, int sid) {
             case 1: mode = tN2kGNSSDOPmode::N2kGNSSdm_1D; break;
             default: mode = tN2kGNSSDOPmode::N2kGNSSdm_Unavailable;
         }
-        SetN2kPGN129539(N2kMsg, sid, tN2kGNSSDOPmode::N2kGNSSdm_2D, mode, gsa.hdop, gsa.vdop, gsa.pdop);
+        N2kMsg.SetPGN(129539L);
+        N2kMsg.Priority = 6;
+        N2kMsg.AddByte(sid);
+        N2kMsg.AddByte(tN2kGNSSDOPmode::N2kGNSSdm_2D | ((mode & 0x07) << 3));
+        N2kMsg.Add2ByteDouble(gsa.hdop, 0.01);
+        N2kMsg.Add2ByteDouble(gsa.vdop, 0.01);
+        N2kMsg.Add2ByteDouble(gsa.pdop, 0.01);
         return send_msg(N2kMsg);
     }
     return false;
@@ -175,7 +181,25 @@ bool N2K::sendPosition(GSA& gsa, RMC& rmc) {
 
 bool N2K::sendElectronicTemperature(const float temp, int sid) {
     tN2kMsg N2kMsg(src);
-    SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_EngineRoomTemperature, temp);
+    SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_EngineRoomTemperature, CToKelvin(temp));
+    return send_msg(N2kMsg);
+}
+
+bool N2K::sendPressure(float pressure, int sid) {
+    tN2kMsg N2kMsg(src);
+    SetN2kPressure(N2kMsg, sid, 0, tN2kPressureSource::N2kps_Atmospheric, pressure);
+    return send_msg(N2kMsg);    
+}
+
+bool N2K::sendHumidity(float humidity, int sid) {
+    tN2kMsg N2kMsg(src);
+    SetN2kHumidity(N2kMsg, sid, 0, tN2kHumiditySource::N2khs_InsideHumidity, humidity);
+    return send_msg(N2kMsg);
+}
+
+bool N2K::sendTemperature(float temp, int sid) {
+    tN2kMsg N2kMsg(src);
+    SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_MainCabinTemperature, CToKelvin(temp));
     return send_msg(N2kMsg);
 }
 
@@ -215,8 +239,8 @@ bool N2K::sendSatellites(const sat* sats, uint n, int sid, GSA& gsa) {
         m.AddByte((unsigned char)sid);
         m.AddByte((unsigned char)(3 & 0x04) << 6);
         m.AddByte((unsigned char)(n<18?n:18));
-        // limit to 18 sats so to remain within 232 bytes
-        for (int i = 0; i<n && i<18; i++) {
+        // limit to 15 sats so to remain within 232 bytes
+        for (int i = 0; i<n && i<15; i++) {
             sat s = sats[i];
             m.AddByte((unsigned char)s.sat_id);
             m.Add2ByteInt((int)(s.elev / 180.0 * M_PI / 0.0001) );

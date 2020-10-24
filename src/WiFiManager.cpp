@@ -31,6 +31,7 @@ void WiFiManager::start(ulong t)
       } else if ((t-last_try)>WIFI_TIMEOUT_MS) {
         Log::trace("[WIFI] Timeout\n");
         WiFi.disconnect();
+        last_try = t;
         conn_stat = 0;
       }
     }
@@ -43,26 +44,6 @@ void WiFiManager::start(ulong t)
   }
 }
 
-/*
-void WiFiManager::start()
-{
-  static ulong last_try = 0;
-  if (WiFi.status()!=WL_CONNECTED && (last_try==0 || (millis()-last_try)>WIFI_RECOVER_TIME_MS)) {
-    Log::trace("[WIFI] Connecting {%s}\n", MY_SSID);
-    WiFi.begin(MY_SSID, MY_PSWD);
-    ulong t0 = millis();
-    last_try = t0;
-    while (WiFi.status()!=WL_CONNECTED && (millis()-t0)<WIFI_TIMEOUT_MS) {
-      delay(500);
-      Log::trace("[WIFI] Connecting....\n");
-    }
-    if (WiFi.status()==WL_CONNECTED)
-      Log::trace("[WIFI] Connected {%s}\n", WiFi.localIP().toString().c_str());
-    else 
-      Log::trace("[WIFI] Connection failed {%s}\n", MY_SSID);
-  }
-}
-*/
 void WiFiManager::loop(unsigned long ms)
 {
   start(ms);
