@@ -33,6 +33,7 @@ public:
   bool use_dht11 = false;
   bool send_time = true;
   bool wifi_broadcast = true;
+  bool simulator = false;
   unsigned char dht11_dht22 = CONF_DHT11;
   unsigned char uart_speed = B9600;
   unsigned char src = ABSOURCE;

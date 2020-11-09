@@ -7,6 +7,7 @@
 #include "DHTesp.h"
 #endif
 
+#include "Simulator.h"
 #include "NMEA.h"
 #include "Conf.h"
 #include "N2K.h"
@@ -29,12 +30,16 @@ data cache;
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BMP280 *bmp;
 DHTesp DHT;
+#else
+Simulator simulator;
 #endif
 
 N2K n2k;
 NMEAUtils nmea;
 Port p("/dev/ttyUSB1");
 NetworkHub ntwrk(UDP_PORT, UDP_DEST, &cache, &conf, &last_stats, &n2k);
+
+bool simulate_env = false;
 
 bool initialized = false;
 bool bmp_initialized = false;
@@ -246,6 +251,9 @@ void read_pressure()
     cache.pressure = bmp->readPressure();
     cache.temperature_el = bmp->readTemperature();
   }
+#else
+  cache.pressure = 1013.1;
+  cache.temperature_el = 36.7;
 #endif
 }
 
@@ -264,24 +272,27 @@ void read_temp_hum(ulong ms)
       DHT.getTempAndHumidity();
     }
   }
+#else
+  cache.humidity = 71.0;
+  cache.temperature = 18.4;
 #endif
 }
 
 void send_env(unsigned long ms)
 {
-#ifdef ESP32_ARCH
   static unsigned long t0 = 0;
   static unsigned char sid = 0;
   if ((ms - t0) >= 2000)
   {
     read_pressure();
     read_temp_hum(ms);
-    n2k.sendEnvironment(cache.pressure, cache.humidity, cache.temperature, sid);
+    n2k.sendCabinTemp(cache.temperature, sid);
+    n2k.sendHumidity(cache.humidity, sid);
+    n2k.sendPressure(cache.pressure, sid);
     n2k.sendElectronicTemperature(cache.temperature_el, sid);
     t0 = ms;
     sid++;
   }
-#endif
 }
 
 void msg_handler(const tN2kMsg &N2kMsg)
@@ -334,13 +345,42 @@ void setup()
   Serial.begin(115200);
   delay(1000);
   read_conf();
+  DHT.setup(DHTPIN, (conf.dht11_dht22==CONF_DHT11)?DHTesp::DHT11:DHTesp::DHT22);
 #endif
   ntwrk.begin();
   status = 1;
   n2k.setup(msg_handler, &stats, conf.src);
   p.set_handler(parse_and_send);
-  DHT.setup(DHTPIN, (conf.dht11_dht22==CONF_DHT11)?DHTesp::DHT11:DHTesp::DHT22);
   initialized = true;
+}
+
+void _loop(unsigned long t) {
+  if (conf.use_gps)
+  {
+    p.set_speed(atoi(UART_SPEED[conf.uart_speed]));
+    p.listen(250);
+    stats.bytes_uart += p.get_bytes();
+    p.reset_bytes();
+    send_gsv(t);
+  }
+  else
+  {
+    p.close();
+  }
+
+  if (conf.use_bmp280)
+  {
+    enableBMP280();
+  }
+  else
+  {
+    disableBMP280();
+  }
+
+  if (conf.use_dht11 || conf.use_bmp280 || simulate_env)
+  {
+    send_env(t);
+  }
 }
 
 void loop()
@@ -362,45 +402,47 @@ void loop()
 
     n2k.loop();
 
-    if (conf.use_gps)
+    if (conf.simulator)
     {
-      p.set_speed(atoi(UART_SPEED[conf.uart_speed]));
-      p.listen(250);
-      stats.bytes_uart += p.get_bytes();
-      p.reset_bytes();
-      send_gsv(t);
+      #ifndef ESP32_ARCH
+      simulator.loop(t, &n2k);
+      #endif
     }
     else
     {
-      p.close();
+      _loop(t);
     }
-
-    if (conf.use_bmp280)
-    {
-      enableBMP280();
-    }
-    else
-    {
-      disableBMP280();
-    }
-
-    if (conf.use_dht11 || conf.use_bmp280)
-    {
-      send_env(t);
-    }
-
     report_stats(t);
   }
 }
 
 #ifndef ESP32_ARCH
+
+bool is_arg(const char* arg, int argc, const char **argv) {
+  for (int i = 0; i<argc; i++) {
+    if (strcmp(arg, argv[i])==0) return true;
+  }
+  return false;
+}
+
 int main(int argc, const char **argv)
 {
-
-  setup();
-  while (1)
-  {
-    loop();
+  conf.use_gps = is_arg("gps", argc, argv);
+  conf.use_dht11 = is_arg("hum", argc, argv);
+  conf.use_bmp280 = is_arg("press", argc, argv);
+  conf.wifi_broadcast = is_arg("udp", argc, argv);
+  conf.send_time = is_arg("time", argc, argv);
+  conf.simulator = is_arg("sim", argc, argv);
+  if (conf.use_gps || conf.use_dht11 || conf.use_bmp280 || conf.simulator) {
+    simulate_env = true;
+    setup();
+    while (1)
+    {
+      loop();
+    }
+  } else {
+    printf("usage: gps_adapter <opt...>\n");
+    printf("opt: sim, gps, hum, press, udp, time\n");
   }
 }
 #endif

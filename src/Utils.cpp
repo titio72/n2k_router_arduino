@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <cstdio>
 
 ulong _millis(void)
 {
