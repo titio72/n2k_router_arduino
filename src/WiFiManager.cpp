@@ -43,26 +43,6 @@ void WiFiManager::start(ulong t)
   }
 }
 
-/*
-void WiFiManager::start()
-{
-  static ulong last_try = 0;
-  if (WiFi.status()!=WL_CONNECTED && (last_try==0 || (millis()-last_try)>WIFI_RECOVER_TIME_MS)) {
-    Log::trace("[WIFI] Connecting {%s}\n", MY_SSID);
-    WiFi.begin(MY_SSID, MY_PSWD);
-    ulong t0 = millis();
-    last_try = t0;
-    while (WiFi.status()!=WL_CONNECTED && (millis()-t0)<WIFI_TIMEOUT_MS) {
-      delay(500);
-      Log::trace("[WIFI] Connecting....\n");
-    }
-    if (WiFi.status()==WL_CONNECTED)
-      Log::trace("[WIFI] Connected {%s}\n", WiFi.localIP().toString().c_str());
-    else 
-      Log::trace("[WIFI] Connection failed {%s}\n", MY_SSID);
-  }
-}
-*/
 void WiFiManager::loop(unsigned long ms)
 {
   start(ms);
@@ -77,8 +57,6 @@ int WiFiManager::sendUDPPacket(const char *bfr, unsigned int l)
     udp.write((const uint8_t *)bfr, l);
     udp.write(term, 2);
     int rs = udp.endPacket();
-    if (TRACE_UDP)
-      Log::trace("UDP %s {%s}\n", rs ? "Sent" : "Fail", bfr);
     return rs;
   }
   else

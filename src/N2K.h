@@ -12,7 +12,9 @@ class N2K {
         bool sendTime(RMC& rmc, int sid);
         bool sendLocalTime(GSA& gsa, RMC& rmc);
         bool sendPosition(GSA& gsa, RMC& rmc);
-        bool sendEnvironment(const float pressure, const float humidity, const float temperature, int sid);
+        bool sendCabinTemp(const float temperature, int sid);
+        bool sendHumidity(const float humidity, int sid);
+        bool sendPressure(const float pressure, int sid);
         bool sendElectronicTemperature(const float temp, int sid);
         bool send126996Request(int dst);
 
@@ -28,10 +30,11 @@ class N2K {
 
         void loop();
 
+        bool send_msg(const tN2kMsg &N2kMsg);
+
     private:
         uint8_t src;
         statistics* stats;
-        bool send_msg(const tN2kMsg &N2kMsg);
 };
 
 #endif

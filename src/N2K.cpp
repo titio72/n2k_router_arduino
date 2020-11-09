@@ -1,13 +1,13 @@
 #include "constants.h"
 #ifdef ESP32_ARCH
-#define USE_N2K_CAN USE_N2K_MCP_CAN
-#define N2k_SPI_CS_PIN 5
-#define N2k_CAN_INT_PIN 0xff
-#define USE_MCP_CAN_CLOCK_SET 8
-
-//#define USE_N2K_CAN USE_N2K_ESP32_CAN
-//#define ESP32_CAN_TX_PIN GPIO_NUM_21
-//#define ESP32_CAN_RX_PIN GPIO_NUM_22
+//#define USE_N2K_CAN USE_N2K_MCP_CAN
+//#define N2k_SPI_CS_PIN 5
+//#define N2k_CAN_INT_PIN 0xff
+//#define USE_MCP_CAN_CLOCK_SET 8
+#define USE_N2K_CAN USE_N2K_ESP32_CAN
+#define ESP32_CAN_TX_PIN GPIO_NUM_2
+#define ESP32_CAN_RX_PIN GPIO_NUM_4
+#define GPIO_CAN_DISABLE ((gpio_num_t)16)
 #else
 #define SOCKET_CAN_PORT "vcan0"
 #endif
@@ -52,7 +52,7 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s, uint8
     _can_received = &(s->can_received);
     _handler = _MsgHandler;
     Log::trace("Initializing N2K\n");
-    NMEA2000.SetN2kCANSendFrameBufSize(150);
+    NMEA2000.SetN2kCANSendFrameBufSize(3);
     NMEA2000.SetN2kCANReceiveFrameBufSize(150),
     NMEA2000.SetN2kCANMsgBufSize(15);
     Log::trace("Initializing N2K Product Info\n");
@@ -89,7 +89,7 @@ bool N2K::send_msg(const tN2kMsg &N2kMsg) {
         stats->can_sent++;
         return true;
     } else {
-        Serial.printf("Failed message {%d}\n", N2kMsg.PGN);
+        Log::trace("Failed message {%d}\n", N2kMsg.PGN);
         stats->can_failed++;
         return false;
     }
@@ -175,38 +175,34 @@ bool N2K::sendPosition(GSA& gsa, RMC& rmc) {
 
 bool N2K::sendElectronicTemperature(const float temp, int sid) {
     tN2kMsg N2kMsg(src);
-    SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_EngineRoomTemperature, temp);
+    N2kMsg.SetPGN(130312L);
+    N2kMsg.Priority=5;
+    N2kMsg.AddByte((unsigned char)sid);
+    N2kMsg.AddByte((unsigned char)1);
+    N2kMsg.AddByte((unsigned char)32 /* custom defined */);
+    N2kMsg.Add2ByteUDouble(CToKelvin(temp), 0.01);
+    N2kMsg.Add2ByteUDouble(CToKelvin(60.0), 0.01);
+    N2kMsg.AddByte(0xff); // Reserved
     return send_msg(N2kMsg);
 }
 
-bool N2K::sendEnvironment(const float pressurePA, const float humidity, const float temperatureC, int sid) {
+bool N2K::sendPressure(const float pressurePA, int sid) {
     tN2kMsg N2kMsg(src);
-    SetN2kEnvironmentalParameters(N2kMsg, sid,
-        N2kts_MainCabinTemperature, CToKelvin(temperatureC),
-        N2khs_InsideHumidity, humidity,
-        pressurePA);
+    SetN2kPressure(N2kMsg, sid, 0, tN2kPressureSource::N2kps_Atmospheric, mBarToPascal(pressurePA));
     return send_msg(N2kMsg);
 }
 
-/*
-{
-    "SID":69,
-    "Sats in View":11,
-    "list":[
-        {"PRN":2,"Elevation":27.0,"Azimuth":49.0,"SNR":39.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":5,"Elevation":1.0,"Azimuth":92.0,"SNR":37.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":6,"Elevation":1.0,"Azimuth":28.0,"SNR":35.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":18,"Elevation":15.0,"Azimuth":179.0,"SNR":36.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":25,"Elevation":66.0,"Azimuth":68.0,"SNR":34.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":29,"Elevation":82.0,"Azimuth":254.0,"SNR":42.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":31,"Elevation":165.0,"Azimuth":0.0,"SNR":38.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":32,"Elevation":165.0,"Azimuth":0.0,"SNR":30.00,"Range residuals":0,"Status":"Used"},
-        {"PRN":33,"Elevation":34.0,"Azimuth":214.0,"SNR":0.00,"Range residuals":0,"Status":"Not tracked"},
-        {"PRN":37,"Elevation":39.0,"Azimuth":163.0,"SNR":0.00,"Range residuals":0,"Status":"Not tracked"},
-        {"PRN":39,"Elevation":38.0,"Azimuth":158.0,"SNR":0.00,"Range residuals":0,"Status":"Not tracked"}
-    ]}
+bool N2K::sendHumidity(const float humidity, int sid) {
+    tN2kMsg N2kMsg(src);
+    SetN2kHumidity(N2kMsg, sid, 0, tN2kHumiditySource::N2khs_InsideHumidity, humidity);
+    return send_msg(N2kMsg);
+}
 
-*/
+bool N2K::sendCabinTemp(const float temperature, int sid) {
+    tN2kMsg N2kMsg(src);
+    SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_MainCabinTemperature, CToKelvin(temperature));
+    return send_msg(N2kMsg);
+}
 
 bool N2K::sendSatellites(const sat* sats, uint n, int sid, GSA& gsa) {
     if (n>0) {
@@ -228,27 +224,4 @@ bool N2K::sendSatellites(const sat* sats, uint n, int sid, GSA& gsa) {
         return send_msg(m);
     }
     return false;
-/*
-          "Order": 1, "Id": "sid", "BitLength": 8, "BitOffset": 0, "BitStart": 0, "Signed": false
-          "Order": 2, "Id": "mode", "Name": "Mode", "BitLength": 2, "BitOffset": 8, "BitStart": 0, "Type": "Lookup table", "Signed": false, "EnumValues": [
-            {
-              "name": "Range residuals used to calculate position",     "value": "3"
-            }
-          "Order": 3, "Id": "reserved", "Name": "Reserved", "Description": "Reserved", "BitLength": 6, "BitOffset": 10, "BitStart": 2, "Type": "Binary data", "Signed": false
-          "Order": 4, "Id": "satsInView", "Name": "Sats in View", "BitLength": 8, "BitOffset": 16, "BitStart": 0, "Signed": false
-          
-          "Order": 5, "Id": "prn", "Name": "PRN", "BitLength": 8, "BitOffset": 24, "BitStart": 0, "Signed": false
-          "Order": 6, "Id": "elevation", "Name": "Elevation", "BitLength": 16, "BitOffset": 32, "BitStart": 0, "Units": "rad", "Resolution": "0.0001", "Signed": false
-          "Order": 7, "Id": "azimuth", "Name": "Azimuth", "BitLength": 16, "BitOffset": 48, "BitStart": 0, "Units": "rad", "Resolution": "0.0001", "Signed": false
-          "Order": 8, "Id": "snr", "Name": "SNR", "BitLength": 16, "BitOffset": 64, "BitStart": 0, "Units": "dB", "Resolution": "0.01", "Signed": false
-          "Order": 9, "Id": "rangeResiduals", "Name": "Range residuals", "BitLength": 32, "BitOffset": 80, "BitStart": 0, "Signed": true
-          "Order": 10, "Id": "status", "Name": "Status", "BitLength": 4, "BitOffset": 112, "BitStart": 0, "Type": "Lookup table", "Signed": false, "EnumValues": [
-              "name": "Not tracked",     "value": "0"
-              "name": "Tracked",     "value": "1"
-              "name": "Used",     "value": "2"
-              "name": "Not tracked+Diff",     "value": "3"
-              "name": "Tracked+Diff",     "value": "4"
-              "name": "Used+Diff",     "value": "5"
-          "Order": 11, "Id": "reserved", "Name": "Reserved", "Description": "Reserved", "BitLength": 4, "BitOffset": 116, "BitStart": 4, "Type": "Binary data", "Signed": false
-*/
 }

@@ -287,6 +287,33 @@ Ports.cpp.s:
 	cd /home/aboni/Documents/PlatformIO/Projects/NMEARouter && $(MAKE) -f src/CMakeFiles/gps_adapter.dir/build.make src/CMakeFiles/gps_adapter.dir/Ports.cpp.s
 .PHONY : Ports.cpp.s
 
+Simulator.o: Simulator.cpp.o
+
+.PHONY : Simulator.o
+
+# target to build an object file
+Simulator.cpp.o:
+	cd /home/aboni/Documents/PlatformIO/Projects/NMEARouter && $(MAKE) -f src/CMakeFiles/gps_adapter.dir/build.make src/CMakeFiles/gps_adapter.dir/Simulator.cpp.o
+.PHONY : Simulator.cpp.o
+
+Simulator.i: Simulator.cpp.i
+
+.PHONY : Simulator.i
+
+# target to preprocess a source file
+Simulator.cpp.i:
+	cd /home/aboni/Documents/PlatformIO/Projects/NMEARouter && $(MAKE) -f src/CMakeFiles/gps_adapter.dir/build.make src/CMakeFiles/gps_adapter.dir/Simulator.cpp.i
+.PHONY : Simulator.cpp.i
+
+Simulator.s: Simulator.cpp.s
+
+.PHONY : Simulator.s
+
+# target to generate assembly for a file
+Simulator.cpp.s:
+	cd /home/aboni/Documents/PlatformIO/Projects/NMEARouter && $(MAKE) -f src/CMakeFiles/gps_adapter.dir/build.make src/CMakeFiles/gps_adapter.dir/Simulator.cpp.s
+.PHONY : Simulator.cpp.s
+
 UDPServer.o: UDPServer.cpp.o
 
 .PHONY : UDPServer.o
@@ -395,6 +422,9 @@ help:
 	@echo "... Ports.o"
 	@echo "... Ports.i"
 	@echo "... Ports.s"
+	@echo "... Simulator.o"
+	@echo "... Simulator.i"
+	@echo "... Simulator.s"
 	@echo "... UDPServer.o"
 	@echo "... UDPServer.i"
 	@echo "... UDPServer.s"
