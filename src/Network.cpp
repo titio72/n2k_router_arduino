@@ -63,7 +63,7 @@ bool NetworkHub::end() {
 }
 
 bool NetworkHub::send_udp(const char* message, unsigned int len) {
-    srv.send(message);
+    return srv.send(message);
 }
 
 void NetworkHub::loop(unsigned long t) {

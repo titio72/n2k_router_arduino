@@ -18,10 +18,6 @@ class N2K {
         bool sendElectronicTemperature(const float temp, int sid);
         bool send126996Request(int dst);
 
-        bool sendPressure(float pressure, int sid);
-        bool sendHumidity(float pressure, int sid);
-        bool sendTemperature(float pressure, int sid);
-
         bool sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload);
 
         bool sendGNSSPosition(GSA& gsa, RMC& rmc, int sid);
