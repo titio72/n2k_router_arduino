@@ -67,7 +67,7 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s, uint8
     NMEA2000.SetDeviceInformation(1, // Unique number. Use e.g. Serial number.
                                 132, // Device function=Analog to NMEA 2000 Gateway. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                 25, // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
-                                2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf                               
+                                2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf
                                );
     Log::trace("Initializing N2K mode\n");
     #ifdef NODE_ONLY
@@ -117,7 +117,13 @@ bool N2K::sendGNNSStatus(GSA& gsa, int sid) {
             case 1: mode = tN2kGNSSDOPmode::N2kGNSSdm_1D; break;
             default: mode = tN2kGNSSDOPmode::N2kGNSSdm_Unavailable;
         }
-        SetN2kPGN129539(N2kMsg, sid, tN2kGNSSDOPmode::N2kGNSSdm_2D, mode, gsa.hdop, gsa.vdop, gsa.pdop);
+        N2kMsg.SetPGN(129539L);
+        N2kMsg.Priority = 6;
+        N2kMsg.AddByte(sid);
+        N2kMsg.AddByte(tN2kGNSSDOPmode::N2kGNSSdm_2D | ((mode & 0x07) << 3));
+        N2kMsg.Add2ByteDouble(gsa.hdop, 0.01);
+        N2kMsg.Add2ByteDouble(gsa.vdop, 0.01);
+        N2kMsg.Add2ByteDouble(gsa.pdop, 0.01);
         return send_msg(N2kMsg);
     }
     return false;
@@ -211,8 +217,8 @@ bool N2K::sendSatellites(const sat* sats, uint n, int sid, GSA& gsa) {
         m.AddByte((unsigned char)sid);
         m.AddByte((unsigned char)(3 & 0x04) << 6);
         m.AddByte((unsigned char)(n<18?n:18));
-        // limit to 18 sats so to remain within 232 bytes
-        for (int i = 0; i<n && i<18; i++) {
+        // limit to 15 sats so to remain within 232 bytes
+        for (int i = 0; i<n && i<15; i++) {
             sat s = sats[i];
             m.AddByte((unsigned char)s.sat_id);
             m.Add2ByteInt((int)(s.elev / 180.0 * M_PI / 0.0001) );

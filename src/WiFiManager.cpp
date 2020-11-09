@@ -31,6 +31,7 @@ void WiFiManager::start(ulong t)
       } else if ((t-last_try)>WIFI_TIMEOUT_MS) {
         Log::trace("[WIFI] Timeout\n");
         WiFi.disconnect();
+        last_try = t;
         conn_stat = 0;
       }
     }
