@@ -35,7 +35,7 @@ void _trace(const char* text) {
     Serial.print(text);
 
     #else
-	printf(text);
+	printf("%s", text);
 	FILE* f = fopen("/var/log/nmea.log", "a+");
 	if (f==NULL) {
 		f = fopen("./nmea.log", "a+");
