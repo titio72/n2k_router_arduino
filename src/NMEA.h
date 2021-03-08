@@ -2,9 +2,7 @@
  * File:   NMEA.h
  * Author: aboni
  */
-
-#ifndef NMEA_H_
-#define NMEA_H_
+#pragma once
 
 #include "Utils.h"
 
@@ -36,5 +34,3 @@ private:
     bool sat_ready;
     unsigned long last_gsv_time;
 };
-
-#endif
