@@ -1,15 +1,11 @@
 #include "constants.h"
 #ifdef ESP32_ARCH
-//#define USE_N2K_CAN USE_N2K_MCP_CAN
-//#define N2k_SPI_CS_PIN 5
-//#define N2k_CAN_INT_PIN 0xff
-//#define USE_MCP_CAN_CLOCK_SET 8
-#define USE_N2K_CAN USE_N2K_ESP32_CAN
-#define ESP32_CAN_TX_PIN GPIO_NUM_2
-#define ESP32_CAN_RX_PIN GPIO_NUM_4
-#define GPIO_CAN_DISABLE ((gpio_num_t)16)
+#define USE_N2K_CAN USE_N2K_MCP_CAN
+#define N2k_SPI_CS_PIN 5
+#define N2k_CAN_INT_PIN 0xff
+#define USE_MCP_CAN_CLOCK_SET 8
 #else
-#define SOCKET_CAN_PORT "vcan0"
+#define SOCKET_CAN_PORT "can9"
 #endif
 
 #define NODE_ONLY

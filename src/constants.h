@@ -14,7 +14,7 @@
 #define I2C_SDA 22
 #define I2C_SCL 21
 #define SEALEVELPRESSURE_HPA (1013.25)
-#define DHTPIN 21
+#define DHTPIN 4
 #define WIFI 0
 
 #endif
