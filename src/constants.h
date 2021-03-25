@@ -3,11 +3,8 @@
 
 #define RXD2 16
 #define TXD2 17
-//#define MY_SSID "***REMOVED***"
-//#define MY_PSWD "***REMOVED***"
-//#define UDP_DEST "192.168.3.255"
-#define MY_SSID "***REMOVED***"
-#define MY_PSWD "***REMOVED***"
+#define MY_SSID "**REMOVED**"
+#define MY_PSWD "**REMOVED**"
 #define UDP_DEST "192.168.2.99"
 #define UDP_PORT 1222
 
