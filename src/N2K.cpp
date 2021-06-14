@@ -5,7 +5,7 @@
 #define N2k_CAN_INT_PIN 0xff
 #define USE_MCP_CAN_CLOCK_SET 8
 #else
-#define SOCKET_CAN_PORT "can9"
+#define SOCKET_CAN_PORT "vcan0"
 #endif
 
 #define NODE_ONLY
@@ -61,8 +61,8 @@ void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s, uint8
                                  );
     Log::trace("Initializing N2K Device Info\n");
     NMEA2000.SetDeviceInformation(1, // Unique number. Use e.g. Serial number.
-                                132, // Device function=Analog to NMEA 2000 Gateway. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
-                                25, // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
+                                145, // Device function=Analog to NMEA 2000 Gateway. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
+                                60, // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                 2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf
                                );
     Log::trace("Initializing N2K mode\n");
