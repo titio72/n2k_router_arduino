@@ -78,7 +78,7 @@ void enableBMP280()
   if (!bmp_initialized)
   {
     Log::trace("[BMP] ");
-    bool two_wires_ok = I2CBME.begin(I2C_SDA, I2C_SCL, 100000);
+    bool two_wires_ok = I2CBME.begin(I2C_SDA, I2C_SCL); //, 100000);
     Log::trace(" TwoWires {%d} ", two_wires_ok);
     if (two_wires_ok)
     {

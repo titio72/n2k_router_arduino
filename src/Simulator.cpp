@@ -3,6 +3,7 @@
 #include <math.h>
 #include <N2kMessages.h>
 #include <time.h>
+#include <stdio.h>
 
 const double R = 6371008.8; // m
 
@@ -120,9 +121,15 @@ void Simulator::loop(unsigned long ms, N2K* n2k) {
             SetN2kPGN129029(N2kMsg, 0, days_since_1970, second_since_midnight, lat, lon, N2kDoubleNA, tN2kGNSStype::N2kGNSSt_GPS,
                 tN2kGNSSmethod::N2kGNSSm_GNSSfix, 6, 0.95);
             n2k->send_msg(N2kMsg);
+
+            tN2kMsg N2kMsgTime(22);
+            SetN2kPGN126992(N2kMsgTime, 0, days_since_1970, second_since_midnight, tN2kTimeSource::N2ktimes_GPS);
+            n2k->send_msg(N2kMsgTime);
+
         }
         if (sim_heading     && expired_0100) {
-            tN2kMsg N2KHeading(22); SetN2kPGN127250(N2KHeading, 0, to_radians(_heading), N2kDoubleNA, N2kDoubleNA, tN2kHeadingReference::N2khr_magnetic); n2k->send_msg(N2KHeading);
+            tN2kMsg N2KTrueHeading(22); SetN2kTrueHeading(N2KTrueHeading, 0, to_radians(_heading)); n2k->send_msg(N2KTrueHeading);
+            tN2kMsg N2KMagnHeading(22); SetN2kMagneticHeading(N2KMagnHeading, 0, to_radians(_heading)); n2k->send_msg(N2KMagnHeading);
         }
         if (sim_speed       && expired_1000) {
             tN2kMsg N2KSpeed(22); SetN2kPGN128259(N2KSpeed, 0, to_meters_per_second(_speed), N2kDoubleNA, tN2kSpeedWaterReferenceType::N2kSWRT_Paddle_wheel); n2k->send_msg(N2KSpeed);
@@ -141,7 +148,9 @@ void Simulator::loop(unsigned long ms, N2K* n2k) {
         }
         if (sim_wind        && expired_0250) {
             tN2kMsg windMsg(22);
-            SetN2kWindSpeed(windMsg, 0, to_meters_per_second(_wind_speed), to_radians(_wind_direction - _heading), tN2kWindReference::N2kWind_Apparent);
+            double wd = _wind_direction - _heading;
+            if (wd<0) wd += 360;
+            SetN2kWindSpeed(windMsg, 0, to_meters_per_second(_wind_speed), to_radians(wd), tN2kWindReference::N2kWind_Apparent);
             n2k->send_msg(windMsg);
         }
         if (sim_humidity    && expired_1000) {

@@ -28,6 +28,9 @@ add_compile_options(
   -g
 )
 
-INCLUDE_DIRECTORIES(linux_include)
+INCLUDE_DIRECTORIES(
+	deps/NMEA2000/src
+	deps/NMEA2000_socketCAN
+)
 
 add_subdirectory(src)

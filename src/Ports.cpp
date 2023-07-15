@@ -164,10 +164,11 @@ void Port::listen(uint ms)
 #ifdef ESP32_ARCH
 			int _c = Serial2.read();
 			int bread = (_c != -1) ? 1 : 0;
-			int errno = (_c != -1) ? 0 : 11; // simulate
+			int nothing_to_read = (_c != -1) ? 0 : 11; // simulate
 			c = (unsigned char)_c;
 #else
 			ssize_t bread = read(tty_fd, &c, 1);
+			int nothing_to_read = (errno==11); // simulate
 #endif
 			if (bread > 0)
 			{
@@ -182,7 +183,7 @@ void Port::listen(uint ms)
 			}
 			else
 			{
-				if (errno == 11)
+				if (nothing_to_read)
 				{
 					// nothing to read
 					return;

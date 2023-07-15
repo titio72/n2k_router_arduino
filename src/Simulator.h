@@ -10,7 +10,7 @@ public:
     bool sim_sogcog             = true;
     bool sim_wind               = true;
     bool sim_heading            = true;
-    bool sim_speed              = true;
+    bool sim_speed              = false;
     bool sim_pressure           = true;
     bool sim_humidity           = true;
     bool sim_temperature        = true;

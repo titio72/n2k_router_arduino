@@ -13,4 +13,7 @@ add_executable(gps_adapter
 
 include_directories(../src)
 
-target_link_libraries(gps_adapter /home/aboni/Documents/PlatformIO/Projects/NMEARouter/linux_lib/libnmea2000.a)
+target_link_libraries(gps_adapter
+	${PROJECT_SOURCE_DIR}/deps/NMEA2000/build/src/libnmea2000.a
+	${PROJECT_SOURCE_DIR}/deps/NMEA2000_socketCAN/libnmea2000_socketcan.a
+)

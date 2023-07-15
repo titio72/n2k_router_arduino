@@ -4,13 +4,14 @@
 #define N2k_SPI_CS_PIN 5
 #define N2k_CAN_INT_PIN 0xff
 #define USE_MCP_CAN_CLOCK_SET 8
+#include <NMEA2000_CAN.h>
 #else
 #define SOCKET_CAN_PORT "vcan0"
+#include <NMEA2000_CAN.h>
 #endif
 
 #define NODE_ONLY
 
-#include <NMEA2000_CAN.h>
 #include <time.h>
 #include <math.h>
 #include "N2K.h"
