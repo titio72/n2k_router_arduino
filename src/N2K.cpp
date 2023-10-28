@@ -6,7 +6,8 @@
 #define USE_MCP_CAN_CLOCK_SET 8
 #include <NMEA2000_CAN.h>
 #else
-#define SOCKET_CAN_PORT "vcan0"
+char socket_name[32];
+#define SOCKET_CAN_PORT socket_name
 #include <NMEA2000_CAN.h>
 #endif
 
@@ -43,7 +44,8 @@ bool N2K::send126996Request(int dst) {
     return send_msg(N2kMsg);
 }
 
-void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s, uint8_t _src) {
+void N2K::setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* s, uint8_t _src, const char* socket_name) {
+    strcpy(::socket_name, socket_name);
     src = _src;
     stats = s;
     _can_received = &(s->can_received);

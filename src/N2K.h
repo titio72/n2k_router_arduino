@@ -24,7 +24,7 @@ class N2K {
 
         bool sendGNNSStatus(GSA& gsa, int sid);
 
-        void setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats, uint8_t src);
+        void setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats, uint8_t src, const char* socket_name);
 
         bool sendSatellites(const sat* sats, uint n, int sid, GSA& gsa);
 

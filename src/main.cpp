@@ -25,6 +25,12 @@ Configuration conf;
 statistics stats;
 statistics last_stats;
 data cache;
+char can_socket_name[32] = {
+	0, 0, 0, 0, 0, 0, 0, 0,  
+	0, 0, 0, 0, 0, 0, 0, 0,  
+	0, 0, 0, 0, 0, 0, 0, 0,  
+	0, 0, 0, 0, 0, 0, 0, 0  
+};
 
 #ifdef ESP32_ARCH
 TwoWire I2CBME = TwoWire(0);
@@ -349,7 +355,7 @@ void setup()
 #endif
   ntwrk.begin();
   status = 1;
-  n2k.setup(msg_handler, &stats, conf.src);
+  n2k.setup(msg_handler, &stats, conf.src, can_socket_name);
   p.set_handler(parse_and_send);
   initialized = true;
 }
@@ -433,6 +439,11 @@ int main(int argc, const char **argv)
   conf.wifi_broadcast = is_arg("udp", argc, argv);
   conf.send_time = is_arg("time", argc, argv);
   conf.simulator = is_arg("sim", argc, argv);
+  if (argc>1) {
+    strcpy(can_socket_name, argv[1]);
+  } else {
+    strcpy(can_socket_name, "vcan0");
+  }
   if (conf.use_gps || conf.use_dht11 || conf.use_bmp280 || conf.simulator) {
     simulate_env = true;
     setup();
