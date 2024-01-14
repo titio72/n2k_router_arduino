@@ -1,7 +1,7 @@
 #include <Arduino.h> // needed for the WiFi communication
 #include <WiFi.h>    // needed for the WiFi communication
 #include "WiFiManager.h"
-#include "constants.h"
+#include "Constants.h"
 #include "Utils.h"
 #include "Log.h"
 
@@ -44,25 +44,12 @@ void WiFiManager::start(ulong t)
   }
 }
 
+void WiFiManager::end()
+{
+   WiFi.disconnect();
+}
+
 void WiFiManager::loop(unsigned long ms)
 {
   start(ms);
-}
-
-int WiFiManager::sendUDPPacket(const char *bfr, unsigned int l)
-{
-  if (is_connected())
-  {
-    static uint8_t term[] = {13, 10};
-    udp.beginPacket(UDP_DEST, UDP_PORT);
-    udp.write((const uint8_t *)bfr, l);
-    udp.write(term, 2);
-    int rs = udp.endPacket();
-    return rs;
-  }
-  else
-  {
-    Log::trace("Cannot send UDP message while disconnected\n");
-    return 0;
-  }
 }

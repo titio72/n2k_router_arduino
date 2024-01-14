@@ -1,10 +1,14 @@
-#include "constants.h"
+#include "Constants.h"
 #include "Utils.h"
 #include "errno.h"
 #include <time.h>
 #include <math.h>
 #include <string.h>
 #include <cstdio>
+#include <unistd.h>
+#ifndef ESP32_ARCH
+#include <sys/sysinfo.h>
+#endif
 
 ulong _millis(void)
 {
@@ -54,40 +58,48 @@ int msleep(long msec)
     #endif
 }
 
+unsigned long get_free_mem()
+{
+    #ifdef ESP32_ARCH
+    return ESP.getFreeHeap();
+    #else
+    struct sysinfo info;
+    sysinfo(&info);
+    return info.freeram;
+    #endif
+}
+
+void f1000(char* buf, unsigned long l, int& length)
+{
+  if (l<1000)
+  {
+    length += sprintf(buf + length, "%lu", l);
+  }
+  else 
+  {
+    f1000(buf, l/1000, length);
+    length += sprintf(buf + length, ",%03lu", l%1000);
+  }
+}
+
 void format_thousands_sep(char* final, long toBeFormatted)
 {
-    // Get the string representation as is
-    static char buffer[32];
-    sprintf(buffer, "%ld", toBeFormatted);
+  int l = 0;
+  f1000(final, toBeFormatted, l);
+  return;
+}
 
-    // Calculate how much commas there will be
-    unsigned int buff_length = strlen(buffer);
-    unsigned int num_commas = buff_length / 3;
-    unsigned int digits_left = buff_length % 3;
-    if (digits_left == 0)
-    {
-        num_commas--;
-    }
-
-    // Allocate space for final string representation
-    unsigned int final_length = buff_length + num_commas + 1;
-
-    // Parse strings from last to first to count positions
-    int final_pos = final_length - 2;
-    int buff_pos = buff_length - 1;
-    int i = 0;
-    int commas = 0;
-    while(final_pos >= 0)
-    {
-        final[final_pos--] = buffer[buff_pos--];
-        i++;
-        if (i % 3 == 0 && commas < num_commas)
-        {
-          commas++;
-          final[final_pos--] = ',';
-        }
-    }
-    final[final_length - 1] = 0;
+int indexOf(const char* haystack, const char* needle)
+{
+  const char* c1 = strstr(haystack, needle);
+  if (c1)
+  {
+    return strlen(haystack) - strlen(c1);
+  }
+  else
+  {
+    return -1;
+  }
 }
 
 
@@ -135,6 +147,13 @@ char * replace(char const * const original, char const * const pattern, char con
   } else {
     return NULL;
   }
+}
+
+char *replace_and_free(char *orig, const char *pattern, const char *new_string, bool first)
+{
+    char *c = replace(orig, pattern, new_string, first);
+    free(orig);
+    return c;
 }
 
 // To store number of days in all months from January to Dec.

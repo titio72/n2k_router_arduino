@@ -7,6 +7,9 @@
 class N2K {
 
     public:
+        N2K(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats);
+
+        bool sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload);
         bool sendCOGSOG(GSA& gsa, RMC& rmc, int sid);
         bool sendTime(time_t t, int sid, short ms = 0);
         bool sendTime(RMC& rmc, int sid);
@@ -17,24 +20,24 @@ class N2K {
         bool sendPressure(const float pressure, int sid);
         bool sendElectronicTemperature(const float temp, int sid);
         bool send126996Request(int dst);
-
-        bool sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload);
-
         bool sendGNSSPosition(GSA& gsa, RMC& rmc, int sid);
-
         bool sendGNNSStatus(GSA& gsa, int sid);
-
-        void setup(void (*_MsgHandler)(const tN2kMsg &N2kMsg), statistics* stats, uint8_t src, const char* socket_name);
-
         bool sendSatellites(const sat* sats, uint n, int sid, GSA& gsa);
 
-        void loop();
+        void setup();
+
+        void loop(unsigned long time);
 
         bool send_msg(const tN2kMsg &N2kMsg);
 
+        bool is_initialized() { return initialized; }
+
+        // used only on linux
+        void set_can_socket_name(const char* name);
+
     private:
-        uint8_t src;
         statistics* stats;
+        bool initialized;
 };
 
 #endif

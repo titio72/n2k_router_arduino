@@ -1,72 +1,70 @@
-#include "constants.h"
+#include "Constants.h"
 #include "Network.h"
-
+#include "WebServer.h"
+#include "Log.h"
 #include <string.h>
 
 #ifdef ESP32_ARCH
 #include <WiFi.h>
 #include "WiFiManager.h"
-#include "WebServer.h"
-
 WiFiManager wifi;
-WEBServer webui;
-
-NetworkHub::NetworkHub(unsigned int p, const char* d, data* cache, Configuration* conf, statistics* stats, N2K* n2k) {
-    port = p;
-    destination = strdup(d);
-    webui.setup(cache, conf, stats, n2k);
-}
-
-NetworkHub::~NetworkHub() {
-    delete destination;
-}
-
-bool NetworkHub::begin() {
-    wifi.start(millis());
-    return true;
-}
-
-bool NetworkHub::end() {
-    // TODO
-    return true;
-}
-
-bool NetworkHub::send_udp(const char* message, unsigned int len) {
-    return wifi.sendUDPPacket(message, len);
-}
-
-void NetworkHub::loop(unsigned long t) {
-    wifi.loop(t);
-    if (wifi.is_connected()) webui.loop(t);
-}
-#else
-#include "UDPServer.h"
-
-UDPSrv srv(UDP_PORT, UDP_DEST);
-
-NetworkHub::NetworkHub(unsigned int p, const char* d, data* cache, Configuration* conf, statistics* stats, N2K* n2k) {
-    port = p;
-    destination = strdup(d);
-}
-
-NetworkHub::~NetworkHub() {
-    delete destination;
-}
-
-bool NetworkHub::begin() {
-    return true;
-}
-
-bool NetworkHub::end() {
-    // TODO
-    return true;
-}
-
-bool NetworkHub::send_udp(const char* message, unsigned int len) {
-    return srv.send(message);
-}
-
-void NetworkHub::loop(unsigned long t) {
-}
-
 #endif
+
+void NetworkHub::enable()
+{
+    if (!enabled)
+    {
+        Log::trace("[NET] Starting network services\n");
+#ifdef ESP32_ARCH
+        wifi.start(millis());
+#endif
+        web_ui->enable();
+        enabled = true;
+        Log::trace("[NET] Network services started\n");
+    }
+}
+
+void NetworkHub::disable()
+{
+    if (enabled)
+    {
+        Log::trace("[NET] Stopping network services\n");
+#ifdef ESP32_ARCH
+        wifi.end();
+#endif
+        web_ui->disable();
+        enabled = false;
+        Log::trace("[NET] Network services stopped\n");
+    }
+}
+
+void NetworkHub::loop(unsigned long t)
+{
+#ifdef ESP32_ARCH
+    wifi.loop(t);
+    if (wifi.is_connected())
+        web_ui->loop(t);
+#else
+    web_ui->loop(t);
+#endif
+}
+
+NetworkHub::NetworkHub(Context _ctx): ctx(_ctx), enabled(false) 
+{
+    web_ui = new WEBServer(ctx);
+}
+
+NetworkHub::~NetworkHub() 
+{
+    delete web_ui;
+}
+
+bool NetworkHub::is_enabled()
+{
+    return enabled;
+}
+
+void NetworkHub::setup()
+{
+    web_ui->setup();
+}

@@ -21,7 +21,7 @@
 #  THE SOFTWARE.
 
 cmake_minimum_required(VERSION 3.0)
-project(NMEA2000)
+project(n2k_router)
 
 add_compile_options(
   -std=c++11

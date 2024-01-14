@@ -1,115 +1,70 @@
-#include "constants.h"
-
-#ifdef ESP32_ARCH
-#include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_BMP280.h>
-#include "DHTesp.h"
-#endif
-
-#include "Simulator.h"
-#include "NMEA.h"
-#include "Conf.h"
-#include "N2K.h"
-#include "Ports.h"
-#include "Utils.h"
-#include "Network.h"
-#include "Log.h"
-#include "Log.h"
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-Configuration conf;
-statistics stats;
-statistics last_stats;
-data cache;
-char can_socket_name[32] = {
-	0, 0, 0, 0, 0, 0, 0, 0,  
-	0, 0, 0, 0, 0, 0, 0, 0,  
-	0, 0, 0, 0, 0, 0, 0, 0,  
-	0, 0, 0, 0, 0, 0, 0, 0  
-};
-
 #ifdef ESP32_ARCH
-TwoWire I2CBME = TwoWire(0);
-Adafruit_BMP280 *bmp;
-DHTesp DHT;
+#include <Arduino.h>
+#include <Esp.h>
 #else
-Simulator simulator;
+#include <signal.h>
 #endif
 
-N2K n2k;
-NMEAUtils nmea;
-Port p("/dev/ttyUSB1");
-NetworkHub ntwrk(UDP_PORT, UDP_DEST, &cache, &conf, &last_stats, &n2k);
+#include "Constants.h"
+#include "Context.h"
+#include "Conf.h"
+#include "Simulator.h"
+#include "N2K.h"
+#include "Utils.h"
+#include "Network.h"
+#include "Log.h"
+#include "GPS.h"
+#include "HumTemp.h"
+#include "PressureTemp.h"
+#include "Display.h"
 
-bool simulate_env = false;
+#pragma region CONTEXT
+Configuration conf;
+statistics stats;
+data cache;
+N2K n2k(NULL, &stats);
+Context context(n2k, conf, stats, cache);
+#pragma endregion
+
+#pragma region AGENTS
+NetworkHub ntwrk(context);
+GPS gps(context);
+HumTemp dht(context);
+PressureTemp bmp(context);
+Simulator simulator(context);
+EVODisplay display;
+#pragma endregion
 
 bool initialized = false;
-bool bmp_initialized = false;
-bool gps_initialized;
-bool gps_time_set = false;
-
-int status = 0;
-
-time_t delta_time = 0;
 
 void read_conf()
 {
   conf.load();
 }
 
-void enableGPS()
+void send_env(unsigned long ms)
 {
-  if (!gps_initialized)
+  static unsigned long t0 = 0;
+  static unsigned char sid = 0;
+  if ((ms - t0) >= 2000)
   {
-    gps_initialized = true;
-  }
-}
+    n2k.sendPressure(cache.pressure, sid);
+    n2k.sendCabinTemp(cache.temperature, sid);
+    n2k.sendHumidity(cache.humidity, sid);
+    n2k.sendElectronicTemperature(cache.temperature_el, sid);
+    t0 = ms;
+    sid++;
 
-void disableGPS()
-{
-  if (gps_initialized)
-  {
-    gps_initialized = false;
-    p.close();
+    static char temperature_text[32];
+    sprintf(temperature_text, "%5.2f C\n%6.1f Mb", cache.temperature, cache.pressure/100.0f);
+    display.draw_text(temperature_text);
+    display.blink(ms, 500);
   }
-}
-
-void enableBMP280()
-{
-#ifdef ESP32_ARCH
-  if (!bmp_initialized)
-  {
-    Log::trace("[BMP] ");
-    bool two_wires_ok = I2CBME.begin(I2C_SDA, I2C_SCL); //, 100000);
-    Log::trace(" TwoWires {%d} ", two_wires_ok);
-    if (two_wires_ok)
-    {
-      bmp = new Adafruit_BMP280(&I2CBME);
-      bmp_initialized = bmp->begin(0x76, 0x60);
-      if (!bmp_initialized)
-      {
-        delete bmp;
-      }
-    }
-    Log::trace(" {%d}\n", bmp_initialized);
-  }
-#endif
-}
-
-void disableBMP280()
-{
-#ifdef ESP32_ARCH
-  if (bmp_initialized)
-  {
-    Log::trace("[BMP] Closing sensor ");
-    delete bmp;
-    bmp_initialized = false;
-  }
-#endif
 }
 
 void report_stats(unsigned long ms)
@@ -126,273 +81,35 @@ void report_stats(unsigned long ms)
                  cache.gsa.nSat, cache.gsa.fix);
     }
 
-    Log::trace("[STATS] Bus: UDP {%d/%d} CAN.TX {%d/%d} CAN.RX {%d} UART {%d B} in 10s\n",
-               stats.udp_sent, stats.udp_failed, stats.can_sent, stats.can_failed, stats.can_received, stats.bytes_uart);
+    Log::trace("[STATS] Bus: CAN.TX {%d/%d} CAN.RX {%d} UART {%d B} in 10s\n",
+               stats.can_sent, stats.can_failed, stats.can_received, stats.bytes_uart);
 
     Log::trace("[STATS] OPS: Cycles {%d} Pauses {%d} in 10s\n", stats.cycles, stats.pauses);
 
     last_time_stats_ms = ms;
 
-    memcpy(&last_stats, &stats, sizeof(statistics));
     memset(&stats, 0, sizeof(statistics));
-  }
-}
-
-time_t get_time(RMC &rmc, time_t &t, short &ms)
-{
-  tm _gps_time;
-  _gps_time.tm_hour = rmc.h;
-  _gps_time.tm_min = rmc.m;
-  _gps_time.tm_sec = rmc.s;
-  _gps_time.tm_year = rmc.y - 1900;
-  _gps_time.tm_mon = rmc.M - 1;
-  _gps_time.tm_mday = rmc.d;
-  t = mktime(&_gps_time);
-  ms = rmc.ms;
-  return t;
-}
-
-bool set_system_time(int sid, RMC &rmc, bool &time_set_flag)
-{
-  if (rmc.y > 0)
-  {
-    time_t _gps_time_t;
-    short _gps_ms;
-    get_time(rmc, _gps_time_t, _gps_ms);
-    if (conf.send_time)
-    {
-      n2k.sendTime(rmc, sid);
-    }
-    if (!time_set_flag)
-    {
-      delta_time = _gps_time_t - time(0);
-      Log::trace("[GPS] Setting time to {%d-%d-%d %d:%d:%d.%d}}\n", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
-      time_set_flag = true;
-    }
-  }
-  return false;
-}
-
-int parse_and_send(const char *sentence)
-{
-  //Serial.println(sentence);
-  static unsigned char sid = 0;
-  sid++;
-  Log::debug("[GPS] Process Sentence {%s}\n", sentence);
-  if (NMEAUtils::is_sentence(sentence, "RMC"))
-  {
-    if (NMEAUtils::parseRMC(sentence, cache.rmc) == 0)
-    {
-      set_system_time(sid, cache.rmc, gps_time_set);
-      if (cache.rmc.valid)
-      {
-        n2k.sendCOGSOG(cache.gsa, cache.rmc, sid);
-        n2k.sendPosition(cache.gsa, cache.rmc);
-        static ulong t0 = millis();
-        ulong t = millis();
-        if ((t - t0) > 900)
-        {
-          n2k.sendGNSSPosition(cache.gsa, cache.rmc, sid);
-          t0 = t;
-        }
-        stats.valid_rmc++;
-        return 0;
-      }
-      else
-      {
-        stats.invalid_rmc++;
-      }
-    }
-  }
-  else if (NMEAUtils::is_sentence(sentence, "GSA"))
-  {
-    if (nmea.parseGSA(sentence, cache.gsa) == 0)
-    {
-      if (cache.gsa.valid)
-      {
-        stats.valid_gsa++;
-        stats.gps_fix = cache.gsa.fix;
-      }
-      else
-      {
-        stats.invalid_gsa++;
-        stats.gps_fix = 0;
-      }
-      return 0;
-    }
-  }
-  else if (NMEAUtils::is_sentence(sentence, "GSV"))
-  {
-    if (nmea.parseGSV(sentence) == 0)
-    {
-      stats.valid_gsv++;
-    }
-    else
-    {
-      stats.invalid_gsv++;
-    }
-  }
-  return -1;
-}
-
-void send_gsv(ulong ms)
-{
-  static unsigned char sid = 0;
-  sid++;
-  static ulong last_sent = 0;
-  if ((ms - last_sent) >= 900)
-  {
-    last_sent = ms;
-    n2k.sendGNNSStatus(cache.gsa, sid);
-    n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, cache.gsa);
-  }
-}
-
-void read_pressure()
-{
-#ifdef ESP32_ARCH
-  cache.pressure = N2kDoubleNA;
-  if (bmp_initialized)
-  {
-    cache.pressure = bmp->readPressure();
-    cache.temperature_el = bmp->readTemperature();
-  }
-#else
-  cache.pressure = 1013.1;
-  cache.temperature_el = 36.7;
-#endif
-}
-
-void read_temp_hum(ulong ms)
-{
-#ifdef ESP32_ARCH
-  static ulong last_dht_time = 0;
-  cache.humidity = N2kDoubleNA;
-  cache.temperature = N2kDoubleNA;
-  if (conf.use_dht11)
-  {
-    if ((ms - last_dht_time)>DHT.getMinimumSamplingPeriod()) {
-      TempAndHumidity th = DHT.getTempAndHumidity();
-      cache.humidity = th.humidity;
-      cache.temperature = th.temperature;
-      DHT.getTempAndHumidity();
-    }
-  }
-#else
-  cache.humidity = 71.0;
-  cache.temperature = 18.4;
-#endif
-}
-
-void send_env(unsigned long ms)
-{
-  static unsigned long t0 = 0;
-  static unsigned char sid = 0;
-  if ((ms - t0) >= 2000)
-  {
-    read_pressure();
-    read_temp_hum(ms);
-    n2k.sendPressure(cache.pressure, sid);
-    n2k.sendCabinTemp(cache.temperature, sid);
-    n2k.sendHumidity(cache.humidity, sid);
-    n2k.sendElectronicTemperature(cache.temperature_el, sid);
-    t0 = ms;
-    sid++;
-  }
-}
-
-void msg_handler(const tN2kMsg &N2kMsg)
-{
-
-  if (!initialized)
-    return;
-
-  int pgn = N2kMsg.PGN;
-  int src = N2kMsg.Source;
-  int dst = N2kMsg.Destination;
-  int priority = N2kMsg.Priority;
-  int dataLen = N2kMsg.DataLen;
-  const unsigned char *data = N2kMsg.Data;
-  unsigned long msgTime = N2kMsg.MsgTime;
-
-  int ts_millis = msgTime % 1000;
-  time_t ts = msgTime / 1000;
-  tm t;
-  gmtime_r(&ts, &t);
-
-  static char buffer[2048];
-  snprintf(buffer, 2048, "%04d-%02d-%02d-%02d:%02d:%02d.%03d,%d,%d,%d,%d,%d,",
-           t.tm_year + 2000, t.tm_mon + 1, t.tm_mday,
-           t.tm_hour, t.tm_min, t.tm_sec, ts_millis,
-           priority, pgn, src, dst, dataLen);
-  char *x = buffer + strlen(buffer);
-  for (int i = 0; i < dataLen; i++)
-  {
-    sprintf(x, "%02x", data[i]);
-    x += sizeof(char) * 2;
-    if (i != (dataLen - 1))
-    {
-      sprintf(x, ",");
-      x += sizeof(char);
-    }
-  }
-
-  if (conf.wifi_broadcast) {
-    if (ntwrk.send_udp(buffer, strlen(buffer)))
-      stats.udp_sent++;
-    else
-      stats.udp_failed++;
   }
 }
 
 void setup()
 {
-#ifdef ESP32_ARCH
+  #ifdef ESP32_ARCH
   Serial.begin(115200);
-  delay(1000);
+  #endif
   read_conf();
-  DHT.setup(DHTPIN, (conf.dht11_dht22==CONF_DHT11)?DHTesp::DHT11:DHTesp::DHT22);
-#endif
-  ntwrk.begin();
-  status = 1;
-  n2k.setup(msg_handler, &stats, conf.src, can_socket_name);
-  p.set_handler(parse_and_send);
+  msleep(500);
+  n2k.setup();
+  ntwrk.setup();
+  display.setup();
+  gps.setup();
+  dht.setup();
+  bmp.setup();
   initialized = true;
 }
 
-void _loop(unsigned long t) {
-  if (conf.use_gps)
-  {
-    p.set_speed(atoi(UART_SPEED[conf.uart_speed]));
-    p.listen(250);
-    stats.bytes_uart += p.get_bytes();
-    p.reset_bytes();
-    send_gsv(t);
-  }
-  else
-  {
-    p.close();
-  }
-
-  if (conf.use_bmp280)
-  {
-    enableBMP280();
-  }
-  else
-  {
-    disableBMP280();
-  }
-
-  if (conf.use_dht11 || conf.use_bmp280 || simulate_env)
-  {
-    send_env(t);
-  }
-}
-
-void loop()
+ulong handle_loop_throttling()
 {
-  stats.cycles++;
-
   static ulong t0 = _millis();
   ulong t = _millis();
   if ((t - t0) < 25)
@@ -401,22 +118,38 @@ void loop()
     msleep(25);
   }
   t0 = t;
+  return t;
+}
 
+template<typename T> void handle_agent_loop(T &agent, bool enable, unsigned long t)
+{
+  if (enable)
+  {
+    agent.enable();
+    if (agent.is_enabled()) agent.loop(t);
+  }
+  else
+  {
+    agent.disable();
+  }
+}
+
+void loop()
+{
+  stats.cycles++;
+  ulong t = handle_loop_throttling();
   if (initialized)
   {
-    ntwrk.loop(t);
-
-    n2k.loop();
-
-    if (conf.simulator)
+    n2k.loop(t);
+    handle_agent_loop(ntwrk, true, t);
+    handle_agent_loop(display, true, t);
+    handle_agent_loop(gps, conf.use_gps, t);
+    handle_agent_loop(bmp, conf.use_bmp280, t);
+    handle_agent_loop(dht, conf.use_dht11, t);
+    handle_agent_loop(simulator, conf.simulator, t);
+    if (conf.use_dht11 || conf.use_bmp280 || conf.simulator)
     {
-      #ifndef ESP32_ARCH
-      simulator.loop(t, &n2k);
-      #endif
-    }
-    else
-    {
-      _loop(t);
+      send_env(t);
     }
     report_stats(t);
   }
@@ -424,36 +157,80 @@ void loop()
 
 #ifndef ESP32_ARCH
 
-bool is_arg(const char* arg, int argc, const char **argv) {
+#define NO_ARG -1
+
+int is_arg(const char* arg, int argc, const char **argv)
+{
   for (int i = 0; i<argc; i++) {
-    if (strcmp(arg, argv[i])==0) return true;
+    if (strcmp(arg, argv[i])==0) return i;
   }
-  return false;
+  return -1;
+}
+
+const char* get_arg(const char* arg_name, int argc, const char** argv)
+{
+  int _arg = is_arg(arg_name, argc, argv);
+  if (_arg!=NO_ARG && argc>_arg) return argv[_arg+1];
+  else return NULL;
+}
+
+void  stop_handler(int sig)
+{
+  Log::trace("Stopping\n");
+  signal(sig, SIG_IGN);
+  ntwrk.disable();
+  exit(0);
 }
 
 int main(int argc, const char **argv)
 {
-  conf.use_gps = is_arg("gps", argc, argv);
-  conf.use_dht11 = is_arg("hum", argc, argv);
-  conf.use_bmp280 = is_arg("press", argc, argv);
-  conf.wifi_broadcast = is_arg("udp", argc, argv);
-  conf.send_time = is_arg("time", argc, argv);
-  conf.simulator = is_arg("sim", argc, argv);
-  if (argc>1) {
-    strcpy(can_socket_name, argv[1]);
-  } else {
-    strcpy(can_socket_name, "vcan0");
+  if (is_arg("help", argc, argv)!=NO_ARG)
+  {
+    printf("usage: n2k_router <options>\n");
+    printf("Options:\n");
+    printf("  gps - stars reading GPS from serial input (ttyUSB1).\n");
+    printf("  sim - stars simulator.\n");
+    printf("  can <can soket name> - sets the can socket device name (def. vcan0).\n");
+    printf("Example: n2k_router sim can can1\n");
   }
-  if (conf.use_gps || conf.use_dht11 || conf.use_bmp280 || conf.simulator) {
-    simulate_env = true;
+  else
+  {
+    signal(SIGINT, stop_handler);
+    conf.use_gps = is_arg("gps", argc, argv)!=NO_ARG;
+    conf.simulator = is_arg("sim", argc, argv)!=NO_ARG;
+    conf.use_dht11 = false;
+    conf.use_bmp280 = false;
+    conf.send_time = false;
+
+    const char* can_device = get_arg("can", argc, argv);
+    if (can_device)
+    {
+      n2k.set_can_socket_name(can_device);
+      Log::trace("Set CAN socket device: {%s}\n", can_device);
+    }
+    else
+    {
+      n2k.set_can_socket_name("vcan0");
+      Log::trace("Set default CAN socket device: {vcan0}\n");
+    }
+
+    const char* gps_device = get_arg("gps", argc, argv);
+    if (gps_device)
+    {
+      gps.set_port_name(gps_device);
+      Log::trace("Set GPS socket device: {%s}\n", gps_device);
+    }
+    else
+    {
+      gps.set_port_name(DEFAULT_GPS_DEVICE);
+      Log::trace("Set defaut GPS socket device: {%s}\n", DEFAULT_GPS_DEVICE);
+    }
+
     setup();
     while (1)
     {
       loop();
     }
-  } else {
-    printf("usage: gps_adapter <opt...>\n");
-    printf("opt: sim, gps, hum, press, udp, time\n");
   }
 }
 #endif

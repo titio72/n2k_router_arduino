@@ -1,26 +1,11 @@
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
 
-#include "N2K.h"
+#include "Context.h"
 
 class Simulator {
 
 public:
-    bool sim_position           = true;
-    bool sim_sogcog             = true;
-    bool sim_wind               = true;
-    bool sim_heading            = true;
-    bool sim_speed              = false;
-    bool sim_pressure           = true;
-    bool sim_humidity           = true;
-    bool sim_temperature        = true;
-    bool sim_water_temperature  = true;
-    bool sim_satellites         = true;
-    bool sim_dops               = true;
-    bool sim_attitude           = true;
-    bool sim_depth              = true;
-    bool sim_nav                = true;
-
     double heading = 210;
     double speed = 6;
     double wind_speed = 8;
@@ -35,7 +20,13 @@ public:
     unsigned long t0_0100;
     unsigned long t0;
 
-    void loop(unsigned long ms, N2K* n2k);
+    AB_AGENT
+
+    Simulator(Context ctx);
+    ~Simulator();
+private:
+    Context ctx;
+    bool enabled;
 };
 
 
