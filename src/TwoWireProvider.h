@@ -8,8 +8,7 @@ class TwoWire;
 class TwoWireProvider
 {
 public:
-    static TwoWire& get_two_wire();
-    bool is_active();
+    static TwoWire* get_two_wire();
 
 private:
     TwoWireProvider();

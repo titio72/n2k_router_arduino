@@ -3,8 +3,8 @@
 
 #ifdef ESP32_ARCH
 #include <Arduino.h>
-#include "TwoWireProvider.h"
 #include <Adafruit_SSD1306.h>
+#include "TwoWireProvider.h"
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -13,18 +13,17 @@
 
 
 EVODisplay::EVODisplay(): init(false), display(NULL), blink_time(0), blink_period(0), enabled(false) {
-    display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &TwoWireProvider::get_two_wire(), OLED_RESET);
 }
 
 EVODisplay::~EVODisplay() {
-    delete display;
+    if (display) delete display;
 }
 
 void EVODisplay::setup() {
     if (!init) {
-
+        display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, TwoWireProvider::get_two_wire(), OLED_RESET);
         init = display->begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
-        Log::trace("[DS] Enabled {%d}\n", init);
+        Log::trace("[DS] Initialized {%d}\n", init);
 
         if (init) display->clearDisplay();
 

@@ -25,8 +25,8 @@ void PressureTemp::enable()
 {
   if (!enabled)
   {
-    bmp = new Adafruit_BMP280(&TwoWireProvider::get_two_wire());
-    enabled = bmp->begin(0x77, 0x60);
+    bmp = new Adafruit_BMP280(TwoWireProvider::get_two_wire());
+    enabled = bmp->begin(0x76, 0x60);
     if (!enabled)
     {
       delete bmp;

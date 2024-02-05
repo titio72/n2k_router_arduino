@@ -76,7 +76,7 @@ int GPS::on_line_read(const char *sentence)
 {
   static unsigned char sid = 0;
   sid++;
-  Log::debug("[GPS] Process Sentence {%s}\n", sentence);
+  Log::trace("[GPS] Process Sentence {%s}\n", sentence);
   if (NMEAUtils::is_sentence(sentence, "RMC"))
   {
     if (NMEAUtils::parseRMC(sentence, ctx.cache.rmc) == 0)

@@ -19,9 +19,12 @@
 #include "Network.h"
 #include "Log.h"
 #include "GPS.h"
+#include "GPS_I2C.h"
 #include "HumTemp.h"
 #include "PressureTemp.h"
 #include "Display.h"
+
+#define G GPSX
 
 #pragma region CONTEXT
 Configuration conf;
@@ -33,7 +36,7 @@ Context context(n2k, conf, stats, cache);
 
 #pragma region AGENTS
 NetworkHub ntwrk(context);
-GPS gps(context);
+G gps(context);
 HumTemp dht(context);
 PressureTemp bmp(context);
 Simulator simulator(context);
