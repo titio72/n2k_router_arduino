@@ -8,8 +8,8 @@
 NMEAUtils nmea;
 
 
-GPS::GPS(Context _ctx): 
-    p(NULL), device_name(NULL), enabled(false), ctx(_ctx), delta_time(0), gps_time_set(false)
+GPS::GPS(Context _ctx):
+    ctx(_ctx), p(NULL), enabled(false), device_name(NULL), delta_time(0), gps_time_set(false)
 {
 }
 
@@ -19,7 +19,7 @@ GPS::~GPS()
   if (device_name) delete device_name;
 }
 
-void GPS::set_port_name(const char* _port) 
+void GPS::set_port_name(const char* _port)
 {
   device_name = strdup(_port);
 }
@@ -76,7 +76,7 @@ int GPS::on_line_read(const char *sentence)
 {
   static unsigned char sid = 0;
   sid++;
-  Log::trace("[GPS] Process Sentence {%s}\n", sentence);
+  //Log::trace("[GPS] Process Sentence {%s}\n", sentence);
   if (NMEAUtils::is_sentence(sentence, "RMC"))
   {
     if (NMEAUtils::parseRMC(sentence, ctx.cache.rmc) == 0)

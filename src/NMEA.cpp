@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   NMEA.cpp
  * Author: aboni
  */
@@ -11,7 +11,8 @@
 #include "NMEA.h"
 #include "Log.h"
 
-#define N_GSA 2
+#define N_GSA 1
+//#define N_GSA 2 //used with M8N
 
 #define GPGSV "GSV,"
 #define GPRMC "RMC,"
@@ -19,42 +20,57 @@
 
 char tempBuffer[2048];
 
-GSA* last_gsa = NULL;
+GSA *last_gsa = NULL;
 
-char* get_next_token(const char* string, size_t &start, size_t len, char* buffer, char delim, char delimEnd = 0) {
-    if (start>=len) return NULL;
+char *get_next_token(const char *string, size_t &start, size_t len, char *buffer, char delim, char delimEnd = 0)
+{
+    if (start >= len)
+        return NULL;
     size_t s = start;
-    for (size_t i = s; i<len; i++) {
-        if (string[i]==delim) {
-            buffer[i-s] = 0;
+    for (size_t i = s; i < len; i++)
+    {
+        if (string[i] == delim)
+        {
+            buffer[i - s] = 0;
             start = i + 1;
             break;
-        } else if (delimEnd && string[i]==delimEnd) {
-            buffer[i-s] = 0;
+        }
+        else if (delimEnd && string[i] == delimEnd)
+        {
+            buffer[i - s] = 0;
             start = len; // cause the tokenizer to finish
-        } else {
-            buffer[i-s] = string[i];
+        }
+        else
+        {
+            buffer[i - s] = string[i];
             start++;
         }
     }
     return buffer;
 }
 
-const char* get_next_token_checked(const char* string, size_t &start, size_t len, char* buffer, char delim, char delimEnd = 0) {
-    const char* c = get_next_token(string, start, len, buffer, delim, delimEnd);
-    if (c) {
+const char *get_next_token_checked(const char *string, size_t &start, size_t len, char *buffer, char delim, char delimEnd = 0)
+{
+    const char *c = get_next_token(string, start, len, buffer, delim, delimEnd);
+    if (c)
+    {
         int l = strlen(c);
-        if (l>3) return NULL;
-        else {
-            for (int i = 0; i<l; i++) {
-                if (c[i]<'0' || c[i]>'9') return NULL;
+        if (l > 3)
+            return NULL;
+        else
+        {
+            for (int i = 0; i < l; i++)
+            {
+                if (c[i] < '0' || c[i] > '9')
+                    return NULL;
             }
         }
     }
     return c;
-} 
+}
 
-NMEAUtils::NMEAUtils() {
+NMEAUtils::NMEAUtils()
+{
     sat_ready = false;
 
     n_sat = 0;
@@ -62,12 +78,14 @@ NMEAUtils::NMEAUtils() {
     n_snapshot_sat = 0;
 }
 
-NMEAUtils::~NMEAUtils() {
+NMEAUtils::~NMEAUtils()
+{
 }
 
 int nmea_position_parse(char *s, float *pos)
 {
-    if (s==0 || s[0]==0) return -1;
+    if (s == 0 || s[0] == 0)
+        return -1;
 
     char *cursor;
 
@@ -99,9 +117,11 @@ int nmea_position_parse(char *s, float *pos)
     return 0;
 }
 
-bool NMEAUtils::is_sentence(const char* sentence, const char* sentence_id) {
+bool NMEAUtils::is_sentence(const char *sentence, const char *sentence_id)
+{
     static char id[4];
-    for (int i = 3; i < 6; i++) {
+    for (int i = 3; i < 6; i++)
+    {
         id[i - 3] = sentence[i];
     }
     id[3] = 0;
@@ -116,14 +136,18 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 
     int ret = -1;
 
-    if (s_gsa && strncmp(s_gsa + 3, GPGSA, strlen(GPGSA))==0) {
+    if (s_gsa && strncmp(s_gsa + 3, GPGSA, strlen(GPGSA)) == 0)
+    {
 
         ulong t = _millis();
-        if ((t-last_gsa_time)>100) {
+        if ((t - last_gsa_time) > 100)
+        {
             memset(&gsa, 0, sizeof(GSA));
             gsa.nSat = 0;
             gsa_count = 1;
-        } else {
+        }
+        else
+        {
             gsa_count++;
         }
         last_gsa_time = t;
@@ -134,17 +158,19 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
         size_t len = strlen(s_gsa);
 
         // read mode
-        char* token = get_next_token(s_gsa, start, len, tempBuffer, ',');
+        char *token = get_next_token(s_gsa, start, len, tempBuffer, ',');
 
         // read fix
         token = get_next_token(s_gsa, start, len, tempBuffer, ',');
-        if (token && token[0]) gsa.fix = atoi(token);
+        if (token && token[0])
+            gsa.fix = atoi(token);
 
         // count sats
         for (int i = 0; i < 12; i++)
         {
             token = get_next_token(s_gsa, start, len, tempBuffer, ',');
-            if (token && token[0]) {
+            if (token && token[0])
+            {
                 gsa.sats[gsa.nSat] = atoi(token);
                 gsa.nSat++;
             }
@@ -152,22 +178,32 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 
         // read PDOP
         token = get_next_token(s_gsa, start, len, tempBuffer, ',');
-        if (token && token[0]) gsa.pdop = atof(token); else gsa.pdop = 100.0;
+        if (token && token[0])
+            gsa.pdop = atof(token);
+        else
+            gsa.pdop = 100.0;
 
         // read HDOP
         token = get_next_token(s_gsa, start, len, tempBuffer, ',');
-        if (token && token[0]) gsa.hdop = atof(token); else gsa.hdop = 100.0;
+        if (token && token[0])
+            gsa.hdop = atof(token);
+        else
+            gsa.hdop = 100.0;
 
         // read VDOP
         token = get_next_token(s_gsa, start, len, tempBuffer, ',');
-        if (token && token[0]) gsa.vdop = atof(token); else gsa.vdop = 100.0;
+        if (token && token[0])
+            gsa.vdop = atof(token);
+        else
+            gsa.vdop = 100.0;
 
         last_gsa = &gsa;
 
         ret = 0;
     }
 
-    if (sat_ready && gsa_count==N_GSA) {
+    if (sat_ready && gsa_count == N_GSA)
+    {
         snap_sats();
         n_sat = 0;
         sat_ready = false;
@@ -183,7 +219,18 @@ void NMEAUtils::dumpRMC(RMC &rmc, char *buffer)
 
 void NMEAUtils::dumpGSA(GSA &gsa, char *buffer)
 {
-    sprintf(buffer, "RSA valid {%d} nSat {%d} fix {%d} HDOP {%.1f}", gsa.valid, gsa.nSat, gsa.fix, gsa.hdop);
+    sprintf(buffer, "RSA valid {%d} nSat {%d} fix {%d} HDOP {%.1f} sats{", gsa.valid, gsa.nSat, gsa.fix, gsa.hdop);
+    buffer = buffer + strlen(buffer);
+    for (int i = 0; i < gsa.nSat; i++)
+    {
+        if (i)
+            sprintf(buffer, ",%d", gsa.sats[i]);
+        else
+            sprintf(buffer, "%d", gsa.sats[i]);
+        buffer = buffer + strlen(buffer);
+    }
+    buffer = buffer + strlen(buffer);
+    sprintf(buffer, "}");
 }
 
 int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
@@ -196,8 +243,9 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
         size_t len = strlen(s_rmc);
 
         // read UTC time
-        char* token = get_next_token(s_rmc, start, len, tempBuffer, ',');
-        if (token && strlen(token)>=6) {
+        char *token = get_next_token(s_rmc, start, len, tempBuffer, ',');
+        if (token && strlen(token) >= 6)
+        {
             if (strlen(token) > 6)
             {
                 token[6] = 0;
@@ -250,7 +298,8 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
 
         // read date
         token = get_next_token(s_rmc, start, len, tempBuffer, ',');
-        if (token && token[0]) {
+        if (token && token[0])
+        {
             rmc.y = atoi(token + 4 * sizeof(char)) + 2000;
             token[4] = 0;
             rmc.M = atoi(token + 2 * sizeof(char));
@@ -262,8 +311,65 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
     return -1;
 }
 
-int sats_parse(const char* s_gsv, int &n_sat, sat* satellites, bool &sat_ready) {
-    if (s_gsv && strncmp(s_gsv + 3, GPGSV, strlen(GPGSV))==0) {
+enum SAT_PARSE
+{
+    PARSE_ERROR,
+    PARSE_OK,
+    PARSE_EMPTY
+};
+
+SAT_PARSE sat_parse(const char* s_gsv, size_t &start, size_t len, sat& satellite)
+{
+    const char *s_sat_id = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
+
+    if (s_sat_id && s_sat_id[0])
+    {
+        int sat_id = atoi(s_sat_id);
+
+        const char *s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
+        if (s == NULL)
+            return SAT_PARSE::PARSE_ERROR; // the sentence is corrupted
+        int sat_el = atoi(s);
+
+        s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
+        if (s == NULL)
+            return SAT_PARSE::PARSE_ERROR; // the sentence is corrupted
+        int sat_az = atoi(s);
+
+        int sat_db = -1;
+        s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',', '*');
+        if (s == NULL)
+            return SAT_PARSE::PARSE_ERROR; // the sentence is corrupted
+        else if (s[0])
+            sat_db = atoi(s);
+
+        satellite.sat_id = sat_id;
+        satellite.az = sat_az;
+        satellite.elev = sat_el;
+        satellite.db = sat_db;
+        return SAT_PARSE::PARSE_OK;
+    }
+    else
+    {
+        // skip to the next sat
+        get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
+        get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
+        get_next_token_checked(s_gsv, start, len, tempBuffer, ',', '*');
+        return SAT_PARSE::PARSE_EMPTY;
+    }
+}
+
+/*
+$GPGSV,2,1,07,07,79,048,42,02,51,062,43,26,36,256,42,27,27,138,42*71
+$GPGSV,2,2,07,09,23,313,42,04,19,159,41,15,12,041,42*41
+
+*/
+
+int sats_parse(const char *s_gsv, int &n_sat, sat *satellites, bool &sat_ready)
+{
+    //Log::trace("Parse {%s}\n", s_gsv);
+    if (s_gsv && strncmp(s_gsv + 3, GPGSV, strlen(GPGSV)) == 0)
+    {
         size_t start = strlen(GPGSV) + 3;
         size_t len = strlen(s_gsv);
 
@@ -272,65 +378,55 @@ int sats_parse(const char* s_gsv, int &n_sat, sat* satellites, bool &sat_ready) 
         // sentence counter (out of n)
         int c = atoi(get_next_token(s_gsv, start, len, tempBuffer, ','));
         // expected number of satellites in this block of sentences
-        /*int x = */atoi(get_next_token(s_gsv, start, len, tempBuffer, ','));
+        int x = atoi(get_next_token(s_gsv, start, len, tempBuffer, ','));
 
-        while (start<len)
+        //Log::trace("Sentences {%d/%d} Sats {%d}\n", c, n, x);
+
+        for (int i = 0; i<x; i++)
         {
-            const char* s_sat_id = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
-
-            if (s_sat_id && s_sat_id[0]) {
-                int sat_id = atoi(s_sat_id);
-
-                const char* s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
-                if (s==NULL) return -1; // the sentence is corrupted
-                int sat_el = atoi(s);
-
-                s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
-                if (s==NULL) return -1; // the sentence is corrupted
-                int sat_az = atoi(s);
-
-                s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',', '*');
-                if (s==NULL) return -1; // the sentence is corrupted
-                int sat_db = atoi(s);
-
-                if (n_sat<12) {
-
-                    satellites[n_sat].sat_id = sat_id;
-                    satellites[n_sat].az = sat_az;
-                    satellites[n_sat].elev = sat_el;
-                    satellites[n_sat].db = sat_db;
-
+            SAT_PARSE res = sat_parse(s_gsv, start, len, satellites[n_sat]);
+            //Log::trace("%d\n", res);
+            switch (res)
+            {
+            case PARSE_OK:
+                {
+                    n_sat++;
                     if (last_gsa)
-                        satellites[n_sat].status = array_contains(satellites[n_sat].sat_id, last_gsa->sats, last_gsa->nSat)?2:0x0F;
+                        satellites[n_sat].used = array_contains(satellites[n_sat].sat_id, last_gsa->sats, last_gsa->nSat) ? 1 : 0;//2 : 0x0F;
                     else
-                        satellites[n_sat].status = 0x0F;
+                        satellites[n_sat].used = 0; //0x0F;
                 }
-                n_sat++;
-            } else {
-                // skip to the next sat
-                get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
-                get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
-                get_next_token_checked(s_gsv, start, len, tempBuffer, ',', '*');
+                break;
+            case PARSE_EMPTY:
+                {
+
+                }
+                break;
+            default: return -1; //ERROR
             }
         }
-        sat_ready = (n==c);
+        sat_ready = (n == c);
         return 0;
     }
     return -1;
 }
 
-void NMEAUtils::snap_sats() {
+void NMEAUtils::snap_sats()
+{
     n_snapshot_sat = n_sat;
     memcpy(&snapshots_satellites, &satellites, sizeof(snapshots_satellites));
 }
 
-sat* NMEAUtils::get_satellites() {
+sat *NMEAUtils::get_satellites()
+{
     return snapshots_satellites;
 }
 
-int NMEAUtils::parseGSV(const char* s_gsv) {
+int NMEAUtils::parseGSV(const char *s_gsv)
+{
     unsigned long t = _millis();
-    if ((t - last_gsv_time) > 200 /*ms*/) {
+    if ((t - last_gsv_time) > 200 /*ms*/)
+    {
         n_sat = 0;
         sat_ready = false;
     }

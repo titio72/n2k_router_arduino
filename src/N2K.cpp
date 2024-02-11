@@ -9,7 +9,6 @@ char socket_name[32];
 // #define SOCKET_CAN_PORT "vcan0"
 #endif
 #include <NMEA2000_CAN.h>
-
 #include <time.h>
 #include <math.h>
 #include "N2K.h"
@@ -125,18 +124,20 @@ bool N2K::send_msg(const tN2kMsg &N2kMsg)
 
 bool N2K::sendCOGSOG(GSA &gsa, RMC &rmc, int sid)
 {
-    if (/*gsa.valid && */rmc.valid/* && gsa.fix >= 2*/)
+    if (rmc.valid) sendCOGSOG(rmc.sog, rmc.cog, sid);
+    else return false;
+}
+
+bool N2K::sendCOGSOG(double sog, double cog, int sid)
+{
+    if (isnan(sog) && isnan(cog))
+        return false;
+    else
     {
-        if (isnan(rmc.sog) && isnan(rmc.cog))
-            return false;
-        else
-        {
-            tN2kMsg N2kMsg(N2KSRC);
-            SetN2kCOGSOGRapid(N2kMsg, sid, N2khr_true, DegToRad(isnan(rmc.cog) ? 0.0 : rmc.cog), rmc.sog * 1852.0 / 3600);
-            return send_msg(N2kMsg);
-        }
+        tN2kMsg N2kMsg(N2KSRC);
+        SetN2kCOGSOGRapid(N2kMsg, sid, N2khr_true, DegToRad(isnan(cog) ? 0.0 : cog), sog * 1852.0 / 3600);
+        return send_msg(N2kMsg);
     }
-    return false;
 }
 
 bool N2K::sendGNNSStatus(GSA &gsa, int sid)
@@ -223,13 +224,23 @@ bool N2K::sendTime(time_t _now, int sid, short ms)
 
 bool N2K::sendPosition(GSA &gsa, RMC &rmc)
 {
-    if (/*gsa.valid && */rmc.valid/* && gsa.fix >= 2*/)
+    if (rmc.valid)
     {
-        tN2kMsg N2kMsg(N2KSRC);
-        SetN2kPGN129025(N2kMsg, rmc.lat, rmc.lon);
-        return send_msg(N2kMsg);
+        return sendPosition(rmc.lat, rmc.lon);
     }
     return false;
+}
+
+bool N2K::sendPosition(double lat, double lon)
+{
+    if (isnan(lat) || isnan(lon))
+        return false;
+    else
+    {
+        tN2kMsg N2kMsg(N2KSRC);
+        SetN2kPGN129025(N2kMsg, lat, lon);
+        return send_msg(N2kMsg);
+    }
 }
 
 bool N2K::sendElectronicTemperature(const float temp, int sid)
@@ -269,28 +280,43 @@ bool N2K::sendCabinTemp(const float temperature, int sid)
 
 bool N2K::sendSatellites(const sat *sats, uint n, int sid, GSA &gsa)
 {
-    if (n > 0)
+    //Log::trace("[N2K] Sending sats {%d/%d}\n", gsa.nSat, n);
+    bool res = true;
+    int iSats = 0;
+    tN2kMsg* m = NULL;
+    while (iSats<n)
     {
-        tN2kMsg m(N2KSRC);
-        m.Init(6, 129540, N2KSRC, 255);
-        m.AddByte((unsigned char)sid);
-        m.AddByte((unsigned char)(3 & 0x04) << 6);
-        m.AddByte((unsigned char)(n < 18 ? n : 18));
-        // limit to 15 sats so to remain within 232 bytes
-        for (int i = 0; i < n && i < 15; i++)
+        if (m==NULL)
         {
-            sat s = sats[i];
-            m.AddByte((unsigned char)s.sat_id);
-            m.Add2ByteInt((int)(s.elev / 180.0 * M_PI / 0.0001));
-            m.Add2ByteInt((int)(s.az / 180.0 * M_PI / 0.0001));
-            if (s.db)
-                m.Add2ByteUInt((int)(s.db / 0.01));
-            else
-                m.Add2ByteUInt(N2kUInt16NA);
-            m.Add4ByteUInt(N2kInt32NA);
-            m.AddByte((s.status & 0x0F) | 0xF0);
+            m = new tN2kMsg(N2KSRC);
+            SetN2kGNSSSatellitesInView(*m, sid);
         }
-        return send_msg(m);
+        tSatelliteInfo info;
+        info.PRN = sats[iSats].sat_id;
+        info.Azimuth = sats[iSats].az / 180.0 * M_PI;
+        info.Elevation = sats[iSats].elev / 180.0 * M_PI;
+        if (sats[iSats].db) info.SNR = (sats[iSats].db==-1)?N2kDoubleNA:sats[iSats].db;
+        if (sats[iSats].db==-1)
+        {
+            info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_NotTracked;
+        }
+        else
+        {
+            if (sats[iSats].used)
+                info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_UsedInSolutionWithoutDifferentialCorrections;
+            else
+                info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_TrackedButNotUsedInSolution;
+        }
+        bool append = AppendSatelliteInfo(*m, info);
+        if (!append || (iSats==(n-1))) // append is not succesfull (no more can be added) or it's the last
+        {
+            res = res && send_msg(*m);
+            //Log::trace("[N2K] Sent msg {%d} sats {%d}\n", res, iSats + 1);
+            delete m;
+            m = NULL;
+        }
+        if (append) iSats++;
+        if (!res) break;
     }
-    return false;
+    return n && res;
 }

@@ -19,12 +19,12 @@ private:
     void send_gsv(unsigned long ms);
     bool set_system_time(int sid, RMC &rmc, bool &time_set_flag);
 
+    Context ctx;
     Port* p;
     bool enabled;
-    Context ctx;
+    char* device_name;
     time_t delta_time;
     bool gps_time_set;
-    char* device_name;
 
 };
 

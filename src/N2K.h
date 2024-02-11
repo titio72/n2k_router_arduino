@@ -11,10 +11,12 @@ class N2K {
 
         bool sendMessage(int dest, ulong pgn, int priority, int len, unsigned char* payload);
         bool sendCOGSOG(GSA& gsa, RMC& rmc, int sid);
+        bool sendCOGSOG(double sog, double cog, int sid);
         bool sendTime(time_t t, int sid, short ms = 0);
         bool sendTime(RMC& rmc, int sid);
         bool sendLocalTime(GSA& gsa, RMC& rmc);
         bool sendPosition(GSA& gsa, RMC& rmc);
+        bool sendPosition(double latitude, double longitude);
         bool sendCabinTemp(const float temperature, int sid);
         bool sendHumidity(const float humidity, int sid);
         bool sendPressure(const float pressure, int sid);

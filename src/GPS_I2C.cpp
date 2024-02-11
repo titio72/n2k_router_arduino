@@ -2,9 +2,17 @@
 #include "Utils.h"
 #include "TwoWireProvider.h"
 #include "Log.h"
+#include "N2K.h"
+#include "Conf.h"
+#include "Constants.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
-GPSX::GPSX(Context _ctx): myGNSS(NULL), ctx(ctx), enabled(false), last_read_time(0)
+UBX_NAV_SAT_data_t* pSatData = NULL;
+bool bRreadingSat = false;
+Context* pCtx = NULL;
+unsigned long ulTime = 0;
+
+GPSX::GPSX(Context _ctx): ctx(ctx), myGNSS(NULL), enabled(false), last_read_time(0)
 {
 }
 
@@ -13,18 +21,38 @@ GPSX::~GPSX()
     if (myGNSS) delete myGNSS;
 }
 
+void getSat(UBX_NAV_SAT_data_t* d)
+{
+  static unsigned char sid = 0;
+  static sat satellites[24];
+  sid++;
+  static ulong last_sent = 0;
+  if ((ulTime - last_sent) >= 900)
+  {
+    last_sent = ulTime;
+    pCtx->cache.gsa.nSat = d->header.numSvs;
+    for (int i = 0; i<d->header.numSvs; i++)
+    {
+        satellites[i].sat_id = d->blocks[i].gnssId;
+        satellites[i].az = d->blocks[i].azim;
+        satellites[i].elev = d->blocks[i].elev;
+        satellites[i].db = d->blocks[i].cno;
+    }
+  }
+}
+
 void GPSX::loop(unsigned long ms)
 {
     if (enabled)
     {
         if (ms - last_read_time > 100)
         {
-            myGNSS->enableGNSS(true, sfe_ublox_gnss_ids_e::SFE_UBLOX_GNSS_ID_GPS);
             last_read_time = ms; //Update the timer
             if (myGNSS->checkUblox())
             {
                 int fixType = myGNSS->getFixType();
                 Log::trace("Fix: %d\n", fixType);
+
 
                 if (myGNSS->getGnssFixOk())
                 {
@@ -42,19 +70,7 @@ void GPSX::loop(unsigned long ms)
 
                     double pDOP = myGNSS->getPDOP() / 100.0;
                     Log::trace("pDOP: %.2f\n", pDOP);
-                }
 
-                if (myGNSS->getNAVSAT())
-                {
-                    UBX_NAV_SAT_data_t data;
-                    myGNSS->setNavsat
-                }
-
-
-                int time = myGNSS->getUnixEpoch();
-                Log::trace("Unix time %d\n", time);
-                if (myGNSS->getDateValid())
-                {
                     int dayUTC =  myGNSS->getDay();
                     int monthUTC = myGNSS->getMonth();
                     int yearUTC = myGNSS->getYear();
@@ -63,7 +79,43 @@ void GPSX::loop(unsigned long ms)
                     int secondsUTC = myGNSS->getSecond();
                     int millisUTC = myGNSS->getMillisecond();
                     Log::trace("%4d-%02d-%02dT%02d:%02d.:%02dZ.%03d/n", yearUTC, monthUTC, dayUTC, hourUTC, minuteUTC, secondsUTC, millisUTC);
+
+                    ctx.cache.rmc.cog = heading;
+                    ctx.cache.rmc.lat = latitude;
+                    ctx.cache.rmc.lon = longitude;
+                    ctx.cache.rmc.sog = speed;
+                    ctx.cache.rmc.d = dayUTC;
+                    ctx.cache.rmc.M = monthUTC;
+                    ctx.cache.rmc.y = yearUTC;
+                    ctx.cache.rmc.h = hourUTC;
+                    ctx.cache.rmc.m = minuteUTC;
+                    ctx.cache.rmc.s = secondsUTC;
+
+                    static unsigned int sid = 0; sid++;
+
+                    ctx.n2k.sendCOGSOG(ctx.cache.gsa, ctx.cache.rmc, sid);
+                    ctx.n2k.sendPosition(ctx.cache.gsa, ctx.cache.rmc);
+                    static ulong t0 = millis();
+                    ulong t = millis();
+                    if ((t - t0) > 900)
+                    {
+                    ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+                    t0 = t;
+                    }
+                    ctx.stats.valid_rmc++;
+
                 }
+                /*
+                bRreadingSat = true;
+                pCtx = &ctx;
+                ulTime = ms;
+                myGNSS->getNAVSAT();
+                pCtx = NULL;
+                bRreadingSat = false;
+                */
+                int time = myGNSS->getUnixEpoch();
+                Log::trace("Unix time %d\n", time);
+
             }
         }
     }
@@ -72,6 +124,7 @@ void GPSX::loop(unsigned long ms)
 void GPSX::setup()
 {
     myGNSS = new SFE_UBLOX_GNSS();
+    //myGNSS->setAutoNAVSATcallbackPtr(getSat);
 }
 
 bool GPSX::is_enabled()
@@ -83,11 +136,19 @@ void GPSX::enable()
 {
   if (!enabled)
   {
-    enabled = myGNSS->begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+    //Log::trace("[GPS] Initializing {%d}\n", ctx.conf.uart_speed);
+    //int speed = atoi(UART_SPEED[ctx.conf.uart_speed]);
+    //Log::trace("[GPS] Initializing serial {%d}\n", speed);
+    Serial2.begin(57600, SERIAL_8N1, RXD2, TXD2);
+    Log::trace("[GPS] Enabling GNSS\n");
+    //enabled = myGNSS->begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+    enabled = myGNSS->begin(Serial2);
+    Log::trace("[GPS] Init {%d}\n", enabled);
   }
 }
 
 void GPSX::disable()
 {
+    Serial2.end();
     enabled = false;
 }

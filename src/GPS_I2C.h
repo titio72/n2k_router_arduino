@@ -19,10 +19,10 @@ public:
     double getAltitude();
 
 private:
+    Context ctx;
     SFE_UBLOX_GNSS* myGNSS;
     bool enabled;
     unsigned long last_read_time;
-    Context ctx;
 };
 
 #endif

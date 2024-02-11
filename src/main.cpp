@@ -24,7 +24,9 @@
 #include "PressureTemp.h"
 #include "Display.h"
 
-#define G GPSX
+#include "NMEA.h"
+
+#define G GPS
 
 #pragma region CONTEXT
 Configuration conf;

@@ -48,7 +48,7 @@ struct sat {
     int elev;
     int az;
     int db;
-    int status;
+    int used;
 };
 
 struct GSA {
