@@ -193,9 +193,23 @@ int getDaysSince1970(int y, int m, int d) {
     return (n2 - n1);
 }
 
-bool array_contains(int test, int* int_set, int sz) {
-    for (int i=0; i<sz; i++) {
+bool array_contains(short test, short* int_set, int set_size) {
+    for (int i=0; i<set_size; i++) {
         if (test==int_set[i]) return true;
     }
     return false;
 }
+
+N2KSid::N2KSid(): sid(0) {}
+
+unsigned char N2KSid::getCurrent()
+{
+  return sid;
+}
+
+unsigned char N2KSid::getNew()
+{
+  sid = (sid+1) % 253;
+  return sid;
+}
+

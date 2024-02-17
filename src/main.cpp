@@ -26,7 +26,7 @@
 
 #include "NMEA.h"
 
-#define G GPS
+#define G GPSX
 
 #pragma region CONTEXT
 Configuration conf;
@@ -45,6 +45,9 @@ Simulator simulator(context);
 EVODisplay display;
 #pragma endregion
 
+HardwareSerial veDirect(4);
+
+
 bool initialized = false;
 
 void read_conf()
@@ -55,15 +58,13 @@ void read_conf()
 void send_env(unsigned long ms)
 {
   static unsigned long t0 = 0;
-  static unsigned char sid = 0;
   if ((ms - t0) >= 2000)
   {
-    n2k.sendPressure(cache.pressure, sid);
-    n2k.sendCabinTemp(cache.temperature, sid);
-    n2k.sendHumidity(cache.humidity, sid);
-    n2k.sendElectronicTemperature(cache.temperature_el, sid);
+    n2k.sendPressure(cache.pressure);
+    n2k.sendCabinTemp(cache.temperature);
+    n2k.sendHumidity(cache.humidity);
+    n2k.sendElectronicTemperature(cache.temperature_el);
     t0 = ms;
-    sid++;
 
     static char temperature_text[32];
     sprintf(temperature_text, "%5.2f C\n%6.1f Mb", cache.temperature, cache.pressure/100.0f);
@@ -72,26 +73,21 @@ void send_env(unsigned long ms)
   }
 }
 
+void dumpStats()
+{
+  Log::trace("[STATS] OPS: Cycles {%d} Pauses {%d} in 10s\n", stats.cycles, stats.pauses);
+}
+
 void report_stats(unsigned long ms)
 {
   static unsigned long last_time_stats_ms = 0;
   if ((ms - last_time_stats_ms) > 10000)
   {
-    if (conf.use_gps)
-    {
-      Log::trace("[STATS] GPS: RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} in 10s - Sats {%d} Fix {%d}\n",
-                 stats.valid_rmc, stats.invalid_rmc,
-                 stats.valid_gsa, stats.invalid_gsa,
-                 stats.valid_gsv, stats.invalid_gsv,
-                 cache.gsa.nSat, cache.gsa.fix);
-    }
-
-    Log::trace("[STATS] Bus: CAN.TX {%d/%d} CAN.RX {%d} UART {%d B} in 10s\n",
-               stats.can_sent, stats.can_failed, stats.can_received, stats.bytes_uart);
-
-    Log::trace("[STATS] OPS: Cycles {%d} Pauses {%d} in 10s\n", stats.cycles, stats.pauses);
-
     last_time_stats_ms = ms;
+
+    gps.dumpStats();
+    n2k.dumpStats();
+    dumpStats();
 
     memset(&stats, 0, sizeof(statistics));
   }

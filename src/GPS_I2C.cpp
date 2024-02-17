@@ -7,124 +7,173 @@
 #include "Constants.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
-UBX_NAV_SAT_data_t* pSatData = NULL;
-bool bRreadingSat = false;
 Context* pCtx = NULL;
-unsigned long ulTime = 0;
+SFE_UBLOX_GNSS myGNSS;
 
-GPSX::GPSX(Context _ctx): ctx(ctx), myGNSS(NULL), enabled(false), last_read_time(0)
+bool bSAT, bDOP, bPVT;
+UBX_NAV_SAT_data_t dSAT;
+UBX_NAV_DOP_data_t dDOP;
+UBX_NAV_PVT_data_t dPVT;
+
+time_t unix_time;
+
+GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false)
 {
+    pCtx = &_ctx;
 }
 
 GPSX::~GPSX()
 {
-    if (myGNSS) delete myGNSS;
+}
+
+const char* SATS_TYPES[] = {
+        "GPS     ", "SBAS    ", "Galileo ",
+        "BeiDou  ", "IMES    ", "QZSS    ", "GLONASS "
+    };
+
+void loadSats(sat* satellites, UBX_NAV_SAT_data_t* d, GSA& gsa, GSV& gsv)
+{
+    int usedSats = 0;
+    for (int i = 0; i<d->header.numSvs; i++)
+    {
+        satellites[i].sat_id = d->blocks[i].svId;
+        satellites[i].az = d->blocks[i].azim;
+        satellites[i].elev = d->blocks[i].elev;
+        satellites[i].db = d->blocks[i].cno;
+        satellites[i].used = d->blocks[i].flags.bits.svUsed;
+
+        if (satellites[i].used)
+        {
+            gsa.sats[usedSats] = satellites[i].sat_id;
+            usedSats++;
+            //Log::trace("Sat {%s} PRN {%d} Az {%d} Elev {%d} DB {%d}\n",
+            //    SATS_TYPES[d->blocks[i].gnssId], satellites[i].sat_id,
+            //    satellites[i].az, satellites[i].elev, satellites[i].db);
+        }
+    }
+    gsa.nSat = usedSats;
+    gsv.nSat = d->header.numSvs;
+    //Log::trace("[GPS] Loaded {%d/%d} sats\n", gsv.nSat, gsa.nSat);
+}
+
+bool GPSX::set_system_time(unsigned char sid)
+{
+  if (unix_time > 0)
+  {
+    if (ctx.conf.send_time)
+    {
+      ctx.n2k.sendTime(ctx.cache.rmc, sid);
+    }
+    if (!gps_time_set)
+    {
+      delta_time = unix_time - time(0);
+      Log::trace("[GPS] Setting time to {%04d-%02d-%02d %02d:%02d:%02d}}\n",
+        ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
+      gps_time_set = true;
+    }
+  }
+  return false;
+}
+
+void GPSX::manageLowFrequency(unsigned long ms)
+{
+    static unsigned long lastT = 0;
+    if (bSAT && bDOP && bPVT && (ms-lastT)>950)
+    {
+        lastT = ms;
+        loadSats(ctx.cache.gsv.satellites, &dSAT, ctx.cache.gsa, ctx.cache.gsv);
+
+        ctx.cache.gsa.fix = dPVT.fixType;
+        ctx.cache.gsa.hdop = dDOP.hDOP / 100.0;
+        ctx.cache.gsa.vdop = dDOP.vDOP / 100.0;
+        ctx.cache.gsa.tdop = dDOP.tDOP / 100.0;
+        ctx.cache.gsa.pdop = dDOP.pDOP / 100.0;
+        ctx.cache.gsa.valid = dPVT.flags.bits.gnssFixOK;
+
+        static N2KSid _sid;
+        unsigned char sid = _sid.getNew();
+        ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
+        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+        ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
+        set_system_time(sid);
+    }
+}
+
+void getDOP(UBX_NAV_DOP_data_t* d)
+{
+    dDOP = *d;
+    bDOP = true;
 }
 
 void getSat(UBX_NAV_SAT_data_t* d)
 {
-  static unsigned char sid = 0;
-  static sat satellites[24];
-  sid++;
-  static ulong last_sent = 0;
-  if ((ulTime - last_sent) >= 900)
-  {
-    last_sent = ulTime;
-    pCtx->cache.gsa.nSat = d->header.numSvs;
-    for (int i = 0; i<d->header.numSvs; i++)
+    dSAT = *d;
+    bSAT = true;
+}
+
+void getPVT(UBX_NAV_PVT_data_t* d)
+{
+    RMC& rmc = pCtx->cache.rmc;
+    dPVT = *d;
+    bPVT = true;
+
+    if (d->fixType>=1)
     {
-        satellites[i].sat_id = d->blocks[i].gnssId;
-        satellites[i].az = d->blocks[i].azim;
-        satellites[i].elev = d->blocks[i].elev;
-        satellites[i].db = d->blocks[i].cno;
+        unix_time = myGNSS.getUnixEpoch();
     }
-  }
+    else
+    {
+        rmc.unix_time = 0;
+    }
+
+    rmc.valid = d->flags.bits.gnssFixOK;
+    rmc.cog = d->headVeh / 100000.0f;
+    rmc.sog = d->gSpeed / 1000.0f;
+    rmc.y = d->year;
+    rmc.M = d->month;
+    rmc.d = d->day;
+    rmc.h = d->hour;
+    rmc.m = d->min;
+    rmc.s = d->sec;
+    rmc.unix_time = unix_time;
+    rmc.lat = d->lat / 10000000.0f;
+    rmc.lon = d->lon / 10000000.0f;
+
+    pCtx->cache.latitude = abs(d->lat / 10000000.0f);
+    pCtx->cache.latitude_NS = d->lat>0.0?'N':'S';
+    pCtx->cache.longitude = abs(d->lon / 10000000.0f);
+    pCtx->cache.longitude_EW = d->lon>0.0?'W':'E';
+
+
+}
+
+void GPSX::manageHighFrequency(unsigned long ms)
+{
+    ctx.n2k.sendCOGSOG(ctx.cache.rmc);
+    ctx.n2k.sendPosition(ctx.cache.rmc);
 }
 
 void GPSX::loop(unsigned long ms)
 {
     if (enabled)
     {
-        if (ms - last_read_time > 100)
+        if ((ms-last_read_time)>=20)
         {
-            last_read_time = ms; //Update the timer
-            if (myGNSS->checkUblox())
-            {
-                int fixType = myGNSS->getFixType();
-                Log::trace("Fix: %d\n", fixType);
-
-
-                if (myGNSS->getGnssFixOk())
-                {
-                    long latitude = myGNSS->getLatitude();
-                    Log::trace("Lat: %f\n", latitude);
-
-                    long longitude = myGNSS->getLongitude();
-                    Log::trace("Lon: %f\n", longitude);
-
-                    double speed = myGNSS->getGroundSpeed() / 1000.0;
-                    Log::trace("Speed: %.2f mm/s<n", speed);
-
-                    double heading = myGNSS->getHeading() / 10000.0;
-                    Log::trace("Heading: %.2f\n", heading);
-
-                    double pDOP = myGNSS->getPDOP() / 100.0;
-                    Log::trace("pDOP: %.2f\n", pDOP);
-
-                    int dayUTC =  myGNSS->getDay();
-                    int monthUTC = myGNSS->getMonth();
-                    int yearUTC = myGNSS->getYear();
-                    int hourUTC = myGNSS->getHour();
-                    int minuteUTC = myGNSS->getMinute();
-                    int secondsUTC = myGNSS->getSecond();
-                    int millisUTC = myGNSS->getMillisecond();
-                    Log::trace("%4d-%02d-%02dT%02d:%02d.:%02dZ.%03d/n", yearUTC, monthUTC, dayUTC, hourUTC, minuteUTC, secondsUTC, millisUTC);
-
-                    ctx.cache.rmc.cog = heading;
-                    ctx.cache.rmc.lat = latitude;
-                    ctx.cache.rmc.lon = longitude;
-                    ctx.cache.rmc.sog = speed;
-                    ctx.cache.rmc.d = dayUTC;
-                    ctx.cache.rmc.M = monthUTC;
-                    ctx.cache.rmc.y = yearUTC;
-                    ctx.cache.rmc.h = hourUTC;
-                    ctx.cache.rmc.m = minuteUTC;
-                    ctx.cache.rmc.s = secondsUTC;
-
-                    static unsigned int sid = 0; sid++;
-
-                    ctx.n2k.sendCOGSOG(ctx.cache.gsa, ctx.cache.rmc, sid);
-                    ctx.n2k.sendPosition(ctx.cache.gsa, ctx.cache.rmc);
-                    static ulong t0 = millis();
-                    ulong t = millis();
-                    if ((t - t0) > 900)
-                    {
-                    ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
-                    t0 = t;
-                    }
-                    ctx.stats.valid_rmc++;
-
-                }
-                /*
-                bRreadingSat = true;
-                pCtx = &ctx;
-                ulTime = ms;
-                myGNSS->getNAVSAT();
-                pCtx = NULL;
-                bRreadingSat = false;
-                */
-                int time = myGNSS->getUnixEpoch();
-                Log::trace("Unix time %d\n", time);
-
-            }
+            last_read_time = ms;
+            pCtx = &ctx;
+            bDOP = false;
+            bPVT = false;
+            bSAT = false;
+            myGNSS.checkUblox();
+            myGNSS.checkCallbacks();
+            manageHighFrequency(ms);
+            manageLowFrequency(ms);
         }
     }
 }
 
 void GPSX::setup()
 {
-    myGNSS = new SFE_UBLOX_GNSS();
-    //myGNSS->setAutoNAVSATcallbackPtr(getSat);
 }
 
 bool GPSX::is_enabled()
@@ -136,19 +185,33 @@ void GPSX::enable()
 {
   if (!enabled)
   {
-    //Log::trace("[GPS] Initializing {%d}\n", ctx.conf.uart_speed);
-    //int speed = atoi(UART_SPEED[ctx.conf.uart_speed]);
-    //Log::trace("[GPS] Initializing serial {%d}\n", speed);
-    Serial2.begin(57600, SERIAL_8N1, RXD2, TXD2);
     Log::trace("[GPS] Enabling GNSS\n");
-    //enabled = myGNSS->begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
-    enabled = myGNSS->begin(Serial2);
-    Log::trace("[GPS] Init {%d}\n", enabled);
+    enabled = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+    if (enabled)
+    {
+        myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
+        myGNSS.setNavigationFrequency(4);
+        myGNSS.setAutoNAVSATcallbackPtr(&getSat);
+        myGNSS.setAutoPVTcallbackPtr(&getPVT);
+        myGNSS.setAutoDOPcallbackPtr(&getDOP);
+
+    }
+    Log::trace("[GPS] Enabled {%d}\n", enabled);
   }
 }
 
 void GPSX::disable()
 {
-    Serial2.end();
+    myGNSS.end();
     enabled = false;
+}
+
+void GPSX::dumpStats()
+{
+    if (enabled)
+    {
+        Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d} ", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
+        Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} ", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
+        Log::trace("Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}\n", ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
+    }
 }

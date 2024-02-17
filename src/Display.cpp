@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <Adafruit_SSD1306.h>
 #include "TwoWireProvider.h"
+#include "Constants.h"
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -27,8 +28,8 @@ void EVODisplay::setup() {
 
         if (init) display->clearDisplay();
 
-        pinMode(15, OUTPUT);
-        digitalWrite(15, HIGH);
+        pinMode(LEDPIN1, OUTPUT);
+        digitalWrite(LEDPIN1, HIGH);
     }
 }
 
@@ -44,21 +45,21 @@ void EVODisplay::draw_text(const char* text) {
     }
 }
 
-void EVODisplay::blink(unsigned long ms, unsigned long period) 
+void EVODisplay::blink(unsigned long ms, unsigned long period)
 {
     if (enabled)
     {
-        digitalWrite(15, HIGH);
+        digitalWrite(LEDPIN1, HIGH);
         blink_time = ms;
         blink_period = period;
     }
 }
 
-void EVODisplay::loop(unsigned long ms) 
+void EVODisplay::loop(unsigned long ms)
 {
-  if ((ms-blink_time)>=blink_period) 
+  if ((ms-blink_time)>=blink_period)
   {
-    digitalWrite(15, LOW);
+    digitalWrite(LEDPIN1, LOW);
   }
 }
 

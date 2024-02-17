@@ -24,8 +24,9 @@ public:
     sat* get_satellites();
     uint get_n_satellites() { return n_snapshot_sat; }
 
-private:
     void snap_sats();
+
+private:
 
     sat snapshots_satellites[12];
     int n_snapshot_sat;

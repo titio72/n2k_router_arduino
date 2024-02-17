@@ -78,7 +78,7 @@ int fd_set_blocking(int fd, int blocking)
 void Port::close()
 {
 #ifdef ESP32_ARCH
-	Serial2.end();
+	SERIAL_GPS.end();
 #else
 	if (tty_fd) ::close(tty_fd);
 #endif
@@ -89,7 +89,7 @@ int Port::open()
 {
 #ifdef ESP32_ARCH
 	Log::trace("[GPS] Opening serial port at {%d} BPS ");
-	Serial2.begin(speed, SERIAL_8N1, RXD2, TXD2);
+	SERIAL_GPS.begin(speed, SERIAL_8N1, RXD2, TXD2);
 	tty_fd = 1;
 	Log::trace("Ok\n");
 #else
@@ -163,7 +163,7 @@ void Port::listen(uint ms)
 		while (!stop)
 		{
 #ifdef ESP32_ARCH
-			int _c = Serial2.read();
+			int _c = SERIAL_GPS.read();
 			int bread = (_c != -1) ? 1 : 0;
 			int nothing_to_read = (_c != -1) ? 0 : 11; // simulate
 			c = (unsigned char)_c;

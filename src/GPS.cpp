@@ -61,8 +61,8 @@ bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
 
 void GPS::send_gsv(ulong ms)
 {
-  static unsigned char sid = 0;
-  sid++;
+  static N2KSid _sid;
+  unsigned char sid = _sid.getNew();
   static ulong last_sent = 0;
   if ((ms - last_sent) >= 900)
   {
@@ -74,7 +74,8 @@ void GPS::send_gsv(ulong ms)
 
 int GPS::on_line_read(const char *sentence)
 {
-  static unsigned char sid = 0;
+  static N2KSid _sid;
+  unsigned char sid = _sid.getNew();
   sid++;
   //Log::trace("[GPS] Process Sentence {%s}\n", sentence);
   if (NMEAUtils::is_sentence(sentence, "RMC"))
@@ -84,8 +85,8 @@ int GPS::on_line_read(const char *sentence)
       set_system_time(sid, ctx.cache.rmc, gps_time_set);
       if (ctx.cache.rmc.valid)
       {
-        ctx.n2k.sendCOGSOG(ctx.cache.gsa, ctx.cache.rmc, sid);
-        ctx.n2k.sendPosition(ctx.cache.gsa, ctx.cache.rmc);
+        ctx.n2k.sendCOGSOG(ctx.cache.rmc, sid);
+        ctx.n2k.sendPosition(ctx.cache.rmc);
         static ulong t0 = millis();
         ulong t = millis();
         if ((t - t0) > 900)
@@ -171,5 +172,20 @@ void GPS::disable()
   {
     enabled = false;
     p->close();
+  }
+}
+
+void GPS::dumpStats()
+{
+  if (enabled)
+  {
+    Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d}", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
+    Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f}", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
+    Log::trace("Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}\n", ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
+
+    Log::trace("[STATS] GPS: RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} in 10s\n",
+                  ctx.stats.valid_rmc, ctx.stats.invalid_rmc,
+                  ctx.stats.valid_gsa, ctx.stats.invalid_gsa,
+                  ctx.stats.valid_gsv, ctx.stats.invalid_gsv);
   }
 }

@@ -1,13 +1,7 @@
 #include "Constants.h"
 char socket_name[32];
-
-#ifdef ESP32_ARCH
-#define ESP32_CAN_TX_PIN GPIO_NUM_5 // Set CAN TX port to 5
-#define ESP32_CAN_RX_PIN GPIO_NUM_4 // Set CAN RX port to 4
-#else
-#define SOCKET_CAN_PORT socket_name
-// #define SOCKET_CAN_PORT "vcan0"
-#endif
+    #define ESP32_CAN_TX_PIN GPIO_NUM_5 // Set CAN TX port to 5
+    #define ESP32_CAN_RX_PIN GPIO_NUM_4 // Set CAN RX port to 4
 #include <NMEA2000_CAN.h>
 #include <time.h>
 #include <math.h>
@@ -68,7 +62,7 @@ void N2K::setup()
     if (!initialized)
     {
         Log::trace("[N2k] Initializing N2K\n");
-        NMEA2000.SetN2kCANSendFrameBufSize(3);
+        NMEA2000.SetN2kCANSendFrameBufSize(200);
         NMEA2000.SetN2kCANReceiveFrameBufSize(150);
         NMEA2000.SetN2kCANMsgBufSize(15);
         NMEA2000.SetProductInformation("00000001",                         // Manufacturer's Model serial code
@@ -122,13 +116,13 @@ bool N2K::send_msg(const tN2kMsg &N2kMsg)
     }
 }
 
-bool N2K::sendCOGSOG(GSA &gsa, RMC &rmc, int sid)
+bool N2K::sendCOGSOG(RMC &rmc, unsigned char sid)
 {
-    if (rmc.valid) sendCOGSOG(rmc.sog, rmc.cog, sid);
+    if (rmc.valid) return sendCOGSOG(rmc.sog, rmc.cog, sid);
     else return false;
 }
 
-bool N2K::sendCOGSOG(double sog, double cog, int sid)
+bool N2K::sendCOGSOG(double sog, double cog, unsigned char sid)
 {
     if (isnan(sog) && isnan(cog))
         return false;
@@ -140,39 +134,38 @@ bool N2K::sendCOGSOG(double sog, double cog, int sid)
     }
 }
 
-bool N2K::sendGNNSStatus(GSA &gsa, int sid)
+bool N2K::sendGNNSStatus(int fix, float hdop, float vdop, float tdop, unsigned char sid)
+{
+    tN2kMsg m(N2KSRC);
+    tN2kGNSSDOPmode mode;
+    switch (fix)
+    {
+    case 3:
+        mode = tN2kGNSSDOPmode::N2kGNSSdm_3D;
+        break;
+    case 2:
+        mode = tN2kGNSSDOPmode::N2kGNSSdm_2D;
+        break;
+    case 1:
+        mode = tN2kGNSSDOPmode::N2kGNSSdm_1D;
+        break;
+    default:
+        mode = tN2kGNSSDOPmode::N2kGNSSdm_Unavailable;
+    }
+    SetN2kPGN129539(m, sid, tN2kGNSSDOPmode::N2kGNSSdm_2D, mode, hdop, vdop, tdop);
+    return send_msg(m);
+}
+
+bool N2K::sendGNNSStatus(GSA &gsa, unsigned char sid)
 {
     if (gsa.valid)
     {
-        tN2kMsg N2kMsg(N2KSRC);
-        tN2kGNSSDOPmode mode;
-        switch (gsa.fix)
-        {
-        case 3:
-            mode = tN2kGNSSDOPmode::N2kGNSSdm_3D;
-            break;
-        case 2:
-            mode = tN2kGNSSDOPmode::N2kGNSSdm_2D;
-            break;
-        case 1:
-            mode = tN2kGNSSDOPmode::N2kGNSSdm_1D;
-            break;
-        default:
-            mode = tN2kGNSSDOPmode::N2kGNSSdm_Unavailable;
-        }
-        N2kMsg.SetPGN(129539L);
-        N2kMsg.Priority = 6;
-        N2kMsg.AddByte(sid);
-        N2kMsg.AddByte(tN2kGNSSDOPmode::N2kGNSSdm_2D | ((mode & 0x07) << 3));
-        N2kMsg.Add2ByteDouble(gsa.hdop, 0.01);
-        N2kMsg.Add2ByteDouble(gsa.vdop, 0.01);
-        N2kMsg.Add2ByteDouble(gsa.pdop, 0.01);
-        return send_msg(N2kMsg);
+        return sendGNNSStatus(gsa.fix, gsa.hdop, gsa.vdop, gsa.tdop, sid);
     }
     return false;
 }
 
-bool N2K::sendGNSSPosition(GSA &gsa, RMC &rmc, int sid)
+bool N2K::sendGNSSPosition(GSA &gsa, RMC &rmc, unsigned char sid)
 {
     if (gsa.valid && rmc.valid && gsa.fix >= 2)
     {
@@ -181,12 +174,29 @@ bool N2K::sendGNSSPosition(GSA &gsa, RMC &rmc, int sid)
         double second_since_midnight = rmc.h * 60 * 60 + rmc.m * 60 + rmc.s + rmc.ms / 1000.0;
         SetN2kPGN129029(N2kMsg, sid, days_since_1970, second_since_midnight, rmc.lat, rmc.lon, N2kDoubleNA, tN2kGNSStype::N2kGNSSt_GPS,
                         tN2kGNSSmethod::N2kGNSSm_GNSSfix, gsa.nSat, gsa.hdop);
-        return send_msg(N2kMsg);
+        bool res = send_msg(N2kMsg);
+        if (!res)
+            Log::trace("[N2K] GNSSPosition {%d} {%04d-%02d-%02dT%02d:%02d:%02d Lat %.4f Lon %.4f SOG %.2f COG %.2f Sat %d hDOP %.2f pDOP %.2f\n",
+                res, rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.lat, rmc.lon, rmc.sog, rmc.cog, gsa.nSat, gsa.hdop, gsa.pdop);
+        return res;
     }
     return false;
 }
 
-bool N2K::sendTime(RMC &rmc, int sid)
+bool N2K::sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsigned long unixTime, float lat, float lon, int nsat, float hdop, float pdop, unsigned char sid)
+{
+    tN2kMsg N2kMsg(N2KSRC);
+    int days_since_1970 = getDaysSince1970(y, M, d);
+    double second_since_midnight = h * 60 * 60 + m * 60 + s / 1000.0;
+    SetN2kPGN129029(N2kMsg, sid, days_since_1970, second_since_midnight, lat, lon, N2kDoubleNA, tN2kGNSStype::N2kGNSSt_GPS,
+                    tN2kGNSSmethod::N2kGNSSm_GNSSfix, nsat, hdop, pdop);
+    bool res = send_msg(N2kMsg);
+    Log::trace("[N2K] GNSSPosition {%d} {%04d-%02d-%02dT%02d:%02d:%02d Lat %.4f Lon %.4f SOG %.2f COG %.2f Sat %d hDOP %.2f pDOP %.2f\n", 
+        res, y, M, d, h, m, s, lat, lon, nsat, hdop, pdop);
+    return res;
+}
+
+bool N2K::sendTime(RMC &rmc, unsigned char sid)
 {
     if (rmc.valid)
     {
@@ -212,7 +222,7 @@ bool N2K::sendLocalTime(GSA &gsa, RMC &rmc)
     return false;
 }
 
-bool N2K::sendTime(time_t _now, int sid, short ms)
+bool N2K::sendTime(time_t _now, unsigned char sid, short ms)
 {
     tm *t = gmtime(&_now);
     int days_since_1970 = getDaysSince1970(t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
@@ -222,7 +232,7 @@ bool N2K::sendTime(time_t _now, int sid, short ms)
     return send_msg(N2kMsg);
 }
 
-bool N2K::sendPosition(GSA &gsa, RMC &rmc)
+bool N2K::sendPosition(RMC &rmc)
 {
     if (rmc.valid)
     {
@@ -243,7 +253,7 @@ bool N2K::sendPosition(double lat, double lon)
     }
 }
 
-bool N2K::sendElectronicTemperature(const float temp, int sid)
+bool N2K::sendElectronicTemperature(const float temp, unsigned char sid)
 {
     tN2kMsg N2kMsg(N2KSRC);
     N2kMsg.SetPGN(130312L);
@@ -257,66 +267,96 @@ bool N2K::sendElectronicTemperature(const float temp, int sid)
     return send_msg(N2kMsg);
 }
 
-bool N2K::sendPressure(const float pressurePA, int sid)
+bool N2K::sendPressure(const float pressurePA, unsigned char sid)
 {
     tN2kMsg N2kMsg(N2KSRC);
     SetN2kPressure(N2kMsg, sid, 0, tN2kPressureSource::N2kps_Atmospheric, mBarToPascal(pressurePA));
     return send_msg(N2kMsg);
 }
 
-bool N2K::sendHumidity(const float humidity, int sid)
+bool N2K::sendHumidity(const float humidity, unsigned char sid)
 {
     tN2kMsg N2kMsg(N2KSRC);
     SetN2kHumidity(N2kMsg, sid, 0, tN2kHumiditySource::N2khs_InsideHumidity, humidity);
     return send_msg(N2kMsg);
 }
 
-bool N2K::sendCabinTemp(const float temperature, int sid)
+bool N2K::sendCabinTemp(const float temperature, unsigned char sid)
 {
     tN2kMsg N2kMsg(N2KSRC);
     SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_MainCabinTemperature, CToKelvin(temperature));
     return send_msg(N2kMsg);
 }
 
-bool N2K::sendSatellites(const sat *sats, uint n, int sid, GSA &gsa)
+bool appendSatTo129540(tN2kMsg& N2kMsg, const tSatelliteInfo& SatelliteInfo) {
+  int Index = 2;
+  uint8_t NumberOfSVs=N2kMsg.GetByte(Index);
+  NumberOfSVs++;
+  Index=2;
+  N2kMsg.SetByte(NumberOfSVs, Index);  // increment the number satellites
+  // add the new satellite info
+  N2kMsg.AddByte(SatelliteInfo.PRN);
+  N2kMsg.Add2ByteDouble(SatelliteInfo.Elevation,1e-4L);
+  N2kMsg.Add2ByteUDouble(SatelliteInfo.Azimuth,1e-4L);
+  N2kMsg.Add2ByteDouble(SatelliteInfo.SNR,1e-2L);
+  N2kMsg.Add4ByteDouble(SatelliteInfo.RangeResiduals,1e-5L);
+  N2kMsg.AddByte(0xf0 | SatelliteInfo.UsageStatus);
+  return true;
+}
+
+bool appendSat(tN2kMsg& m, const sat& s)
 {
-    //Log::trace("[N2K] Sending sats {%d/%d}\n", gsa.nSat, n);
-    bool res = true;
-    int iSats = 0;
-    tN2kMsg* m = NULL;
-    while (iSats<n)
+    //Log::trace("[N2K] Adding sat PRN {%d} Az {%d} El {%d} db {%d} Used {%d}\n", s.sat_id, s.az, s.elev, s.db, s.used);
+    tSatelliteInfo info;
+    info.PRN = s.sat_id;
+    info.Azimuth = DegToRad(s.az);
+    info.Elevation = DegToRad(s.elev);
+    if (s.db) info.SNR = (s.db==-1)?N2kDoubleNA:s.db;
+    if (s.db==-1)
     {
-        if (m==NULL)
+        info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_NotTracked;
+    }
+    else
+    {
+        if (s.used)
+            info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_UsedInSolutionWithoutDifferentialCorrections;
+        else
+            info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_TrackedButNotUsedInSolution;
+    }
+    return AppendN2kPGN129540(m, info);
+}
+
+bool N2K::sendSatellites(const sat *sats, uint n, unsigned char sid, GSA &gsa)
+{
+    //Log::trace("[N2K] Sending sats {%d/%d} %ud\n", gsa.nSat, n, sid);
+    int satsInMsg = 0;
+    int i = 0;
+    while (i<n)
+    {
+        tN2kMsg m(N2KSRC);
+        //m.SetIsTPMessage(true);
+        SetN2kGNSSSatellitesInView(m, sid);
+        while (appendSat(m, (sats[i])) && i<n)
         {
-            m = new tN2kMsg(N2KSRC);
-            SetN2kGNSSSatellitesInView(*m, sid);
+            i++;
+            satsInMsg++;
         }
-        tSatelliteInfo info;
-        info.PRN = sats[iSats].sat_id;
-        info.Azimuth = sats[iSats].az / 180.0 * M_PI;
-        info.Elevation = sats[iSats].elev / 180.0 * M_PI;
-        if (sats[iSats].db) info.SNR = (sats[iSats].db==-1)?N2kDoubleNA:sats[iSats].db;
-        if (sats[iSats].db==-1)
+        if (!send_msg(m))
         {
-            info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_NotTracked;
+            //Log::trace("[N2K] Failed sending sats {%d/%d/%d} %ud\n", satsInMsg, i, n, sid);
+            return false;
         }
         else
         {
-            if (sats[iSats].used)
-                info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_UsedInSolutionWithoutDifferentialCorrections;
-            else
-                info.UsageStatus = tN2kPRNUsageStatus::N2kDD124_TrackedButNotUsedInSolution;
+            //Log::trace("[N2K] Sent sats {%d/%d/%d} %ud\n", satsInMsg, i, n, sid);
         }
-        bool append = AppendSatelliteInfo(*m, info);
-        if (!append || (iSats==(n-1))) // append is not succesfull (no more can be added) or it's the last
-        {
-            res = res && send_msg(*m);
-            //Log::trace("[N2K] Sent msg {%d} sats {%d}\n", res, iSats + 1);
-            delete m;
-            m = NULL;
-        }
-        if (append) iSats++;
-        if (!res) break;
+        satsInMsg = 0;
     }
-    return n && res;
+    return i>0;
+}
+
+void N2K::dumpStats()
+{
+    Log::trace("[STATS] Bus: CAN.TX {%d/%d} CAN.RX {%d} UART {%d B} in 10s\n",
+            stats->can_sent, stats->can_failed, stats->can_received, stats->bytes_uart);
 }

@@ -13,16 +13,21 @@ public:
 
     AB_AGENT
 
-
     double getLatitude();
     double getLongitude();
     double getAltitude();
 
+    void dumpStats();
+
 private:
+    void manageLowFrequency(unsigned long tstamp);
+    void manageHighFrequency(unsigned long tstamp);
+    bool set_system_time(unsigned char sid);
     Context ctx;
-    SFE_UBLOX_GNSS* myGNSS;
     bool enabled;
     unsigned long last_read_time;
+    time_t delta_time;
+    bool gps_time_set;
 };
 
 #endif

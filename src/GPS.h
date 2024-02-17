@@ -14,6 +14,8 @@ public:
 
     AB_AGENT
 
+    void dumpStats();
+
 private:
     virtual int on_line_read(const char *sentence);
     void send_gsv(unsigned long ms);
