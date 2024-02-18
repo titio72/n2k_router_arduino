@@ -94,7 +94,7 @@ void GPSX::manageLowFrequency(unsigned long ms)
         unsigned char sid = _sid.getNew();
         ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
         ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
-        ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
+        //ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
         set_system_time(sid);
     }
 }
@@ -111,8 +111,11 @@ void getSat(UBX_NAV_SAT_data_t* d)
     bSAT = true;
 }
 
+bool high_freq_signal = false;
+
 void getPVT(UBX_NAV_PVT_data_t* d)
 {
+    high_freq_signal = true;
     RMC& rmc = pCtx->cache.rmc;
     dPVT = *d;
     bPVT = true;
@@ -166,8 +169,12 @@ void GPSX::loop(unsigned long ms)
             bSAT = false;
             myGNSS.checkUblox();
             myGNSS.checkCallbacks();
-            manageHighFrequency(ms);
-            manageLowFrequency(ms);
+            if (high_freq_signal)
+            {
+                high_freq_signal = false;
+                manageHighFrequency(ms);
+                manageLowFrequency(ms);
+            }
         }
     }
 }

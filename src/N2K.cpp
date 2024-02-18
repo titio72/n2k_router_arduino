@@ -1,7 +1,7 @@
 #include "Constants.h"
 char socket_name[32];
-    #define ESP32_CAN_TX_PIN GPIO_NUM_5 // Set CAN TX port to 5
-    #define ESP32_CAN_RX_PIN GPIO_NUM_4 // Set CAN RX port to 4
+#define ESP32_CAN_TX_PIN GPIO_NUM_4 // Set CAN TX port to 5
+#define ESP32_CAN_RX_PIN GPIO_NUM_5 // Set CAN RX port to 4
 #include <NMEA2000_CAN.h>
 #include <time.h>
 #include <math.h>
@@ -33,7 +33,10 @@ void private_message_handler(const tN2kMsg &N2kMsg)
 
 void N2K::loop(unsigned long time)
 {
-    NMEA2000.ParseMessages();
+    if (initialized)
+    {
+        NMEA2000.ParseMessages();
+    }
 }
 
 bool N2K::sendMessage(int dest, ulong pgn, int priority, int len, unsigned char *payload)
@@ -62,9 +65,6 @@ void N2K::setup()
     if (!initialized)
     {
         Log::trace("[N2k] Initializing N2K\n");
-        NMEA2000.SetN2kCANSendFrameBufSize(200);
-        NMEA2000.SetN2kCANReceiveFrameBufSize(150);
-        NMEA2000.SetN2kCANMsgBufSize(15);
         NMEA2000.SetProductInformation("00000001",                         // Manufacturer's Model serial code
                                        100,                                // Manufacturer's product code
                                        "ABN2k                           ", // Manufacturer's Model ID
@@ -76,16 +76,16 @@ void N2K::setup()
                                       60,  // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                       2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf
         );
-        if (_handler)
-        {
-            NMEA2000.SetMode(tNMEA2000::N2km_ListenAndNode, N2KSRC);
-            NMEA2000.SetMsgHandler(private_message_handler);
-        }
-        else
-        {
-            Log::trace("[N2K] Initializing node-only\n");
+        //if (_handler)
+        //{
+        //    NMEA2000.SetMode(tNMEA2000::N2km_ListenAndNode, N2KSRC);
+        //    NMEA2000.SetMsgHandler(private_message_handler);
+        //}
+        //else
+        //{
+        //    Log::trace("[N2K] Initializing node-only\n");
             NMEA2000.SetMode(tNMEA2000::N2km_NodeOnly, N2KSRC);
-        }
+        //}
         NMEA2000.EnableForward(false); // Disable all msg forwarding to USB (=Serial)
         initialized = NMEA2000.Open();
         Log::trace("[N2K] N2K initialized {%s}\n", initialized ? "OK" : "KO");

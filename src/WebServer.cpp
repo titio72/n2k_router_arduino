@@ -81,7 +81,7 @@ public:
         {
             Log::trace("[WEB] Error errno{%d}\n", errno);
         }
-        return res;        
+        return res;
     }
 };
 #endif
@@ -274,6 +274,12 @@ T& write_cell_s(T &client, const char* label, const char* value)
     return client << "<td class='conf_cell'>" << label << "</td><td class='conf_value'>" << value << "</td>";
 }
 
+template<typename T>
+T& write_2cell_s(T &client, const char* label, const char* value)
+{
+    return client << "<td class='conf_cell'>" << label << "</td><td colspan='3' class='conf_value'>" << value << "</td>";
+}
+
 template<typename T, typename V>
 T& write_cell_v(T& client, const char* label, const char* format, V value)
 {
@@ -351,10 +357,8 @@ void generate_page(T& client, Configuration &conf, statistics &stats, data &cach
         write_cell_u(client, "Sim Nav", conf.sim_nav?"disable_sim_nav":"enable_sim_nav", conf.sim_nav?"Yes":"No");
     }
     write(client, "</tr><tr>");
-    sprintf(tmp, "%4d-%02d-%02d", cache.rmc.y, cache.rmc.M, cache.rmc.d);
-    write_cell_s(client, "Date", tmp);
-    sprintf(tmp, "%02d:%02d:%02d", cache.rmc.h, cache.rmc.m, cache.rmc.s);
-    write_cell_s(client, "Time", tmp);
+    sprintf(tmp, "%4d-%02d-%02d %02d:%02d:%02d", cache.rmc.y, cache.rmc.M, cache.rmc.d, cache.rmc.h, cache.rmc.m, cache.rmc.s);
+    write_2cell_s(client, "UTC", tmp);
     write(client, "</tr>");
     write(client, "</table>");
     write(client, "<p><a href='/'>Refresh</a></p>");
@@ -406,7 +410,6 @@ void handle_client(WiFiClient &serving_client, unsigned long ms, Context& ctx)
     String header = get_client_header(serving_client, ms);
     if (header.length()!=0)
     {
-        char* res = NULL;
         bool sendPage = manage(header.c_str(), ctx.conf, ctx.n2k);
         if (sendPage)
             generate_page(serving_client, ctx.conf, ctx.stats, ctx.cache);

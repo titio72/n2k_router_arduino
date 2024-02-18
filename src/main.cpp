@@ -23,10 +23,14 @@
 #include "HumTemp.h"
 #include "PressureTemp.h"
 #include "Display.h"
-
 #include "NMEA.h"
 
 #define G GPSX
+#define DO_NETWORK 1
+#define DO_GPS     1
+#define DO_DISPLAY 1
+#define DO_DHT     1
+#define DO_BMP     1
 
 #pragma region CONTEXT
 Configuration conf;
@@ -44,9 +48,6 @@ PressureTemp bmp(context);
 Simulator simulator(context);
 EVODisplay display;
 #pragma endregion
-
-HardwareSerial veDirect(4);
-
 
 bool initialized = false;
 
@@ -93,25 +94,9 @@ void report_stats(unsigned long ms)
   }
 }
 
-void setup()
+unsigned long handle_loop_throttling()
 {
-  #ifdef ESP32_ARCH
-  Serial.begin(115200);
-  #endif
-  read_conf();
-  msleep(500);
-  n2k.setup();
-  ntwrk.setup();
-  display.setup();
-  gps.setup();
-  dht.setup();
-  bmp.setup();
-  initialized = true;
-}
-
-ulong handle_loop_throttling()
-{
-  static ulong t0 = _millis();
+  static unsigned long t0 = _millis();
   ulong t = _millis();
   if ((t - t0) < 25)
   {
@@ -142,11 +127,11 @@ void loop()
   if (initialized)
   {
     n2k.loop(t);
-    handle_agent_loop(ntwrk, true, t);
-    handle_agent_loop(display, true, t);
-    handle_agent_loop(gps, conf.use_gps, t);
-    handle_agent_loop(bmp, conf.use_bmp280, t);
-    handle_agent_loop(dht, conf.use_dht11, t);
+    if (DO_NETWORK) handle_agent_loop(ntwrk, true, t);
+    if (DO_DISPLAY) handle_agent_loop(display, true, t);
+    if (DO_GPS) handle_agent_loop(gps, conf.use_gps, t);
+    if (DO_BMP) handle_agent_loop(bmp, conf.use_bmp280, t);
+    if (DO_DHT) handle_agent_loop(dht, conf.use_dht11, t);
     handle_agent_loop(simulator, conf.simulator, t);
     if (conf.use_dht11 || conf.use_bmp280 || conf.simulator)
     {
@@ -154,6 +139,26 @@ void loop()
     }
     report_stats(t);
   }
+}
+
+void setup()
+{
+  #ifdef ESP32_ARCH
+  Serial.begin(115200);
+  #endif
+  read_conf();
+  conf.use_gps = conf.use_gps && DO_GPS;
+  conf.use_dht11 = conf.use_gps && DO_DHT;
+  conf.use_bmp280 = conf.use_gps && DO_BMP;
+  conf.network = conf.network && DO_NETWORK;
+  n2k.setup();
+  msleep(1000);
+  if (DO_NETWORK) ntwrk.setup();
+  if (DO_DISPLAY) display.setup();
+  if (DO_GPS)     gps.setup();
+  if (DO_DHT)     dht.setup();
+  if (DO_BMP)     bmp.setup();
+  initialized = true;
 }
 
 #ifndef ESP32_ARCH
