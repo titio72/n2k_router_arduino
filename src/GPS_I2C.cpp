@@ -2,9 +2,8 @@
 #include "Utils.h"
 #include "TwoWireProvider.h"
 #include "Log.h"
-#include "N2K.h"
+#include "N2K_router.h"
 #include "Conf.h"
-#include "Constants.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
 Context* pCtx = NULL;
@@ -16,6 +15,9 @@ UBX_NAV_DOP_data_t dDOP;
 UBX_NAV_PVT_data_t dPVT;
 
 time_t unix_time;
+
+// enable/disable sending sats 130577
+#define SEND_SATS 0
 
 GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false)
 {
@@ -56,6 +58,15 @@ void loadSats(sat* satellites, UBX_NAV_SAT_data_t* d, GSA& gsa, GSV& gsv)
     //Log::trace("[GPS] Loaded {%d/%d} sats\n", gsv.nSat, gsa.nSat);
 }
 
+void loadFix(UBX_NAV_SAT_data_t* d, GSA& gsa) {
+    gsa.fix = dPVT.fixType;
+    gsa.hdop = dDOP.hDOP / 100.0;
+    gsa.vdop = dDOP.vDOP / 100.0;
+    gsa.tdop = dDOP.tDOP / 100.0;
+    gsa.pdop = dDOP.pDOP / 100.0;
+    gsa.valid = dPVT.flags.bits.gnssFixOK;
+}
+
 bool GPSX::set_system_time(unsigned char sid)
 {
   if (unix_time > 0)
@@ -81,20 +92,17 @@ void GPSX::manageLowFrequency(unsigned long ms)
     if (bSAT && bDOP && bPVT && (ms-lastT)>950)
     {
         lastT = ms;
-        loadSats(ctx.cache.gsv.satellites, &dSAT, ctx.cache.gsa, ctx.cache.gsv);
 
-        ctx.cache.gsa.fix = dPVT.fixType;
-        ctx.cache.gsa.hdop = dDOP.hDOP / 100.0;
-        ctx.cache.gsa.vdop = dDOP.vDOP / 100.0;
-        ctx.cache.gsa.tdop = dDOP.tDOP / 100.0;
-        ctx.cache.gsa.pdop = dDOP.pDOP / 100.0;
-        ctx.cache.gsa.valid = dPVT.flags.bits.gnssFixOK;
+        loadSats(ctx.cache.gsv.satellites, &dSAT, ctx.cache.gsa, ctx.cache.gsv);
+        loadFix(&dSAT, ctx.cache.gsa);
 
         static N2KSid _sid;
         unsigned char sid = _sid.getNew();
         ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
         ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
-        //ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
+        #if (SEND_SATS==1)
+        ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
+        #endif
         set_system_time(sid);
     }
 }
@@ -130,8 +138,10 @@ void getPVT(UBX_NAV_PVT_data_t* d)
     }
 
     rmc.valid = d->flags.bits.gnssFixOK;
-    rmc.cog = d->headVeh / 100000.0f;
-    rmc.sog = d->gSpeed / 1000.0f;
+    // set cog in deg
+    rmc.cog = d->headMot / 100000.0f; // headVeh is deg*1e-05
+    // set sog in Kn
+    rmc.sog = (d->gSpeed / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
     rmc.y = d->year;
     rmc.M = d->month;
     rmc.d = d->day;
@@ -146,8 +156,6 @@ void getPVT(UBX_NAV_PVT_data_t* d)
     pCtx->cache.latitude_NS = d->lat>0.0?'N':'S';
     pCtx->cache.longitude = abs(d->lon / 10000000.0f);
     pCtx->cache.longitude_EW = d->lon>0.0?'W':'E';
-
-
 }
 
 void GPSX::manageHighFrequency(unsigned long ms)

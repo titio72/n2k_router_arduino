@@ -1,11 +1,9 @@
 #include "Display.h"
 #include "Log.h"
 
-#ifdef ESP32_ARCH
 #include <Arduino.h>
 #include <Adafruit_SSD1306.h>
 #include "TwoWireProvider.h"
-#include "Constants.h"
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -24,12 +22,13 @@ void EVODisplay::setup() {
     if (!init) {
         display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, TwoWireProvider::get_two_wire(), OLED_RESET);
         init = display->begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
+        //init = true;
         Log::trace("[DS] Initialized {%d}\n", init);
 
         if (init) display->clearDisplay();
 
-        pinMode(LEDPIN1, OUTPUT);
-        digitalWrite(LEDPIN1, HIGH);
+        pinMode(LED_PIN, OUTPUT);
+        digitalWrite(LED_PIN, HIGH);
     }
 }
 
@@ -49,7 +48,7 @@ void EVODisplay::blink(unsigned long ms, unsigned long period)
 {
     if (enabled)
     {
-        digitalWrite(LEDPIN1, HIGH);
+        digitalWrite(LED_PIN, HIGH);
         blink_time = ms;
         blink_period = period;
     }
@@ -57,38 +56,11 @@ void EVODisplay::blink(unsigned long ms, unsigned long period)
 
 void EVODisplay::loop(unsigned long ms)
 {
-  if ((ms-blink_time)>=blink_period)
-  {
-    digitalWrite(LEDPIN1, LOW);
-  }
-}
-
-#else
-EVODisplay::EVODisplay(): init(false), display(0), blink_time(0), blink_period(0), enabled(false) {
-}
-
-EVODisplay::~EVODisplay() {
-}
-
-void EVODisplay::setup() {
-    init = true;
-}
-
-void EVODisplay::draw_text(const char* text) {
-    if (init && text) {
-        //Log::trace("[Display] Message {%s}\n", text);
+    if ((ms-blink_time)>=blink_period)
+    {
+        digitalWrite(LED_PIN, LOW);
     }
 }
-
-void EVODisplay::blink(unsigned long ms, unsigned long period) 
-{
-}
-
-void EVODisplay::loop(unsigned long ms) 
-{
-}
-#endif
-
 
 void EVODisplay::enable()
 {

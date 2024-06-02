@@ -1,14 +1,3 @@
 .pio
 .vscode
-src/constants-real.h
-CMakeFiles/
-build/
-src/Makefile
-Makefile
-src/cmake_install.cmake
-src/gps_adapter
-*.log
-*.swp
-cmake_install.cmake
-CMakeCache.txt
-dump.txt
+

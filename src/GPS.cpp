@@ -2,26 +2,18 @@
 #include "NMEA.h"
 #include "Utils.h"
 #include "Log.h"
-#include "N2K.h"
+#include "N2K_router.h"
 #include "Conf.h"
 
 NMEAUtils nmea;
 
-
-GPS::GPS(Context _ctx):
-    ctx(_ctx), p(NULL), enabled(false), device_name(NULL), delta_time(0), gps_time_set(false)
+GPS::GPS(Context _ctx, Port* _p):
+    ctx(_ctx), p(_p), enabled(false), delta_time(0), gps_time_set(false)
 {
 }
 
 GPS::~GPS()
 {
-  if (p) delete p;
-  if (device_name) delete device_name;
-}
-
-void GPS::set_port_name(const char* _port)
-{
-  device_name = strdup(_port);
 }
 
 time_t get_time(RMC &rmc, time_t &t, short &ms)
@@ -72,7 +64,7 @@ void GPS::send_gsv(ulong ms)
   }
 }
 
-int GPS::on_line_read(const char *sentence)
+void GPS::on_line_read(const char *sentence)
 {
   static N2KSid _sid;
   unsigned char sid = _sid.getNew();
@@ -94,12 +86,11 @@ int GPS::on_line_read(const char *sentence)
           ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
           t0 = t;
         }
-        ctx.stats.valid_rmc++;
-        return 0;
+        stats.valid_rmc++;
       }
       else
       {
-        ctx.stats.invalid_rmc++;
+        stats.invalid_rmc++;
       }
     }
   }
@@ -109,29 +100,27 @@ int GPS::on_line_read(const char *sentence)
     {
       if (ctx.cache.gsa.valid)
       {
-        ctx.stats.valid_gsa++;
-        ctx.stats.gps_fix = ctx.cache.gsa.fix;
+        stats.valid_gsa++;
+        stats.gps_fix = ctx.cache.gsa.fix;
       }
       else
       {
-        ctx.stats.invalid_gsa++;
-        ctx.stats.gps_fix = 0;
+        stats.invalid_gsa++;
+        stats.gps_fix = 0;
       }
-      return 0;
     }
   }
   else if (NMEAUtils::is_sentence(sentence, "GSV"))
   {
     if (nmea.parseGSV(sentence) == 0)
     {
-      ctx.stats.valid_gsv++;
+      stats.valid_gsv++;
     }
     else
     {
-      ctx.stats.invalid_gsv++;
+      stats.invalid_gsv++;
     }
   }
-  return -1;
 }
 
 void GPS::loop(unsigned long ms)
@@ -148,7 +137,6 @@ void GPS::setup()
 {
   if (p==NULL)
   {
-    p = new Port(device_name==NULL?"":device_name, &(ctx.stats.bytes_uart));
     p->set_handler(this);
   }
 }
@@ -182,10 +170,26 @@ void GPS::dumpStats()
     Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d}", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
     Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f}", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
     Log::trace("Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}\n", ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
-
-    Log::trace("[STATS] GPS: RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} in 10s\n",
-                  ctx.stats.valid_rmc, ctx.stats.invalid_rmc,
-                  ctx.stats.valid_gsa, ctx.stats.invalid_gsa,
-                  ctx.stats.valid_gsv, ctx.stats.invalid_gsv);
+    stats.dump();
+    stats.reset();
   }
+}
+
+void GPS_stats::dump()
+{
+    Log::trace("[STATS] GPS: RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} fix {%d}\n",
+                  valid_rmc, invalid_rmc,
+                  valid_gsa, invalid_gsa,
+                  valid_gsv, invalid_gsv, gps_fix);
+}
+
+void GPS_stats::reset()
+{
+  valid_gsa = 0;
+  invalid_gsa = 0;
+  valid_gsv = 0;
+  invalid_gsv = 0;
+  valid_rmc = 0;
+  invalid_rmc = 0;
+  gps_fix = 0;
 }

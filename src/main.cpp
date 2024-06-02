@@ -3,57 +3,82 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef ESP32_ARCH
 #include <Arduino.h>
 #include <Esp.h>
-#else
-#include <signal.h>
-#endif
+#include <ArduinoPort.h>
 
-#include "Constants.h"
+#include <N2K.h>
+#include <Utils.h>
+#include <Log.h>
+
 #include "Context.h"
 #include "Conf.h"
 #include "Simulator.h"
-#include "N2K.h"
-#include "Utils.h"
-#include "Network.h"
-#include "Log.h"
-#include "GPS.h"
+#include "N2K_router.h"
 #include "GPS_I2C.h"
+#include "GPS.h"
 #include "HumTemp.h"
 #include "PressureTemp.h"
 #include "Display.h"
 #include "NMEA.h"
+#include "BMV712.h"
+#include "BLEConf.h"
+#include <Ports.h>
 
-#define G GPSX
-#define DO_NETWORK 1
-#define DO_GPS     1
-#define DO_DISPLAY 1
-#define DO_DHT     1
-#define DO_BMP     1
+#define DO_BMV     0
+
+void on_source_claim(const unsigned char old_source, const unsigned char new_source);
 
 #pragma region CONTEXT
 Configuration conf;
-statistics stats;
 data cache;
-N2K n2k(NULL, &stats);
-Context context(n2k, conf, stats, cache);
+N2K n2k_bus = *(N2K::get_instance(NULL, on_source_claim));
+N2K_router n2k(n2k_bus);
+Context context(n2k, conf, cache);
 #pragma endregion
 
 #pragma region AGENTS
-NetworkHub ntwrk(context);
-G gps(context);
+#if GPS_I2C==1
+GPSX gps(context);
+#else
+Port* gpsPort = new ArduinoPort(Serial1, GPS_RX_PIN, GPS_TX_PIN);
+GPS gps(context, );
+#endif
+#if (DO_BMV==1)
+ArduinoPort veDirectPort(Serial1, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, true);
+BMV712 bmv712(context, veDirectPort);
+#endif
 HumTemp dht(context);
 PressureTemp bmp(context);
 Simulator simulator(context);
 EVODisplay display;
+BLEConf bleConf(context);
 #pragma endregion
 
-bool initialized = false;
+bool started = false;
+
+struct AppStats
+{
+  unsigned long cycles = 0;
+  unsigned long pauses = 0;
+  unsigned short retry_gps = 0;
+  unsigned short retry_dht = 0;
+  unsigned short retry_bmp = 0;
+  unsigned short retry_display = 0;
+} app_stats;
+
+#define MAX_RETRY 3
 
 void read_conf()
 {
   conf.load();
+}
+
+void on_source_claim(const unsigned char old_source, const unsigned char new_source)
+{
+  conf.n2k_source = new_source;
+  Log::trace("[APP] Save new claimed n2k source {%d}\n", new_source);
+  conf.save();
 }
 
 void send_env(unsigned long ms)
@@ -64,19 +89,21 @@ void send_env(unsigned long ms)
     n2k.sendPressure(cache.pressure);
     n2k.sendCabinTemp(cache.temperature);
     n2k.sendHumidity(cache.humidity);
+    n2k.sendEnvironmentXRaymarine(cache.pressure, cache.humidity, cache.temperature);
     n2k.sendElectronicTemperature(cache.temperature_el);
     t0 = ms;
 
     static char temperature_text[32];
-    sprintf(temperature_text, "%5.2f C\n%6.1f Mb", cache.temperature, cache.pressure/100.0f);
+    sprintf(temperature_text, "%5.2fC\n%6.1f Mb", cache.temperature, cache.pressure/100.0f);
+    //Log::trace("%lu %s\n", ms, temperature_text);
     display.draw_text(temperature_text);
-    display.blink(ms, 500);
+    display.blink(ms, 200);
   }
 }
 
 void dumpStats()
 {
-  Log::trace("[STATS] OPS: Cycles {%d} Pauses {%d} in 10s\n", stats.cycles, stats.pauses);
+  Log::trace("[STATS] OPS: Cycles {%d} Pauses {%d} in 10s\n", app_stats.cycles, app_stats.pauses);
 }
 
 void report_stats(unsigned long ms)
@@ -87,53 +114,81 @@ void report_stats(unsigned long ms)
     last_time_stats_ms = ms;
 
     gps.dumpStats();
-    n2k.dumpStats();
+    n2k_bus.getStats().dump();
     dumpStats();
 
-    memset(&stats, 0, sizeof(statistics));
+    app_stats.cycles = 0;
+    app_stats.pauses = 0;
   }
 }
 
-unsigned long handle_loop_throttling()
+unsigned long throttle_main_loop()
 {
   static unsigned long t0 = _millis();
   ulong t = _millis();
   if ((t - t0) < 25)
   {
-    stats.pauses++;
+    app_stats.pauses++;
     msleep(25);
   }
   t0 = t;
   return t;
 }
 
-template<typename T> void handle_agent_loop(T &agent, bool enable, unsigned long t)
+template<typename T> bool handle_agent_enable(T &agent, bool enable, unsigned short* retry, unsigned long t, const char* desc="")
+{
+  if (!agent.is_enabled())
+  {
+    if (retry==NULL || (*retry)<MAX_RETRY)
+    {
+      agent.enable();
+      if (agent.is_enabled())
+      {
+        if (retry) (*retry) = 0;
+      }
+      else
+      {
+        if (retry)
+        {
+          (*retry)++;
+          if ((*retry)>=MAX_RETRY) Log::trace("[APP] Exceeded enable retry {%s}\n", desc);
+        }
+      }
+    }
+  }
+  return agent.is_enabled();
+}
+
+template<typename T> void handle_agent_loop(T &agent, bool enable, unsigned short* retry, unsigned long t, const char* desc="")
 {
   if (enable)
   {
-    agent.enable();
-    if (agent.is_enabled()) agent.loop(t);
+    if (handle_agent_enable(agent, enable, retry, t, desc)) agent.loop(t);
   }
   else
   {
     agent.disable();
+    if (retry) (*retry) = 0;
   }
 }
 
 void loop()
 {
-  stats.cycles++;
-  ulong t = handle_loop_throttling();
-  if (initialized)
+  app_stats.cycles++;
+  ulong t = throttle_main_loop();
+  if (started)
   {
-    n2k.loop(t);
-    if (DO_NETWORK) handle_agent_loop(ntwrk, true, t);
-    if (DO_DISPLAY) handle_agent_loop(display, true, t);
-    if (DO_GPS) handle_agent_loop(gps, conf.use_gps, t);
-    if (DO_BMP) handle_agent_loop(bmp, conf.use_bmp280, t);
-    if (DO_DHT) handle_agent_loop(dht, conf.use_dht11, t);
-    handle_agent_loop(simulator, conf.simulator, t);
-    if (conf.use_dht11 || conf.use_bmp280 || conf.simulator)
+    n2k_bus.loop(t);
+    handle_agent_loop(display, true, &app_stats.retry_display, t, "Display");
+    handle_agent_loop(gps, conf.use_gps, &app_stats.retry_gps, t, "GPS");
+    handle_agent_loop(bmp, conf.use_bmp, &app_stats.retry_bmp, t, "BMP");
+    handle_agent_loop(dht, conf.use_dht, &app_stats.retry_dht, t, "DHT");
+    #if (DO_BMV==1)
+    handle_agent_loop(bmv712, true, t);
+    #endif
+    handle_agent_loop(simulator, conf.simulator, NULL, t), "Sim";
+    handle_agent_loop(bleConf, true, NULL, t, "BLE");
+    if (conf.use_dht || conf.use_bmp || conf.simulator)
     {
       send_env(t);
     }
@@ -143,100 +198,25 @@ void loop()
 
 void setup()
 {
-  #ifdef ESP32_ARCH
   Serial.begin(115200);
-  #endif
+  msleep(2500);
+  uint32_t f = getCpuFrequencyMhz();
+  bool res_cpu_freq = setCpuFrequencyMhz(80);
+  uint32_t f1 = getCpuFrequencyMhz();
+  Log::trace("[APP] CPU Frequency {%d}\n", f1);
   read_conf();
-  conf.use_gps = conf.use_gps && DO_GPS;
-  conf.use_dht11 = conf.use_gps && DO_DHT;
-  conf.use_bmp280 = conf.use_gps && DO_BMP;
-  conf.network = conf.network && DO_NETWORK;
-  n2k.setup();
-  msleep(1000);
-  if (DO_NETWORK) ntwrk.setup();
-  if (DO_DISPLAY) display.setup();
-  if (DO_GPS)     gps.setup();
-  if (DO_DHT)     dht.setup();
-  if (DO_BMP)     bmp.setup();
-  initialized = true;
+  n2k_bus.set_desired_source(conf.n2k_source);
+  msleep(2500);
+  n2k_bus.setup();
+  msleep(500);
+  display.setup();
+  gps.setup();
+  dht.setup();
+  bmp.setup();
+  bleConf.setup();
+  #if (DO_BMV==1)
+  bmv712.setup();
+  #endif
+  msleep(500);
+  started = true;
 }
-
-#ifndef ESP32_ARCH
-
-#define NO_ARG -1
-
-int is_arg(const char* arg, int argc, const char **argv)
-{
-  for (int i = 0; i<argc; i++) {
-    if (strcmp(arg, argv[i])==0) return i;
-  }
-  return -1;
-}
-
-const char* get_arg(const char* arg_name, int argc, const char** argv)
-{
-  int _arg = is_arg(arg_name, argc, argv);
-  if (_arg!=NO_ARG && argc>_arg) return argv[_arg+1];
-  else return NULL;
-}
-
-void  stop_handler(int sig)
-{
-  Log::trace("Stopping\n");
-  signal(sig, SIG_IGN);
-  ntwrk.disable();
-  exit(0);
-}
-
-int main(int argc, const char **argv)
-{
-  if (is_arg("help", argc, argv)!=NO_ARG)
-  {
-    printf("usage: n2k_router <options>\n");
-    printf("Options:\n");
-    printf("  gps - stars reading GPS from serial input (ttyUSB1).\n");
-    printf("  sim - stars simulator.\n");
-    printf("  can <can soket name> - sets the can socket device name (def. vcan0).\n");
-    printf("Example: n2k_router sim can can1\n");
-  }
-  else
-  {
-    signal(SIGINT, stop_handler);
-    conf.use_gps = is_arg("gps", argc, argv)!=NO_ARG;
-    conf.simulator = is_arg("sim", argc, argv)!=NO_ARG;
-    conf.use_dht11 = false;
-    conf.use_bmp280 = false;
-    conf.send_time = false;
-
-    const char* can_device = get_arg("can", argc, argv);
-    if (can_device)
-    {
-      n2k.set_can_socket_name(can_device);
-      Log::trace("Set CAN socket device: {%s}\n", can_device);
-    }
-    else
-    {
-      n2k.set_can_socket_name("vcan0");
-      Log::trace("Set default CAN socket device: {vcan0}\n");
-    }
-
-    const char* gps_device = get_arg("gps", argc, argv);
-    if (gps_device)
-    {
-      gps.set_port_name(gps_device);
-      Log::trace("Set GPS socket device: {%s}\n", gps_device);
-    }
-    else
-    {
-      gps.set_port_name(DEFAULT_GPS_DEVICE);
-      Log::trace("Set defaut GPS socket device: {%s}\n", DEFAULT_GPS_DEVICE);
-    }
-
-    setup();
-    while (1)
-    {
-      loop();
-    }
-  }
-}
-#endif

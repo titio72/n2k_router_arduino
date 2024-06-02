@@ -13,16 +13,14 @@
 
 static const int UART_SPEEDS = 6;
 static const char* UART_SPEED[] = {"4800", "9600", "19200", "38400", "57600", "115200"};
-static const char* DHTxx[] = {"DHT11", "DHT22"};
 
 #define DEFAULT_USE_GPS 0
 #define DEFAULT_USE_BMP 0
 #define DEFAULT_USE_DHT 0
 #define DEFAULT_USE_TIME 0
-#define DEFAULT_USE_NETWORK 1
-#define DEFAULT_DHT 1
 #define DEFAULT_GPS_SPEED 1
 #define DEFAULT_SIMULATOR 0
+#define DEFAULT_N2K_SOURCE 22
 
 class Configuration {
 
@@ -30,22 +28,21 @@ public:
   Configuration();
   ~Configuration();
 
-  int save();
+  bool save();
 
-  int load();
+  bool load();
 
 public:
   bool use_gps;
-  bool use_bmp280;
-  bool use_dht11;
+  bool use_bmp;
+  bool use_dht;
   bool send_time;
   bool simulator;
-  bool network;
-  unsigned char dht11_dht22;
+  unsigned char n2k_source;
   unsigned char uart_speed;
 
-  bool sim_position           = false;
-  bool sim_sogcog             = false;
+  bool sim_position           = true;
+  bool sim_sogcog             = true;
   bool sim_wind               = true;
   bool sim_heading            = true;
   bool sim_speed              = true;
