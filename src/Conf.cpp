@@ -40,7 +40,7 @@ bool get_conf(uint8_t *v)
     if (EEPROM.begin(3))
     {
         uint8_t conf_version = EEPROM.read(0);
-        if (v==CONF_VERSION)
+        if (conf_version==CONF_VERSION)
         {
             // the configuration template is compatible
             v[0] = EEPROM.read(1);
