@@ -100,6 +100,10 @@ void GPSX::manageLowFrequency(unsigned long ms)
         unsigned char sid = _sid.getNew();
         ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
         ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+        if (ctx.conf.sog_2_stw)
+        {
+            ctx.n2k.sendSTW(ctx.cache.rmc.sog);
+        }
         #if (SEND_SATS==1)
         ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
         #endif

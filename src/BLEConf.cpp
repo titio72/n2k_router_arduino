@@ -3,7 +3,6 @@
 #include "Utils.h"
 #include "Conf.h"
 #include <Log.h>
-#ifdef ESP32_ARCH
 #include "DHTesp.h"
 
 #define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -16,8 +15,9 @@
 #define BMP_ID       2
 #define SYT_ID       3
 #define SIM_ID       4
+#define STW_ID       5
 
-#define MAX_CONF     5
+#define MAX_CONF     6
 
 
 #define MAX_DATA     6
@@ -47,6 +47,8 @@ void BLEConf::on_write(int handle, const char* value)
         Log::trace("[BLE] Reading conf SYT %d\n", c.send_time);
         if (x>SIM_ID) c.simulator  = (value[SIM_ID]=='1');
         Log::trace("[BLE] Reading conf SIM %d\n", c.simulator);
+        if (x>STW_ID) c.sog_2_stw  = (value[STW_ID]=='1');
+        Log::trace("[BLE] Reading conf STW %d\n", c.sog_2_stw);
         c.save();
     }
 }
@@ -67,10 +69,11 @@ void BLEConf::setup()
     cnf[DHT_ID] = c.use_dht?'1':'0';
     cnf[SYT_ID] = c.send_time?'1':'0';
     cnf[SIM_ID] = c.simulator?'1':'0';
+    cnf[STW_ID] = c.sog_2_stw?'1':'0';
     ble.set_setting_value(0, cnf);
 
     ble.begin();
-    Log::trace("[BLE] Setup ok\n");
+    Log::trace("[BLE] Setup ok {%s}\n", cnf);
 }
 
 void addInt(uint8_t* dest, int &offset, int32_t data32) {
@@ -132,32 +135,6 @@ void BLEConf::loop(unsigned long ms)
       ble.set_field_value(0, v, offset);
     }
 }
-#else
-BLEConf::BLEConf(Context _ctx): enabled(false), ctx(_ctx)
-{
-}
-
-BLEConf::~BLEConf()
-{
-}
-
-void BLEConf::setup()
-{
-}
-
-
-void BLEConf::read_temp_hum(ulong ms)
-{
-}
-
-void BLEConf::on_write(int handle, const char* value)
-{
-}
-
-void BLEConf::loop(unsigned long ms)
-{
-}
-#endif
 
 bool BLEConf::is_enabled()
 {

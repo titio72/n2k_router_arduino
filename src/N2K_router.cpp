@@ -35,6 +35,18 @@ bool N2K_router::sendCOGSOG(RMC &rmc, unsigned char sid)
     else return false;
 }
 
+bool N2K_router::sendSTW(double stw)
+{
+    if (isnan(stw))
+        return false;
+    else
+    {
+        tN2kMsg N2kMsg(n2k.get_source());
+        SetN2kBoatSpeed(N2kMsg, 0, stw * 1852.0 / 3600.0, stw * 1852.0 / 3600.0, tN2kSpeedWaterReferenceType::N2kSWRT_Paddle_wheel);
+        return n2k.send_msg(N2kMsg);
+    }
+}
+
 bool N2K_router::sendCOGSOG(double sog, double cog, unsigned char sid)
 {
     if (isnan(sog) && isnan(cog))

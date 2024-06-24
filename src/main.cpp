@@ -125,7 +125,7 @@ void report_stats(unsigned long ms)
 unsigned long throttle_main_loop()
 {
   static unsigned long t0 = _millis();
-  ulong t = _millis();
+  unsigned long t = _millis();
   if ((t - t0) < 25)
   {
     app_stats.pauses++;
@@ -175,7 +175,7 @@ template<typename T> void handle_agent_loop(T &agent, bool enable, unsigned shor
 void loop()
 {
   app_stats.cycles++;
-  ulong t = throttle_main_loop();
+  unsigned long t = throttle_main_loop();
   if (started)
   {
     n2k_bus.loop(t);

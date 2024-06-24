@@ -4,7 +4,7 @@
 #include "Log.h"
 
 #define NO_CONF 0xFF
-#define CONF_VERSION 0x00
+#define CONF_VERSION 0x01
 
 void load_conf(Configuration& c, uint8_t *v)
 {
@@ -12,7 +12,7 @@ void load_conf(Configuration& c, uint8_t *v)
     c.use_bmp = (v[0] & 0x02);
     c.use_dht = (v[0] & 0x04);
     c.send_time = (v[0] & 0x08);
-    // skip 4th bit (unused)
+    c.sog_2_stw = (v[0] & 0x10);
     c.uart_speed = (v[0] & 0xE0) >> 5;  // use the last 3 bits [8 possible values]
     c.n2k_source = v[1];
 }
@@ -84,14 +84,14 @@ bool Configuration::load()
         Log::trace("[CONF] Read value: {%#01x %#01x}\n", v[0], v[1]);
         if (is_no_conf(v))
         {
-            Log::trace("[CONF] Use default gps {%d} bmp {%d} dht {%d} time {%d} uart_speed {%s} n2k_source {%d}\n", 
-                use_gps, use_bmp, use_dht, send_time, UART_SPEED[uart_speed], n2k_source);
+            Log::trace("[CONF] Use default gps {%d} bmp {%d} dht {%d} time {%d} stw {%d} uart_speed {%s} n2k_source {%d}\n", 
+                use_gps, use_bmp, use_dht, send_time, sog_2_stw, UART_SPEED[uart_speed], n2k_source);
         }
         else
         {
             load_conf(*this, v);
-            Log::trace("[CONF] Load gps {%d} bmp {%d} dht {%d} time {%d} uart_speed {%s} n2k_source {%d}\n",
-                use_gps, use_bmp, use_dht, send_time, UART_SPEED[uart_speed], n2k_source);
+            Log::trace("[CONF] Load gps {%d} bmp {%d} dht {%d} time {%d} stw {%d} uart_speed {%s} n2k_source {%d}\n",
+                use_gps, use_bmp, use_dht, send_time, sog_2_stw, UART_SPEED[uart_speed], n2k_source);
         }
         return true;
     }
@@ -107,7 +107,7 @@ void serialize(Configuration& c, uint8_t *v)
                    (c.use_bmp ? 0x02 : 0) +
                    (c.use_dht ? 0x04 : 0) +
                    (c.send_time ? 0x08 : 0) +
-                   (0 << 4) + // skip 4th it
+                   (c.sog_2_stw ? 0x10 : 0) +
                    (c.uart_speed << 5)) & 0xFF;
     v[1] = c.n2k_source;
 }
