@@ -7,6 +7,11 @@ ArduinoPort::ArduinoPort(HardwareSerial& s, int rx, int tx, bool _invert): seria
 {
 }
 
+ArduinoPort::ArduinoPort(HardwareSerial& s, unsigned int bps, int rx, int tx, bool _invert): serial(s), rx_pin(rx), tx_pin(tx), open(false), invert(_invert)
+{
+    speed = bps;
+}
+
 ArduinoPort::~ArduinoPort()
 {
     serial.end();

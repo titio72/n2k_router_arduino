@@ -15,8 +15,11 @@
 #include "Conf.h"
 #include "Simulator.h"
 #include "N2K_router.h"
+#if GPS_I2C==1
 #include "GPS_I2C.h"
+#else
 #include "GPS.h"
+#endif
 #include "HumTemp.h"
 #include "PressureTemp.h"
 #include "Display.h"
@@ -41,8 +44,8 @@ Context context(n2k, conf, cache);
 #if GPS_I2C==1
 GPSX gps(context);
 #else
-Port* gpsPort = new ArduinoPort(Serial1, GPS_RX_PIN, GPS_TX_PIN);
-GPS gps(context, );
+Port* gpsPort = new ArduinoPort(Serial1, DEFAULT_GPS_SPEED, GPS_RX_PIN, GPS_TX_PIN, false);
+GPS gps(context, gpsPort);
 #endif
 #if (DO_BMV==1)
 ArduinoPort veDirectPort(Serial1, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, true);
@@ -180,18 +183,24 @@ void loop()
   {
     n2k_bus.loop(t);
     handle_agent_loop(display, true, &app_stats.retry_display, t, "Display");
-    handle_agent_loop(gps, conf.use_gps, &app_stats.retry_gps, t, "GPS");
-    handle_agent_loop(bmp, conf.use_bmp, &app_stats.retry_bmp, t, "BMP");
-    handle_agent_loop(dht, conf.use_dht, &app_stats.retry_dht, t, "DHT");
-    #if (DO_BMV==1)
-    handle_agent_loop(bmv712, true, t);
-    #endif
-    handle_agent_loop(simulator, conf.simulator, NULL, t), "Sim";
-    handle_agent_loop(bleConf, true, NULL, t, "BLE");
-    if (conf.use_dht || conf.use_bmp || conf.simulator)
+    if (!conf.simulator)
     {
-      send_env(t);
+      handle_agent_loop(gps, conf.use_gps, &app_stats.retry_gps, t, "GPS");
+      handle_agent_loop(bmp, conf.use_bmp, &app_stats.retry_bmp, t, "BMP");
+      handle_agent_loop(dht, conf.use_dht, &app_stats.retry_dht, t, "DHT");
+      #if (DO_BMV==1)
+      handle_agent_loop(bmv712, true, t);
+      #endif
+      if (conf.use_dht || conf.use_bmp || conf.simulator)
+      {
+        send_env(t);
+      }
     }
+    else
+    {
+      handle_agent_loop(simulator, conf.simulator, NULL, t, "Sim");
+    }
+    handle_agent_loop(bleConf, true, NULL, t, "BLE");
     report_stats(t);
   }
 }

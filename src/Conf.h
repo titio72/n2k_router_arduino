@@ -19,7 +19,7 @@ static const char* UART_SPEED[] = {"4800", "9600", "19200", "38400", "57600", "1
 #define DEFAULT_USE_DHT 0
 #define DEFAULT_SOG_2_STW 0
 #define DEFAULT_USE_TIME 0
-#define DEFAULT_GPS_SPEED 1
+#define DEFAULT_GPS_SPEED 2
 #define DEFAULT_SIMULATOR 0
 #define DEFAULT_N2K_SOURCE 22
 
@@ -45,6 +45,7 @@ public:
 
   bool sim_position           = true;
   bool sim_sogcog             = true;
+  bool sim_time               = true;
   bool sim_wind               = true;
   bool sim_heading            = true;
   bool sim_speed              = true;
@@ -52,8 +53,8 @@ public:
   bool sim_humidity           = true;
   bool sim_temperature        = true;
   bool sim_water_temperature  = true;
-  bool sim_satellites         = false;
-  bool sim_dops               = false;
+  bool sim_satellites         = true;
+  bool sim_dops               = true;
   bool sim_attitude           = true;
   bool sim_depth              = true;
   bool sim_nav                = true;

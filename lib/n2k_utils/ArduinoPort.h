@@ -9,6 +9,7 @@ class ArduinoPort: public Port
 
 public:
     ArduinoPort(HardwareSerial& serial, int rx_pin, int tx_pib, bool invert = false);
+    ArduinoPort(HardwareSerial& s, unsigned int bps, int rx, int tx, bool _invert);
     ~ArduinoPort();
 protected:
 

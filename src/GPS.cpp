@@ -135,7 +135,7 @@ void GPS::loop(unsigned long ms)
 
 void GPS::setup()
 {
-  if (p==NULL)
+  if (p!=NULL)
   {
     p->set_handler(this);
   }
@@ -167,8 +167,8 @@ void GPS::dumpStats()
 {
   if (enabled)
   {
-    Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d}", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
-    Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f}", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
+    Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d} ", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
+    Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} ", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
     Log::trace("Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}\n", ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     stats.dump();
     stats.reset();
