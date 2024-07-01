@@ -130,16 +130,8 @@ void N2K::setup()
                                       60,  // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                       2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf
         );
-        if (_handler)
-        {
-            NMEA2000->SetMode(tNMEA2000::N2km_ListenAndNode, desired_source);
-            NMEA2000->SetMsgHandler(private_message_handler);
-        }
-        else
-        {
-            Log::trace("[N2K] Initializing node-only\n");
-            NMEA2000->SetMode(tNMEA2000::N2km_NodeOnly, desired_source);
-        }
+        NMEA2000->SetMode(tNMEA2000::N2km_ListenAndNode, desired_source);
+        NMEA2000->SetMsgHandler(private_message_handler);
         NMEA2000->SetN2kCANSendFrameBufSize(1000);
         NMEA2000->EnableForward(false); // Disable all msg forwarding to USB (=Serial)
         if (pgns) NMEA2000->ExtendTransmitMessages(pgns);
