@@ -12,14 +12,21 @@
 #define CONF_DHT22 1
 
 static const int UART_SPEEDS = 6;
-static const char* UART_SPEED[] = {"4800", "9600", "19200", "38400", "57600", "115200"};
+static unsigned int UART_SPEED[] = {4800, 9600, 19200, 38400, 57600, 115200};
+
+static unsigned char UART_SPEED_4800   = 0;
+static unsigned char UART_SPEED_9600   = 1;
+static unsigned char UART_SPEED_19200  = 2;
+static unsigned char UART_SPEED_38400  = 3;
+static unsigned char UART_SPEED_57600  = 4;
+static unsigned char UART_SPEED_115200 = 5;
 
 #define DEFAULT_USE_GPS 0
 #define DEFAULT_USE_BMP 0
 #define DEFAULT_USE_DHT 0
 #define DEFAULT_SOG_2_STW 0
 #define DEFAULT_USE_TIME 0
-#define DEFAULT_GPS_SPEED 2
+#define DEFAULT_GPS_SPEED UART_SPEED_57600
 #define DEFAULT_SIMULATOR 0
 #define DEFAULT_N2K_SOURCE 22
 

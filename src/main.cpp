@@ -44,7 +44,7 @@ Context context(n2k, conf, cache);
 #if GPS_I2C==1
 GPSX gps(context);
 #else
-Port* gpsPort = new ArduinoPort(Serial1, DEFAULT_GPS_SPEED, GPS_RX_PIN, GPS_TX_PIN, false);
+Port* gpsPort = new ArduinoPort(Serial1, UART_SPEED[DEFAULT_GPS_SPEED], GPS_RX_PIN, GPS_TX_PIN, false);
 GPS gps(context, gpsPort);
 #endif
 #if (DO_BMV==1)

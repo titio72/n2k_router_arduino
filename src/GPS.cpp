@@ -127,7 +127,7 @@ void GPS::loop(unsigned long ms)
 {
     if (enabled && p)
     {
-        p->set_speed(atoi(UART_SPEED[ctx.conf.uart_speed]));
+        p->set_speed(UART_SPEED[ctx.conf.uart_speed]);
         p->listen(250);
         send_gsv(ms);
     }

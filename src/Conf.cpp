@@ -84,13 +84,13 @@ bool Configuration::load()
         Log::trace("[CONF] Read value: {%#01x %#01x}\n", v[0], v[1]);
         if (is_no_conf(v))
         {
-            Log::trace("[CONF] Use default gps {%d} bmp {%d} dht {%d} time {%d} stw {%d} uart_speed {%s} n2k_source {%d}\n", 
+            Log::trace("[CONF] Use default gps {%d} bmp {%d} dht {%d} time {%d} stw {%d} uart_speed {%d} n2k_source {%d}\n", 
                 use_gps, use_bmp, use_dht, send_time, sog_2_stw, UART_SPEED[uart_speed], n2k_source);
         }
         else
         {
             load_conf(*this, v);
-            Log::trace("[CONF] Load gps {%d} bmp {%d} dht {%d} time {%d} stw {%d} uart_speed {%s} n2k_source {%d}\n",
+            Log::trace("[CONF] Load gps {%d} bmp {%d} dht {%d} time {%d} stw {%d} uart_speed {%d} n2k_source {%d}\n",
                 use_gps, use_bmp, use_dht, send_time, sog_2_stw, UART_SPEED[uart_speed], n2k_source);
         }
         return true;
