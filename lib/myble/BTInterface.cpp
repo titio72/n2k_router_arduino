@@ -32,7 +32,7 @@ public:
     {
         static char v[16];
         strcpy(v, pCharacteristic->getValue().c_str());
-        Log::trace("[BLE] Client sent value {%s}\n", v);
+        Log::tracex("BLE", "Characteristic write", "UUID {%s} value {%s}", pCharacteristic->getUUID().toString().c_str(), v);
 
         int i = 0;
         for (i = 0; i<settings.size(); i++) if (settings[i].uuid.equals(pCharacteristic->getUUID())) break;
@@ -121,7 +121,7 @@ void BTInterface::set_setting_value(int handle, int value)
 
 void createSettingCharacteristics(BLEService* pService, BLEUUID uuid, BLECharacteristic** c, BLECharacteristicCallbacks* cback)
 {
-    Log::trace("[BLE] Creating bool characteristic {%s} for {%s}\n", uuid.toString().c_str(), pService->getUUID().toString().c_str());
+    Log::tracex("BLE", "Creating bool characteristic", "UUID {%s} service {%s}", uuid.toString().c_str(), pService->getUUID().toString().c_str());
     *c = pService->createCharacteristic( uuid,
         BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
     (*c)->setReadProperty(true);
@@ -131,7 +131,7 @@ void createSettingCharacteristics(BLEService* pService, BLEUUID uuid, BLECharact
 
 void createFieldCharacteristic(BLEService* pService, BLEUUID uuid, BLECharacteristic** c)
 {
-    Log::trace("[BLE] Creating numeric characteristic {%s} for {%s}\n", uuid.toString().c_str(), pService->getUUID().toString().c_str());
+    Log::tracex("BLE", "Creating numeric characteristic", "UUID {%s} service {%s}", uuid.toString().c_str(), pService->getUUID().toString().c_str());
     *c = pService->createCharacteristic( uuid, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_INDICATE);
     (*c)->setIndicateProperty(true);
     (*c)->setReadProperty(true);
@@ -140,13 +140,13 @@ void createFieldCharacteristic(BLEService* pService, BLEUUID uuid, BLECharacteri
 
 void BTInterface::setup()
 {
-    Log::trace("[BLE] Setting up BLE device {%s}\n", device_name);
+    Log::tracex("BLE", "Setup", "device {%s}", device_name);
     BLEDevice::init(device_name);
     BLEDevice::setMTU(128);
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(serverCBack);
     pService = pServer->createService(serviceUUID);
-    Log::trace("[BLE] Loading characteristics\n");
+    Log::tracex("BLE", "Loading characteristics");
     for (int i = 0; i<settings.size(); i++)
     {
         ABBLESetting &s = settings[i];
@@ -161,12 +161,12 @@ void BTInterface::setup()
         createFieldCharacteristic(pService, s.uuid, &c);
         characteristicsFields.push_back(c);
     }
-    Log::trace("[BLE] Loaded {Settings %d / Fieds %d} characteristics\n", settings.size(), fields.size());
+    Log::tracex("BLE", "Loaded", "Settings {%d} Fields {%d}", settings.size(), fields.size());
 }
 
 void BTInterface::begin()
 {
-    Log::trace("[BLE] Starting BLE device {%s}\n", device_name);
+    Log::tracex("BLE", "Starting BLE", "device {%s}", device_name);
     pService->start();
     BLESecurity *pSecurity = new BLESecurity();
     pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND);

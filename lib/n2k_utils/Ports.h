@@ -48,7 +48,7 @@ protected:
 
 private:
 	int open();
-	int process_char(unsigned char c);
+	int process_char(char c);
 
 	char read_buffer[PORT_BUFFER_SIZE];
 	unsigned int pos = 0;

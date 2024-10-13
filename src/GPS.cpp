@@ -56,7 +56,7 @@ void GPS::send_gsv(ulong ms)
   static N2KSid _sid;
   unsigned char sid = _sid.getNew();
   static ulong last_sent = 0;
-  if ((ms - last_sent) >= 900)
+  if ((ms - last_sent) >= 1000000)
   {
     last_sent = ms;
     ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
@@ -158,6 +158,25 @@ void GPS::disable()
 {
   if (enabled)
   {
+
+    RMC& rmc = ctx.cache.rmc;
+    rmc.unix_time = 0;
+    rmc.valid = 0xFFFF;
+    rmc.cog = NAN;
+    rmc.sog = NAN;
+    rmc.y = 0xFFFF;
+    rmc.M = 0xFFFF;
+    rmc.d = 0xFFFF;
+    rmc.h = 0xFFFF;
+    rmc.m = 0xFFFF;
+    rmc.s = 0xFFFF;
+    rmc.lat = NAN;
+    rmc.lon = NAN;
+    ctx.cache.latitude = NAN;
+    ctx.cache.latitude_NS = 'N';
+    ctx.cache.longitude = NAN;
+    ctx.cache.longitude_EW = 'E';
+
     enabled = false;
     p->close();
   }

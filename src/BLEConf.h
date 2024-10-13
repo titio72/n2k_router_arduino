@@ -5,10 +5,12 @@
 #include <BTInterface.h>
 #include "Context.h"
 
+typedef void (*command_callback)(char command, const char* command_value);
+
 class BLEConf: public ABBLEWriteCallback
 {
 public:
-    BLEConf(Context ctx);
+    BLEConf(Context ctx, command_callback callback = NULL);
     ~BLEConf();
 
     AB_AGENT
@@ -20,6 +22,7 @@ private:
     Context ctx;
     BTInterface ble;
     ulong last_sent;
+    command_callback c_back;
 };
 
 #endif

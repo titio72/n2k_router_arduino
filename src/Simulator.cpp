@@ -72,7 +72,7 @@ inline double to_knots(double ms) {
     return ms * 3.6 / 1.852;
 }
 
-void Simulator::loop(unsigned long ms) {
+void Simulator::loop(unsigned long _dont_use) {
 
     unsigned long t = _millis();
     if (t0==0) t0 = t;

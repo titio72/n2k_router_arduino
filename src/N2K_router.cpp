@@ -18,6 +18,8 @@ N2K_router::N2K_router(N2K &_n2k): n2k(_n2k)
     n2k.add_pgn(130312); // Temperature
     n2k.add_pgn(130313); // Humidity
     n2k.add_pgn(130314); // Actual Pressure
+    n2k.add_pgn(127488); // Engine RPM
+    n2k.add_pgn(127489); // Engine hours
 }
 
 bool N2K_router::sendMessage(int dest, ulong pgn, int priority, int len, unsigned char *payload)
@@ -99,11 +101,7 @@ bool N2K_router::sendGNSSPosition(GSA &gsa, RMC &rmc, unsigned char sid)
         double second_since_midnight = rmc.h * 60 * 60 + rmc.m * 60 + rmc.s + rmc.ms / 1000.0;
         SetN2kPGN129029(N2kMsg, sid, days_since_1970, second_since_midnight, rmc.lat, rmc.lon, N2kDoubleNA, tN2kGNSStype::N2kGNSSt_GPS,
                         tN2kGNSSmethod::N2kGNSSm_GNSSfix, gsa.nSat, gsa.hdop);
-        bool res = n2k.send_msg(N2kMsg);
-        if (!res)
-            Log::trace("[N2K] GNSSPosition {%d} {%04d-%02d-%02dT%02d:%02d:%02d Lat %.4f Lon %.4f SOG %.2f COG %.2f Sat %d hDOP %.2f pDOP %.2f\n",
-                res, rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.lat, rmc.lon, rmc.sog, rmc.cog, gsa.nSat, gsa.hdop, gsa.pdop);
-        return res;
+        return n2k.send_msg(N2kMsg);
     }
     return false;
 }
@@ -115,10 +113,7 @@ bool N2K_router::sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsi
     double second_since_midnight = h * 60 * 60 + m * 60 + s / 1000.0;
     SetN2kPGN129029(N2kMsg, sid, days_since_1970, second_since_midnight, lat, lon, N2kDoubleNA, tN2kGNSStype::N2kGNSSt_GPS,
                     tN2kGNSSmethod::N2kGNSSm_GNSSfix, nsat, hdop, pdop);
-    bool res = n2k.send_msg(N2kMsg);
-    Log::trace("[N2K] GNSSPosition {%d} {%04d-%02d-%02dT%02d:%02d:%02d Lat %.4f Lon %.4f SOG %.2f COG %.2f Sat %d hDOP %.2f pDOP %.2f\n", 
-        res, y, M, d, h, m, s, lat, lon, nsat, hdop, pdop);
-    return res;
+    return n2k.send_msg(N2kMsg);
 }
 
 bool N2K_router::sendTime(RMC &rmc, unsigned char sid)
@@ -299,6 +294,20 @@ bool N2K_router::sendBattery(unsigned char sid, const double voltage, const doub
 bool N2K_router::sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance) {
     tN2kMsg m;
     SetN2kPGN127506(m, sid, instance, tN2kDCType::N2kDCt_Battery, soc, 100, ttg, N2kDoubleNA, capacity * 3600);
+    return n2k.send_msg(m);
+}
+
+bool N2K_router::sendEngineRPM(uint8_t instance, uint16_t rpm)
+{
+    tN2kMsg m;
+    SetN2kPGN127488(m, instance, rpm);
+    return n2k.send_msg(m);
+}
+
+bool N2K_router::sendEngineHours(uint8_t instance, double seconds)
+{
+    tN2kMsg m;
+    SetN2kPGN127489(m, instance, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, seconds, N2kDoubleNA, N2kDoubleNA, 127, 127, 0, 0);
     return n2k.send_msg(m);
 }
 

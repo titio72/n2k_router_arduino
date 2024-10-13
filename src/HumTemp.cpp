@@ -5,7 +5,7 @@
 #include <Log.h>
 #include "DHTesp.h"
 
-HumTemp::HumTemp(Context _ctx) : enabled(false), ctx(_ctx)
+HumTemp::HumTemp(Context _ctx) : enabled(false), ctx(_ctx), last_read_time(0)
 {
   DHT = new DHTesp();
 }
@@ -17,33 +17,26 @@ HumTemp::~HumTemp()
 
 void HumTemp::setup()
 {
-  Log::trace("[DHT] Setup DHT22 on pin {%d}\n", DHT_PIN);
+  Log::tracex("DHT", "Setup", "Type {%s} Pin {%d}", "DHT22", DHT_PIN);
   DHT->setup(DHT_PIN, DHTesp::DHT22);
-  ctx.cache.humidity = N2kDoubleNA;
-  ctx.cache.temperature = N2kDoubleNA;
+  ctx.cache.humidity = NAN;
+  ctx.cache.temperature = NAN;
 }
 
-void HumTemp::read_temp_hum(ulong ms)
+void HumTemp::read_temp_hum(ulong millisecs)
 {
-  static unsigned long last_dht_time = 0;
-
-  if (enabled)
+  if (enabled && check_elapsed(millisecs, last_read_time, DHT->getMinimumSamplingPeriod()))
   {
-    if ((ms - last_dht_time) > DHT->getMinimumSamplingPeriod())
-    {
-      last_dht_time = ms;
-      TempAndHumidity th = DHT->getTempAndHumidity();
-      ctx.cache.humidity = th.humidity;
-      ctx.cache.temperature = th.temperature;
-      //Log::trace("[DHT] Read {%.1fC} {%.1f%%}\n", ctx.cache.temperature, ctx.cache.humidity);
-      //DHT->getTempAndHumidity();
-    }
+    TempAndHumidity th = DHT->getTempAndHumidity();
+    ctx.cache.humidity = th.humidity;
+    ctx.cache.temperature = th.temperature;
+    //Log::tracex("DHT", "Read", "Temp {%.1fC} Hum {%.1f%%}\n", ctx.cache.temperature, ctx.cache.humidity);
   }
 }
 
-void HumTemp::loop(unsigned long ms)
+void HumTemp::loop(unsigned long micros)
 {
-  read_temp_hum(ms);
+  read_temp_hum(micros/1000L);
 }
 
 bool HumTemp::is_enabled()
@@ -56,7 +49,7 @@ void HumTemp::enable()
   if (!enabled)
   {
     enabled = true;
-    Log::trace("[DHT] Enabled {%d}\n", enabled);
+    Log::tracex("DHT", "Enable", "Success {%d}", enabled);
   }
 }
 
@@ -65,6 +58,8 @@ void HumTemp::disable()
   if (enabled)
   {
     enabled = false;
-    Log::trace("[DHT] Disabled\n");
+    ctx.cache.humidity = NAN;
+    ctx.cache.temperature = NAN;
+    Log::tracex("DHT", "Disable", "Succcess {%d}", !enabled);
   }
 }

@@ -18,6 +18,7 @@ private:
     bool enabled;
     Context ctx;
     DHTesp* DHT;
+    unsigned long last_read_time;
 
     void read_temp_hum(unsigned long ms);
 };

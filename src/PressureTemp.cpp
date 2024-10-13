@@ -8,28 +8,21 @@
 #include "TwoWireProvider.h"
 #include <Adafruit_BMP280.h>
 
-PressureTemp::PressureTemp(Context _ctx) : enabled(false), ctx(_ctx), last_read(0)
+PressureTemp::PressureTemp(Context _ctx) : enabled(false), ctx(_ctx), last_read(0), bmp(NULL)
 {
-  bmp = NULL;
 }
 
 PressureTemp::~PressureTemp()
 {
-  disable();
-  delete bmp;
+  if (bmp) delete bmp;
 }
 
 void PressureTemp::enable()
 {
   if (!enabled)
   {
-    bmp = new Adafruit_BMP280(TwoWireProvider::get_two_wire());
     enabled = bmp->begin(0x76, 0x60);
-    if (!enabled)
-    {
-      delete bmp;
-    }
-    Log::trace("[BMP] Enabled {%d}\n", enabled);
+    Log::tracex("BMP", "Enable", "Success {%d}", enabled);
   }
 }
 
@@ -37,33 +30,33 @@ void PressureTemp::disable()
 {
   if (enabled)
   {
-    Log::trace("[BMP] Disabled\n");
-    bmp = NULL;
+    ctx.cache.pressure = NAN;
+    ctx.cache.temperature_el = NAN;
     enabled = false;
+    Log::tracex("BMP", "Disable", "Succsess {%d}", !enabled);
   }
 }
 
 void PressureTemp::read_pressure(unsigned long ms)
 {
-  ctx.cache.pressure = N2kDoubleNA;
-  ctx.cache.temperature_el = N2kDoubleNA;
   if (enabled)
   {
     ctx.cache.pressure = bmp->readPressure();
     ctx.cache.temperature_el = bmp->readTemperature();
-    //Log::trace("[BMP] Read {%.1fMB}\n", ctx.cache.pressure/100.0);
   }
 }
 
 void PressureTemp::setup()
 {
-  ctx.cache.humidity = N2kDoubleNA;
-  ctx.cache.temperature = N2kDoubleNA;
+  Log::tracex("BMP", "Setup");
+  bmp = new Adafruit_BMP280(TwoWireProvider::get_two_wire());
+  ctx.cache.humidity = NAN;
+  ctx.cache.temperature = NAN;
 }
 
 void PressureTemp::loop(unsigned long ms)
 {
-  if ((ms-last_read)>1000)
+  if (enabled && check_elapsed(ms, last_read, 1000000))
   {
     read_pressure(ms);
     last_read = ms;

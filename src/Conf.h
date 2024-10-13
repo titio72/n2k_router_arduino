@@ -1,16 +1,6 @@
 #ifndef _CONF_H
 #define _CONF_H
 
-#define B4800 0
-#define B9600 1
-#define B19200 2
-#define B38400 3
-#define B57600 4
-#define B115200 5
-
-#define CONF_DHT11 0
-#define CONF_DHT22 1
-
 static const int UART_SPEEDS = 6;
 static unsigned int UART_SPEED[] = {4800, 9600, 19200, 38400, 57600, 115200};
 
@@ -26,6 +16,8 @@ static unsigned char UART_SPEED_115200 = 5;
 #define DEFAULT_USE_DHT 0
 #define DEFAULT_SOG_2_STW 0
 #define DEFAULT_USE_TIME 0
+#define DEFAULT_USE_TACHO 0
+#define DEFAULT_RPM_CALIBRATION 1.00
 #define DEFAULT_GPS_SPEED UART_SPEED_57600
 #define DEFAULT_SIMULATOR 0
 #define DEFAULT_N2K_SOURCE 22
@@ -40,15 +32,25 @@ public:
 
   bool load();
 
+  uint64_t get_engine_hours();
+
+  void save_engine_hours(uint64_t h);
+
+  double get_rpm_adjustment();
+
+  void save_rpm_adjustment(double d);
+
 public:
   bool use_gps;
   bool use_bmp;
   bool use_dht;
   bool send_time;
   bool sog_2_stw;
+  bool use_tacho;
   bool simulator;
   unsigned char n2k_source;
   unsigned char uart_speed;
+  double rpm_calibration;
 
   bool sim_position           = true;
   bool sim_sogcog             = true;

@@ -1,3 +1,4 @@
+#if (GPS_TYPE==1)
 #include "GPS_I2C.h"
 #include "Utils.h"
 #include "TwoWireProvider.h"
@@ -78,7 +79,7 @@ bool GPSX::set_system_time(unsigned char sid)
     if (!gps_time_set)
     {
       delta_time = unix_time - time(0);
-      Log::trace("[GPS] Setting time to {%04d-%02d-%02d %02d:%02d:%02d}}\n",
+      Log::tracex("GPS", "Set time", "UTC {%04d-%02d-%02d %02d:%02d:%02d}",
         ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
       gps_time_set = true;
     }
@@ -172,9 +173,8 @@ void GPSX::loop(unsigned long ms)
 {
     if (enabled)
     {
-        if ((ms-last_read_time)>=20)
+        if (check_elapsed(ms, last_read_time, 20000))
         {
-            last_read_time = ms;
             pCtx = &ctx;
             bDOP = false;
             bPVT = false;
@@ -204,7 +204,6 @@ void GPSX::enable()
 {
   if (!enabled)
   {
-    Log::trace("[GPS] Enabling GNSS\n");
     enabled = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
     if (enabled)
     {
@@ -215,22 +214,43 @@ void GPSX::enable()
         myGNSS.setAutoDOPcallbackPtr(&getDOP);
 
     }
-    Log::trace("[GPS] Enabled {%d}\n", enabled);
+    Log::tracex("GPS", "Enable", "Success {%d}", enabled);
   }
 }
 
 void GPSX::disable()
 {
+    RMC& rmc = pCtx->cache.rmc;
+    rmc.unix_time = 0;
+    rmc.valid = 0xFFFF;
+    rmc.cog = NAN;
+    rmc.sog = NAN;
+    rmc.y = 0xFFFF;
+    rmc.M = 0xFFFF;
+    rmc.d = 0xFFFF;
+    rmc.h = 0xFFFF;
+    rmc.m = 0xFFFF;
+    rmc.s = 0xFFFF;
+    rmc.lat = NAN;
+    rmc.lon = NAN;
+    pCtx->cache.latitude = NAN;
+    pCtx->cache.latitude_NS = 'N';
+    pCtx->cache.longitude = NAN;
+    pCtx->cache.longitude_EW = 'E';
+
     myGNSS.end();
     enabled = false;
+    Log::tracex("GPS", "Enable", "Success {%d}", !enabled);
 }
 
 void GPSX::dumpStats()
 {
     if (enabled)
     {
-        Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d} ", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
-        Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} ", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
-        Log::trace("Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}\n", ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
+        Log::tracex("GPS", "Stats", "UTC {%04d-%02d-%02dT%02d:%02d:%02d} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
+            ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s,
+            ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog,
+            ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     }
 }
+#endif

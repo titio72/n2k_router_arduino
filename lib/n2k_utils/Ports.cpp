@@ -15,7 +15,7 @@ void Port::set_handler(PortListener* l)
 	listener = l;
 }
 
-int Port::process_char(unsigned char c)
+int Port::process_char(char c)
 {
 	int res = 0;
 	if (c != 10 && c != 13)
@@ -33,10 +33,11 @@ int Port::process_char(unsigned char c)
 	{
 		if (listener)
 		{
+			Serial.printf("%s\n", read_buffer);
 			listener->on_line_read(read_buffer);
 		}
 		if (trace) {
-			Log::trace("[PORT] Read {%s}\n", read_buffer);
+			Log::tracex("PORT", "Read", "buffer {%s}", read_buffer);
 		}
 		pos = 0;
 		res = 1;
@@ -66,7 +67,7 @@ void Port::listen(uint ms)
 
 	if (last_speed != speed && is_open())
 	{
-		Log::trace("[PORT] Resetting speed {%d}\n", speed);
+		Log::tracex("PORT", "Resetting speed", "new speed {%d}", speed);
 		close();
 		last_speed = speed;
 	}
@@ -100,7 +101,7 @@ void Port::listen(uint ms)
 			}
 			else
 			{
-				//Log::trace("Err reading port {%s} {%d} {%s}\n", port, errno, strerror(errno));
+				//Log::tracex("POORT", "Err reading", "port {%s} {%d} {%s}\n", port, errno, strerror(errno));
 				close();
 				return;
 			}

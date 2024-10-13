@@ -35,7 +35,7 @@ bool array_contains(short test, short* int_set, int sz);
 ulong _millis();
 int msleep(long msec);
 unsigned long get_free_mem();
-
+unsigned long check_elapsed(ulong time, ulong &last_time, ulong period);
 void format_thousands_sep(char* buffer, long l);
 
 struct sat {
@@ -97,6 +97,8 @@ struct data {
   double longitude = NAN;
   char longitude_EW = 'E';
   double voltage = NAN;
+  uint16_t rpm = 0;
+  uint64_t engine_time = 0;
 };
 
 #endif

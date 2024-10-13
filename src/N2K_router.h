@@ -35,6 +35,8 @@ class N2K_router
         bool sendSatellites(const sat* sats, uint n, unsigned char sid, GSA& gsa);
         bool sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance);
         bool sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance);
+        bool sendEngineRPM(uint8_t engine_n, uint16_t rpm);
+        bool sendEngineHours(uint8_t engine_n, double hours);
 
         N2K& get_bus();
 
