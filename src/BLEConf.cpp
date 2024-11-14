@@ -14,11 +14,10 @@
 #define DHT_ID 1
 #define BMP_ID 2
 #define SYT_ID 3
-#define SIM_ID 4
+#define RPM_ID 4
 #define STW_ID 5
-#define RPM_ID 6
 
-#define MAX_CONF 7
+#define MAX_CONF 6
 
 #define MAX_DATA 7
 
@@ -30,13 +29,19 @@ BLEConf::~BLEConf()
 {
 }
 
-void set_conf(int i, const char *value, int value_l, boolean &b, const char *descr)
+boolean set_conf(int i, const char *value, const char *descr)
 {
-  if (value_l > i)
+  if (strlen(value) > i)
   {
-    b = (value[i] == '1');
-    Log::tracex("BLE", "Parse", "Conf {%s} {%d}", descr, b);
+    boolean res = (value[i] == '1');
+    Log::tracex("BLE", "Parse", "Conf {%s} ConfId {%d} Enabled {%d}", descr, i, res);
+    return res;
   }
+  else
+  {
+    Log::tracex("BLE", "Parse Error", "Conf {%s} Error {%d}", descr, i);
+  }
+  return false;
 }
 
 void BLEConf::on_write(int handle, const char *value)
@@ -45,13 +50,12 @@ void BLEConf::on_write(int handle, const char *value)
   if (handle == 0)
   {
     Configuration &c = ctx.conf;
-    int l = strlen(value);
-    set_conf(GPS_ID, value, l, c.use_gps, "GPS");
-    set_conf(DHT_ID, value, l, c.use_dht, "DHT");
-    set_conf(BMP_ID, value, l, c.use_bmp, "BMP");
-    set_conf(SYT_ID, value, l, c.send_time, "SYT");
-    set_conf(STW_ID, value, l, c.sog_2_stw, "STW");
-    set_conf(RPM_ID, value, l, c.use_tacho, "RPM");
+    c.use_gps = set_conf(GPS_ID, value, "GPS");
+    c.use_dht = set_conf(DHT_ID, value, "DHT");
+    c.use_bmp = set_conf(BMP_ID, value, "BMP");
+    c.send_time = set_conf(SYT_ID, value, "SYT");
+    c.sog_2_stw = set_conf(STW_ID, value, "STW");
+    c.use_tacho = set_conf(RPM_ID, value, "RPM");
     c.save();
   }
   else if (handle == 1)
@@ -77,7 +81,6 @@ void BLEConf::setup()
   cnf[BMP_ID] = c.use_bmp ? '1' : '0';
   cnf[DHT_ID] = c.use_dht ? '1' : '0';
   cnf[SYT_ID] = c.send_time ? '1' : '0';
-  cnf[SIM_ID] = c.simulator ? '1' : '0';
   cnf[STW_ID] = c.sog_2_stw ? '1' : '0';
   cnf[RPM_ID] = c.use_tacho ? '1' : '0';
   ble.set_setting_value(0, cnf);
@@ -164,16 +167,10 @@ bool BLEConf::is_enabled()
 
 void BLEConf::enable()
 {
-  if (!enabled)
-  {
-    enabled = true;
-  }
+  enabled = true;
 }
 
 void BLEConf::disable()
 {
-  if (enabled)
-  {
-    enabled = false;
-  }
+  enabled = false;
 }

@@ -50,7 +50,6 @@ void remove_tacho(Tachometer* tachometer)
     }
 }
 
-
 void IRAM_ATTR on_timer()
 {
     #if (ENGINE_RPM_SIM_PIN >= 0)
@@ -98,7 +97,7 @@ double add_and_get_freq(double freq, double* freqs, int &ix)
 
 Tachometer::Tachometer(Context _ctx, uint8_t _pin, uint8_t _poles, double _rpm_ratio, double _rpm_adjustment, uint8_t _timer_n)
     :enabled(false), ctx(_ctx), pin(_pin), poles(_poles), rpm_ratio(_rpm_ratio), rpm_adjustment(_rpm_adjustment),
-    last_read(0), last_read_eng_h(0), freq_buffer(NULL), freq_buffer_ix(0), is_setup(false), engine_time(0)
+    last_read(0), last_read_eng_h(0), freq_buffer(NULL), freq_buffer_ix(0), is_setup(false), engine_time(0), counter(0), state(LOW)
 {
     freq_buffer = new double[FREQ_SMOOTHING_BUFFER_SIZE];
     memset(freq_buffer, 0, FREQ_SMOOTHING_BUFFER_SIZE * sizeof(double));

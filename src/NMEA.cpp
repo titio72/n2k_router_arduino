@@ -9,7 +9,7 @@
 #include <iostream>
 #include <math.h>
 #include "NMEA.h"
-#include "Log.h"
+#include <Log.h>
 
 #define N_GSA 1
 //#define N_GSA 2 //used with M8N
@@ -69,7 +69,7 @@ const char *get_next_token_checked(const char *string, size_t &start, size_t len
     return c;
 }
 
-NMEAUtils::NMEAUtils()
+NMEAUtils::NMEAUtils(): last_gsv_time(0)
 {
     sat_ready = false;
 

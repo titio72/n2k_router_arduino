@@ -11,11 +11,8 @@
 #include <Utils.h>
 #include <Log.h>
 
-#define GPS_TYPE 1
-
 #include "Context.h"
 #include "Conf.h"
-#include "Simulator.h"
 #include "N2K_router.h"
 #if GPS_TYPE==1
 #include "GPS_I2C.h"
@@ -75,7 +72,6 @@ Dummy tacho;
 
 HumTemp dht(context);
 PressureTemp bmp(context);
-Simulator simulator(context);
 EVODisplay display;
 BLEConf bleConf(context, on_command);
 EnvMessanger envMessanger(context);
@@ -192,19 +188,12 @@ void loop()
   {
     n2k_bus.loop(t);
     handle_agent_loop(display, true, &app_stats.retry_display, t, "Display");
-    if (!conf.simulator)
-    {
-      handle_agent_loop(gps, conf.use_gps, &app_stats.retry_gps, t, "GPS");
-      handle_agent_loop(bmp, conf.use_bmp, &app_stats.retry_bmp, t, "BMP");
-      handle_agent_loop(dht, conf.use_dht, &app_stats.retry_dht, t, "DHT");
-      handle_agent_loop(bmv712, true, &app_stats.retry_bmv712, t, "BMV712");
-      handle_agent_loop(tacho, conf.use_tacho, &app_stats.retry_tacho, t, "TACHO");
-      handle_agent_loop(envMessanger, true, &app_stats.retry_env_messager, t, "ENV");
-    }
-    else
-    {
-      handle_agent_loop(simulator, conf.simulator, NULL, t, "Sim");
-    }
+    handle_agent_loop(gps, conf.use_gps, &app_stats.retry_gps, t, "GPS");
+    handle_agent_loop(bmp, conf.use_bmp, &app_stats.retry_bmp, t, "BMP");
+    handle_agent_loop(dht, conf.use_dht, &app_stats.retry_dht, t, "DHT");
+    handle_agent_loop(bmv712, true, &app_stats.retry_bmv712, t, "BMV712");
+    handle_agent_loop(tacho, conf.use_tacho, &app_stats.retry_tacho, t, "TACHO");
+    handle_agent_loop(envMessanger, true, &app_stats.retry_env_messager, t, "ENV");
     handle_agent_loop(bleConf, true, NULL, t, "BLE");
     handle_display(t);
     report_stats(t);

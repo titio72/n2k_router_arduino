@@ -9,6 +9,7 @@ class DHTesp;
 class HumTemp 
 {
 public:
+    HumTemp(const HumTemp& humtemp);
     HumTemp(Context ctx);
     ~HumTemp();
 

@@ -22,7 +22,7 @@ time_t unix_time;
 
 GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false)
 {
-    pCtx = &_ctx;
+    pCtx = &ctx;
 }
 
 GPSX::~GPSX()
@@ -220,7 +220,7 @@ void GPSX::enable()
 
 void GPSX::disable()
 {
-    RMC& rmc = pCtx->cache.rmc;
+    RMC& rmc = ctx.cache.rmc;
     rmc.unix_time = 0;
     rmc.valid = 0xFFFF;
     rmc.cog = NAN;
@@ -233,10 +233,10 @@ void GPSX::disable()
     rmc.s = 0xFFFF;
     rmc.lat = NAN;
     rmc.lon = NAN;
-    pCtx->cache.latitude = NAN;
-    pCtx->cache.latitude_NS = 'N';
-    pCtx->cache.longitude = NAN;
-    pCtx->cache.longitude_EW = 'E';
+    ctx.cache.latitude = NAN;
+    ctx.cache.latitude_NS = 'N';
+    ctx.cache.longitude = NAN;
+    ctx.cache.longitude_EW = 'E';
 
     myGNSS.end();
     enabled = false;

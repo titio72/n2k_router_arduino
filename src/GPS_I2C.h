@@ -2,7 +2,7 @@
 #define _GPSX_H
 
 #include "Context.h"
-
+#if GPS_TYPE==1
 class SFE_UBLOX_GNSS;
 
 class GPSX
@@ -29,5 +29,5 @@ private:
     time_t delta_time;
     bool gps_time_set;
 };
-
+#endif //_GPS_TYPE
 #endif

@@ -33,17 +33,9 @@ void load_conf(Configuration& c, uint8_t *v)
     c.uart_speed = DEFAULT_GPS_SPEED;
 }
 
-Configuration::Configuration()
+Configuration::Configuration(): use_gps(DEFAULT_USE_GPS), use_bmp(DEFAULT_USE_BMP), use_dht(DEFAULT_USE_DHT), send_time(DEFAULT_USE_TIME), use_tacho(DEFAULT_USE_TACHO),
+    rpm_calibration(DEFAULT_RPM_CALIBRATION), simulator(DEFAULT_SIMULATOR), n2k_source(DEFAULT_N2K_SOURCE), uart_speed(DEFAULT_GPS_SPEED), sog_2_stw(DEFAULT_SOG_2_STW)
 {
-    use_gps = DEFAULT_USE_GPS;
-    use_bmp = DEFAULT_USE_BMP;
-    use_dht = DEFAULT_USE_DHT;
-    send_time = DEFAULT_USE_TIME;
-    use_tacho = DEFAULT_USE_TACHO;
-    rpm_calibration = DEFAULT_RPM_CALIBRATION;
-    simulator = DEFAULT_SIMULATOR;
-    n2k_source = DEFAULT_N2K_SOURCE;
-    uart_speed = DEFAULT_GPS_SPEED;
 }
 
 Configuration::~Configuration() {}

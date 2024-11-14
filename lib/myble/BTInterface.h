@@ -41,7 +41,7 @@ public:
 
 class BTInterface {
     public:
-        BTInterface(const char* uuid, const char* device_name = NULL);
+        BTInterface(const char* uuid, const char* device_name);
         ~BTInterface();
         void setup();
         void begin();

@@ -3,7 +3,12 @@
 #include "Utils.h"
 #include "Conf.h"
 #include <Log.h>
-#include "DHTesp.h"
+#include <DHTesp.h>
+
+HumTemp::HumTemp(const HumTemp& h): enabled(false), ctx(h.ctx), last_read_time(0)
+{
+  DHT = new DHTesp();
+}
 
 HumTemp::HumTemp(Context _ctx) : enabled(false), ctx(_ctx), last_read_time(0)
 {
