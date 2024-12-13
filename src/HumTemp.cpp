@@ -5,6 +5,8 @@
 #include <Log.h>
 #include <DHTesp.h>
 
+#define DHT_LOG_TAG "DHT"
+
 HumTemp::HumTemp(const HumTemp& h): enabled(false), ctx(h.ctx), last_read_time(0)
 {
   DHT = new DHTesp();
@@ -22,7 +24,7 @@ HumTemp::~HumTemp()
 
 void HumTemp::setup()
 {
-  Log::tracex("DHT", "Setup", "Type {%s} Pin {%d}", "DHT22", DHT_PIN);
+  Log::tracex(DHT_LOG_TAG, "Setup", "Type {%s} Pin {%d}", "DHT22", DHT_PIN);
   DHT->setup(DHT_PIN, DHTesp::DHT22);
   ctx.cache.humidity = NAN;
   ctx.cache.temperature = NAN;
@@ -35,7 +37,7 @@ void HumTemp::read_temp_hum(ulong millisecs)
     TempAndHumidity th = DHT->getTempAndHumidity();
     ctx.cache.humidity = th.humidity;
     ctx.cache.temperature = th.temperature;
-    //Log::tracex("DHT", "Read", "Temp {%.1fC} Hum {%.1f%%}\n", ctx.cache.temperature, ctx.cache.humidity);
+    //Log::tracex(DHT_LOG_TAG, "Read", "Temp {%.1fC} Hum {%.1f%%}\n", ctx.cache.temperature, ctx.cache.humidity);
   }
 }
 
@@ -54,7 +56,7 @@ void HumTemp::enable()
   if (!enabled)
   {
     enabled = true;
-    Log::tracex("DHT", "Enable", "Success {%d}", enabled);
+    Log::tracex(DHT_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }
 
@@ -65,6 +67,6 @@ void HumTemp::disable()
     enabled = false;
     ctx.cache.humidity = NAN;
     ctx.cache.temperature = NAN;
-    Log::tracex("DHT", "Disable", "Succcess {%d}", !enabled);
+    Log::tracex(DHT_LOG_TAG, "Disable", "Succcess {%d}", !enabled);
   }
 }

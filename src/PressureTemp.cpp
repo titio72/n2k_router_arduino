@@ -8,6 +8,8 @@
 #include "TwoWireProvider.h"
 #include <Adafruit_BMP280.h>
 
+#define BMP_LOG_TAG "BMP"
+
 PressureTemp::PressureTemp(Context _ctx) : enabled(false), ctx(_ctx), last_read(0), bmp(NULL)
 {
 }
@@ -22,7 +24,7 @@ void PressureTemp::enable()
   if (!enabled)
   {
     enabled = bmp->begin(0x76, 0x60);
-    Log::tracex("BMP", "Enable", "Success {%d}", enabled);
+    Log::tracex(BMP_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }
 
@@ -33,7 +35,7 @@ void PressureTemp::disable()
     ctx.cache.pressure = NAN;
     ctx.cache.temperature_el = NAN;
     enabled = false;
-    Log::tracex("BMP", "Disable", "Succsess {%d}", !enabled);
+    Log::tracex(BMP_LOG_TAG, "Disable", "Succsess {%d}", !enabled);
   }
 }
 
@@ -48,7 +50,7 @@ void PressureTemp::read_pressure(unsigned long ms)
 
 void PressureTemp::setup()
 {
-  Log::tracex("BMP", "Setup");
+  Log::tracex(BMP_LOG_TAG, "Setup");
   bmp = new Adafruit_BMP280(TwoWireProvider::get_two_wire());
   ctx.cache.humidity = NAN;
   ctx.cache.temperature = NAN;

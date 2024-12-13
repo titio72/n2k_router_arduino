@@ -17,6 +17,8 @@ public:
 
     void on_write(int handle, const char* value);
 
+    void set_device_name(const char* name);
+
 private:
     bool enabled;
     Context ctx;

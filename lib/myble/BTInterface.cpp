@@ -7,7 +7,6 @@
 #include <BLE2902.h>
 #include <BLECharacteristic.h>
 
-
 class MyServerCBack : public BLEServerCallbacks
 {
     void onConnect(BLEServer *pServer)
@@ -26,7 +25,7 @@ class MyServerCBack : public BLEServerCallbacks
 class MyCInCBack : public BLECharacteristicCallbacks
 {
 public:
-    MyCInCBack(ABBLEWriteCallback** _c, std::vector<ABBLESetting> &_s): c(_c), settings(_s) {}
+    MyCInCBack(ABBLEWriteCallback **_c, std::vector<ABBLESetting> &_s) : c(_c), settings(_s) {}
 
     virtual void onWrite(BLECharacteristic *pCharacteristic, esp_ble_gatts_cb_param_t *param)
     {
@@ -35,18 +34,21 @@ public:
         Log::tracex("BLE", "Characteristic write", "UUID {%s} value {%s}", pCharacteristic->getUUID().toString().c_str(), v);
 
         int i = 0;
-        for (i = 0; i<settings.size(); i++) if (settings[i].uuid.equals(pCharacteristic->getUUID())) break;
-        if (i<settings.size() && *c)
+        for (i = 0; i < settings.size(); i++)
+            if (settings[i].uuid.equals(pCharacteristic->getUUID()))
+                break;
+        if (i < settings.size() && *c)
         {
             (*c)->on_write(i, v);
         }
     }
+
 private:
-    ABBLEWriteCallback** c;
+    ABBLEWriteCallback **c;
     std::vector<ABBLESetting> &settings;
 };
 
-BTInterface::BTInterface(const char* uuid, const char *name): serviceUUID(uuid), callback(NULL)
+BTInterface::BTInterface(const char *uuid, const char *name) : serviceUUID(uuid), callback(NULL), pServer(NULL), pService(NULL)
 {
     if (name)
         strcpy(device_name, name);
@@ -60,79 +62,82 @@ BTInterface::BTInterface(const char* uuid, const char *name): serviceUUID(uuid),
 BTInterface::~BTInterface()
 {
     BLEDevice::deinit();
-    for (int i = 0; i<settings.size(); i++) delete characteristicsSettings[i];
-    for (int i = 0; i<fields.size(); i++) delete characteristicsFields[i];
+    for (int i = 0; i < settings.size(); i++)
+        delete characteristicsSettings[i];
+    for (int i = 0; i < fields.size(); i++)
+        delete characteristicsFields[i];
     delete pServer;
     delete pService;
     delete listener;
     delete serverCBack;
 }
 
-void BTInterface::add_setting(const char* name, const char* uuid)
+void BTInterface::add_setting(const char *name, const char *uuid)
 {
     ABBLESetting s(name, uuid);
     settings.push_back(s);
 }
 
-void BTInterface::add_field(const char* name, const char* uuid)
+void BTInterface::add_field(const char *name, const char *uuid)
 {
     ABBLEField f(name, uuid);
     fields.push_back(f);
 }
 
-void BTInterface::set_field_value(int handle, const char* value)
+void BTInterface::set_field_value(int handle, const char *value)
 {
-    if (handle>=0 && handle<characteristicsFields.size())
+    if (handle >= 0 && handle < characteristicsFields.size())
     {
-        BLECharacteristic* c = characteristicsFields[handle];
+        BLECharacteristic *c = characteristicsFields[handle];
         c->setValue(value);
         c->indicate();
     }
 }
 
-void BTInterface::set_field_value(int handle, void* value, int len)
+void BTInterface::set_field_value(int handle, void *value, int len)
 {
-    if (handle>=0 && handle<characteristicsFields.size())
+    if (handle >= 0 && handle < characteristicsFields.size())
     {
-        BLECharacteristic* c = characteristicsFields[handle];
-        c->setValue((uint8_t*)value, len);
+        BLECharacteristic *c = characteristicsFields[handle];
+        c->setValue((uint8_t *)value, len);
         c->indicate();
     }
 }
 
-void BTInterface::set_setting_value(int handle, const char* value)
+void BTInterface::set_setting_value(int handle, const char *value)
 {
-    if (handle>=0 && handle<characteristicsSettings.size())
+    if (handle >= 0 && handle < characteristicsSettings.size())
     {
-        BLECharacteristic* c = characteristicsSettings[handle];
+        BLECharacteristic *c = characteristicsSettings[handle];
         c->setValue(value);
     }
 }
 
 void BTInterface::set_setting_value(int handle, int value)
 {
-    if (handle>=0 && handle<characteristicsSettings.size())
+    if (handle >= 0 && handle < characteristicsSettings.size())
     {
-        static char temp[16]; itoa(value, temp, 10);
-        BLECharacteristic* c = characteristicsSettings[handle];
+        static char temp[16];
+        itoa(value, temp, 10);
+        BLECharacteristic *c = characteristicsSettings[handle];
         c->setValue(temp);
     }
 }
 
-void createSettingCharacteristics(BLEService* pService, BLEUUID uuid, BLECharacteristic** c, BLECharacteristicCallbacks* cback)
+void createSettingCharacteristics(BLEService *pService, BLEUUID uuid, BLECharacteristic **c, BLECharacteristicCallbacks *cback)
 {
     Log::tracex("BLE", "Creating bool characteristic", "UUID {%s} service {%s}", uuid.toString().c_str(), pService->getUUID().toString().c_str());
-    *c = pService->createCharacteristic( uuid,
-        BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
+    *c = pService->createCharacteristic(uuid,
+                                        BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
     (*c)->setReadProperty(true);
     (*c)->setWriteProperty(true);
     (*c)->setCallbacks(cback);
 }
 
-void createFieldCharacteristic(BLEService* pService, BLEUUID uuid, BLECharacteristic** c)
+void createFieldCharacteristic(BLEService *pService, BLEUUID uuid, BLECharacteristic **c)
 {
     Log::tracex("BLE", "Creating numeric characteristic", "UUID {%s} service {%s}", uuid.toString().c_str(), pService->getUUID().toString().c_str());
-    *c = pService->createCharacteristic( uuid, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_INDICATE);
+    *c = pService->createCharacteristic(uuid, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_INDICATE);
     (*c)->setIndicateProperty(true);
     (*c)->setReadProperty(true);
     (*c)->addDescriptor(new BLE2902());
@@ -147,17 +152,17 @@ void BTInterface::setup()
     pServer->setCallbacks(serverCBack);
     pService = pServer->createService(serviceUUID);
     Log::tracex("BLE", "Loading characteristics");
-    for (int i = 0; i<settings.size(); i++)
+    for (int i = 0; i < settings.size(); i++)
     {
         ABBLESetting &s = settings[i];
-        BLECharacteristic* c;
+        BLECharacteristic *c;
         createSettingCharacteristics(pService, s.uuid, &c, listener);
         characteristicsSettings.push_back(c);
     }
-    for (int i = 0; i<fields.size(); i++)
+    for (int i = 0; i < fields.size(); i++)
     {
         ABBLEField &s = fields[i];
-        BLECharacteristic* c;
+        BLECharacteristic *c;
         createFieldCharacteristic(pService, s.uuid, &c);
         characteristicsFields.push_back(c);
     }
@@ -178,4 +183,23 @@ void BTInterface::begin()
 
 void BTInterface::loop(unsigned long ms)
 {
+}
+
+void BTInterface::set_device_name(const char *name)
+{
+    strcpy(device_name, name);
+    if (pServer)
+    {
+        pServer->getAdvertising()->stop();
+        esp_err_t errRc = ::esp_ble_gap_set_device_name(name);
+        if (errRc != ESP_OK)
+        {
+            Log::tracex("BLE", "Change device name", "error {%d} name {%s}", errRc, name);
+        }
+        else
+        {
+            Log::tracex("BLE", "Change device name", "name {%s}", name);
+        }
+        pServer->getAdvertising()->start();
+    }
 }

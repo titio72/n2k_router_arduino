@@ -31,6 +31,9 @@
 #include "BMV712.h"
 #endif
 
+#define CMD_LOG_TAG "CMD"
+#define APP_LOG_TAG "APP"
+
 #include "EnvMessanger.h"
 #include "BLEConf.h"
 #include <Ports.h>
@@ -96,9 +99,8 @@ struct AppStats
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source)
 {
-  conf.n2k_source = new_source;
-  Log::tracex("APP", "Save new claimed n2k source", " New Source {%d}", new_source);
-  conf.save();
+  conf.save_n2k_source(new_source);
+  Log::tracex(APP_LOG_TAG, "Save new claimed n2k source", " New Source {%d}", new_source);
 }
 
 void on_message_sent(const tN2kMsg &N2kMsg, bool success)
@@ -120,7 +122,7 @@ void handle_display(unsigned long ms)
 
 void dump_process_stats()
 {
-  Log::tracex("APP", "Stats", "Cycles {%d} in 10s", app_stats.cycles);
+  Log::tracex(APP_LOG_TAG, "Stats", "Cycles {%d} in 10s", app_stats.cycles);
 }
 
 void report_stats(unsigned long ms)
@@ -153,7 +155,7 @@ template<typename T> bool handle_agent_enable(T &agent, bool enable, unsigned sh
         if (retry)
         {
           (*retry)++;
-          if ((*retry)>=MAX_RETRY) Log::tracex("APP", "Exceeded enable retry", "Module {%s}", desc);
+          if ((*retry)>=MAX_RETRY) Log::tracex(APP_LOG_TAG, "Exceeded enable retry", "Module {%s}", desc);
         }
       }
     }
@@ -188,11 +190,11 @@ void loop()
   {
     n2k_bus.loop(t);
     handle_agent_loop(display, true, &app_stats.retry_display, t, "Display");
-    handle_agent_loop(gps, conf.use_gps, &app_stats.retry_gps, t, "GPS");
-    handle_agent_loop(bmp, conf.use_bmp, &app_stats.retry_bmp, t, "BMP");
-    handle_agent_loop(dht, conf.use_dht, &app_stats.retry_dht, t, "DHT");
+    handle_agent_loop(gps, conf.get_services().use_gps, &app_stats.retry_gps, t, "GPS");
+    handle_agent_loop(bmp, conf.get_services().use_bmp, &app_stats.retry_bmp, t, "BMP");
+    handle_agent_loop(dht, conf.get_services().use_dht, &app_stats.retry_dht, t, "DHT");
     handle_agent_loop(bmv712, true, &app_stats.retry_bmv712, t, "BMV712");
-    handle_agent_loop(tacho, conf.use_tacho, &app_stats.retry_tacho, t, "TACHO");
+    handle_agent_loop(tacho, conf.get_services().use_tacho, &app_stats.retry_tacho, t, "TACHO");
     handle_agent_loop(envMessanger, true, &app_stats.retry_env_messager, t, "ENV");
     handle_agent_loop(bleConf, true, NULL, t, "BLE");
     handle_display(t);
@@ -209,9 +211,9 @@ void setup()
   Serial.begin(115200);
   msleep(1000);
   auto ver = __cplusplus;
-  Log::tracex("APP", "CPU", "Freq {%d} C++ {%l}", f1, ver);
-  conf.load();
-  n2k_bus.set_desired_source(conf.n2k_source);
+  Log::tracex(APP_LOG_TAG, "CPU", "Freq {%d} C++ {%l}", f1, ver);
+  conf.init();
+  n2k_bus.set_desired_source(conf.get_n2k_source());
   n2k_bus.setup();
   msleep(500);
   display.setup();
@@ -229,21 +231,35 @@ void on_command(char command, const char* command_value)
 {
     switch (command)
     {
+      case 'N':
+        {
+          Log::tracex(CMD_LOG_TAG, "Command set device name", "N {%s}", command_value);
+          bleConf.set_device_name(command_value);
+        }
+        break;
+      case 'C':
+        {
+          Log::tracex(CMD_LOG_TAG, "Command set services", "C {%s}", command_value);
+          N2KServices s;
+          s.from_string(command_value);
+          conf.save_services(s);
+        }
+        break;
       case 'H':
         {
-          Log::tracex("CMD", "Command set hours", "H {%s}", command_value);
+          Log::tracex(CMD_LOG_TAG, "Command set hours", "H {%s}", command_value);
           uint64_t engine_time_secs = atol(command_value);
           if (engine_time_secs>0)
           {
             uint64_t new_t = (uint64_t)1000 * engine_time_secs;
-            Log::tracex("CMD", "Command set hours", "ms {%lu-%03d}", (uint32_t)(new_t/1000), (uint16_t)(new_t%1000));
+            Log::tracex(CMD_LOG_TAG, "Command set hours", "ms {%lu-%03d}", (uint32_t)(new_t/1000), (uint16_t)(new_t%1000));
             tacho.set_engine_time(new_t, true);
           }
         }
         break;
       case 'T':
         {
-          Log::tracex("CMD", "Command tachometer calibration", "T {%s}", command_value);
+          Log::tracex(CMD_LOG_TAG, "Command tachometer calibration", "T {%s}", command_value);
           int rpm = atoi(command_value);
           if (rpm>0)
           {
@@ -251,7 +267,17 @@ void on_command(char command, const char* command_value)
           }
         }
         break;
+      case 't':
+        {
+          Log::tracex(CMD_LOG_TAG, "Command tachometer adjustment", "t {%s}", command_value);
+          int adj = atoi(command_value);
+          if (adj>0)
+          {
+            tacho.set_adjustment(adj / 10000.0, true);
+          }
+        }
+        break;
       default:
-        Log::tracex("CMD", "Unknown command", " CMD {%c} Value {%s}", command, command_value);
+        Log::tracex(CMD_LOG_TAG, "Unknown command", " CMD {%c} Value {%s}", command, command_value);
     }
 }

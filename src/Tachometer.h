@@ -24,7 +24,7 @@ public:
     void calibrate(int rpm);
 
     double get_adjustment();
-    void set_adjustement(double adj, bool save = false);
+    void set_adjustment(double adj, bool save = false);
 
     AB_AGENT
 

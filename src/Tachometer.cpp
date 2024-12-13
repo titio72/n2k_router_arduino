@@ -8,6 +8,8 @@
 #include <vector>
 #include <EEPROM.h>
 
+#define RPM_LOG_TAG "RPM"
+
 // frequency calculation
 #define PERIOD 500000L
 #define PERIOD_H 2000000L
@@ -126,7 +128,7 @@ void Tachometer::enable()
     {
         add_tacho(this);
         enabled = true;
-        Log::tracex("Tacho", "Enable", "Success {%d}", enabled);
+        Log::tracex(RPM_LOG_TAG, "Enable", "Success {%d}", enabled);
     }
 }
 
@@ -136,7 +138,7 @@ void Tachometer::disable()
     {
         remove_tacho(this);
         ctx.cache.rpm = 0xFFFF;
-        Log::tracex("Tacho", "Disable", "Success {1}");
+        Log::tracex(RPM_LOG_TAG, "Disable", "Success {1}");
         enabled = false;
     }
 }
@@ -145,12 +147,12 @@ void Tachometer::setup()
 {
     if (!is_setup)
     {
-        Log::tracex("Tacho", "Setup", "Pin {%d}", pin);
+        Log::tracex(RPM_LOG_TAG, "Setup", "Pin {%d}", pin);
         pinMode(pin, INPUT_PULLDOWN);
         init_timer();
         is_setup = true;
         set_engine_time(ctx.conf.get_engine_hours());
-        set_adjustement(ctx.conf.get_rpm_adjustment());
+        set_adjustment(ctx.conf.get_rpm_adjustment());
     }
 }
 
@@ -188,12 +190,12 @@ void Tachometer::loop(unsigned long micros)
 
 void Tachometer::calibrate(int rpm)
 {
-    if (rpm)
+    if (rpm && ctx.cache.rpm)
     {
         double current_rpm = ctx.cache.rpm / rpm_adjustment;
         double new_adj = (double)rpm / current_rpm;
-        Log::tracex("Tacho", "Set RPM adjustment", "RPM {%d} 2RPM {%d} Adj {%.2f} 2Adj {%.2f}", current_rpm, rpm, rpm_adjustment, new_adj);
-        set_adjustement(new_adj, true);
+        Log::tracex(RPM_LOG_TAG, "Set RPM adjustment", "RPM {%d} 2RPM {%d} Adj {%.2f} 2Adj {%.2f}", current_rpm, rpm, rpm_adjustment, new_adj);
+        set_adjustment(new_adj, true);
     }
 }
 
@@ -202,7 +204,7 @@ double Tachometer::get_adjustment()
     return rpm_adjustment;
 }
 
-void Tachometer::set_adjustement(double adj, bool save)
+void Tachometer::set_adjustment(double adj, bool save)
 {
     if (adj>0.1 && adj<5000.0)
     {
@@ -217,7 +219,7 @@ void Tachometer::dumpStats()
     uint32_t h = ts / 3600;
     uint32_t m = (ts % 3600) / 60;
     uint32_t s = (ts % 60);
-    Log::tracex("Tacho", "Stats", "RPM {%d} Engine Hours {%lu:%02lu:%02lu %lu%03d}", ctx.cache.rpm, h, m, s, (uint32_t)(engine_time/1000),(uint16_t)(engine_time%1000));
+    Log::tracex(RPM_LOG_TAG, "Stats", "RPM {%d} Engine Hours {%lu:%02lu:%02lu %lu%03d}", ctx.cache.rpm, h, m, s, (uint32_t)(engine_time/1000),(uint16_t)(engine_time%1000));
 }
 
 bool Tachometer::is_enabled()

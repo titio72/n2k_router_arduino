@@ -37,7 +37,7 @@ bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
     time_t _gps_time_t;
     short _gps_ms;
     get_time(rmc, _gps_time_t, _gps_ms);
-    if (ctx.conf.send_time)
+    if (ctx.conf.get_services().send_time)
     {
       ctx.n2k.sendTime(rmc, sid);
     }
@@ -127,7 +127,7 @@ void GPS::loop(unsigned long ms)
 {
     if (enabled && p)
     {
-        p->set_speed(UART_SPEED[ctx.conf.uart_speed]);
+        p->set_speed(UART_SPEED[ctx.conf.get_uart_speed()]);
         p->listen(250);
         send_gsv(ms);
     }

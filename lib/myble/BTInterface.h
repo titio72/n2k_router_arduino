@@ -57,6 +57,8 @@ class BTInterface {
 
         void set_write_callback(ABBLEWriteCallback* cback) { callback = cback; }
 
+        void set_device_name(const char* name);
+
     private:
         char device_name[16];
         BLEUUID serviceUUID;

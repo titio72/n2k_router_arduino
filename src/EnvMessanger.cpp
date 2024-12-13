@@ -17,7 +17,7 @@ void EnvMessanger::setup() {}
 void EnvMessanger::loop(unsigned long ms)
 {
   static unsigned long t0 = 0;
-  if ((ctx.conf.use_dht || ctx.conf.use_bmp) && enabled && check_elapsed(ms, t0, PERIOD_MICROS_ENV))
+  if ((ctx.conf.get_services().use_dht || ctx.conf.get_services().use_bmp) && enabled && check_elapsed(ms, t0, PERIOD_MICROS_ENV))
   {
     if (!isnan(ctx.cache.pressure)) ctx.n2k.sendPressure(ctx.cache.pressure);
     if (!isnan(ctx.cache.temperature)) ctx.n2k.sendCabinTemp(ctx.cache.temperature);

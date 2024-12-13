@@ -7,6 +7,8 @@
 #include "Conf.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
+#define GPS_LOG_TAG "GPS"
+
 Context* pCtx = NULL;
 SFE_UBLOX_GNSS myGNSS;
 
@@ -72,14 +74,14 @@ bool GPSX::set_system_time(unsigned char sid)
 {
   if (unix_time > 0)
   {
-    if (ctx.conf.send_time)
+    if (ctx.conf.get_services().send_time)
     {
       ctx.n2k.sendTime(ctx.cache.rmc, sid);
     }
     if (!gps_time_set)
     {
       delta_time = unix_time - time(0);
-      Log::tracex("GPS", "Set time", "UTC {%04d-%02d-%02d %02d:%02d:%02d}",
+      Log::tracex(GPS_LOG_TAG, "Set time", "UTC {%04d-%02d-%02d %02d:%02d:%02d}",
         ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
       gps_time_set = true;
     }
@@ -101,7 +103,7 @@ void GPSX::manageLowFrequency(unsigned long ms)
         unsigned char sid = _sid.getNew();
         ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
         ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
-        if (ctx.conf.sog_2_stw)
+        if (ctx.conf.get_services().sog_2_stw)
         {
             ctx.n2k.sendSTW(ctx.cache.rmc.sog);
         }
@@ -214,7 +216,7 @@ void GPSX::enable()
         myGNSS.setAutoDOPcallbackPtr(&getDOP);
 
     }
-    Log::tracex("GPS", "Enable", "Success {%d}", enabled);
+    Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }
 
@@ -240,14 +242,14 @@ void GPSX::disable()
 
     myGNSS.end();
     enabled = false;
-    Log::tracex("GPS", "Enable", "Success {%d}", !enabled);
+    Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", !enabled);
 }
 
 void GPSX::dumpStats()
 {
     if (enabled)
     {
-        Log::tracex("GPS", "Stats", "UTC {%04d-%02d-%02dT%02d:%02d:%02d} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
+        Log::tracex(GPS_LOG_TAG, "Stats", "UTC {%04d-%02d-%02dT%02d:%02d:%02d} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
             ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s,
             ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog,
             ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
