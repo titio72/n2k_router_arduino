@@ -39,7 +39,7 @@ bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
     get_time(rmc, _gps_time_t, _gps_ms);
     if (ctx.conf.get_services().send_time)
     {
-      ctx.n2k.sendTime(rmc, sid);
+      ctx.n2k.sendSystemTime(rmc, sid);
     }
     if (!time_set_flag)
     {

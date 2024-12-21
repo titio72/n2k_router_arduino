@@ -14,7 +14,8 @@
 
 #define BLE_LOG_TAG "BLE"
 
-BLEConf::BLEConf(Context _ctx, command_callback cback) : enabled(false), ctx(_ctx), ble(SERVICE_UUID, NULL), last_sent(0), c_back(cback)
+BLEConf::BLEConf(Context _ctx, command_callback cback)
+    : enabled(false), ctx(_ctx), ble(SERVICE_UUID, nullptr), last_sent(0), c_back(cback)
 {
 }
 
@@ -90,40 +91,44 @@ void BLEConf::loop(unsigned long ms)
   {
     N2KStats s(ctx.n2k.get_bus().getStats());
 
-    int8_t _gpsFix = ctx.cache.gsa.fix;
-    int32_t _atmo = isnan(ctx.cache.pressure) ? INVALID_U32 : (int32_t)(ctx.cache.pressure * 10.0);
-    int16_t _temp = isnan(ctx.cache.temperature) ? INVALID_16 : (int16_t)(ctx.cache.temperature * 10);
-    int16_t _hum = isnan(ctx.cache.humidity) ? INVALID_U16 : (int16_t)(ctx.cache.humidity * 100);
-    int32_t _lat = isnan(ctx.cache.rmc.lat) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lat * 1000000);
-    int32_t _lon = isnan(ctx.cache.rmc.lon) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lon * 1000000);
-    int16_t _sog = isnan(ctx.cache.rmc.sog) ? INVALID_U32 : (int16_t)(ctx.cache.rmc.sog * 100);
-    int16_t _cog = isnan(ctx.cache.rmc.cog) ? INVALID_U32 : (int16_t)(ctx.cache.rmc.cog * 10);
-    int32_t _rpmAdj = isnan(ctx.conf.get_rpm_adjustment()) ? INVALID_32 : (uint32_t)(ctx.conf.get_rpm_adjustment() * 10000);
-    int32_t _timestamp = ctx.cache.rmc.unix_time;
-    int16_t _rpm = ctx.cache.rpm;
-    int32_t _mem = get_free_mem();
-    int8_t _canbus = s.canbus;
-    int32_t _canbus_s = s.sent;
-    int32_t _canbus_e = s.fail;
-    static uint8_t *v = new uint8_t[128];
+    const int8_t _gpsFix = ctx.cache.gsa.fix;
+    const int32_t _atmo = isnan(ctx.cache.pressure) ? INVALID_U32 : (int32_t)(ctx.cache.pressure * 10.0);
+    const int16_t _temp = isnan(ctx.cache.temperature) ? INVALID_16 : (int16_t)(ctx.cache.temperature * 10);
+    const int16_t _hum = isnan(ctx.cache.humidity) ? INVALID_U16 : (int16_t)(ctx.cache.humidity * 100);
+    const int32_t _lat = isnan(ctx.cache.rmc.lat) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lat * 1000000);
+    const int32_t _lon = isnan(ctx.cache.rmc.lon) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lon * 1000000);
+    const int16_t _sog = isnan(ctx.cache.rmc.sog) ? INVALID_U32 : (int16_t)(ctx.cache.rmc.sog * 100);
+    const int16_t _cog = isnan(ctx.cache.rmc.cog) ? INVALID_U32 : (int16_t)(ctx.cache.rmc.cog * 10);
+    const int32_t _rpmAdj = isnan(ctx.conf.get_rpm_adjustment()) ? INVALID_32 : (uint32_t)(ctx.conf.get_rpm_adjustment() * 10000);
+    const int32_t _timestamp = ctx.cache.rmc.unix_time;
+    const int16_t _rpm = ctx.cache.rpm;
+    const int32_t _mem = get_free_mem();
+    const int8_t _canbus = s.canbus;
+    const int32_t _canbus_s = s.sent;
+    const int32_t _canbus_e = s.fail;
+    const uint32_t _engine_time = static_cast<uint32_t>(ctx.cache.engine_time / 1000L); // send engine time in seconds
+    const uint8_t _services = ctx.conf.get_services().serialize();
+
+    static uint8_t v[128];
     int offset = 0;
-    add1Int(v, offset, _gpsFix);     // 1
-    add4Int(v, offset, _atmo);       // 4 5
-    add2Int(v, offset, _temp);       // 2 7
-    add2Int(v, offset, _hum);        // 2 9
-    add4Int(v, offset, _lat);        // 4 13
-    add4Int(v, offset, _lon);        // 4 17
-    add4Int(v, offset, _mem);        // 4 21
-    add1Int(v, offset, _canbus);     // 1 22
-    add4Int(v, offset, _canbus_s);   // 4 26
-    add4Int(v, offset, _canbus_e);   // 4 30
-    add2Int(v, offset, _sog);        // 2 32
-    add2Int(v, offset, _cog);        // 2 34
-    add2Int(v, offset, _rpm);        // 2 36
-    add4Int(v, offset, (uint32_t)(ctx.cache.engine_time / 1000L));   // 4 40 send engine time in seconds
-    add4Int(v, offset, _timestamp);  // 4 44
-    add1Int(v, offset, ctx.conf.get_services().serialize()); // 1 48
-    add4Int(v, offset, _rpmAdj); // 4 49
+
+    add1Int(v, offset, _gpsFix);      // 1
+    add4Int(v, offset, _atmo);        // 4 5
+    add2Int(v, offset, _temp);        // 2 7
+    add2Int(v, offset, _hum);         // 2 9
+    add4Int(v, offset, _lat);         // 4 13
+    add4Int(v, offset, _lon);         // 4 17
+    add4Int(v, offset, _mem);         // 4 21
+    add1Int(v, offset, _canbus);      // 1 22
+    add4Int(v, offset, _canbus_s);    // 4 26
+    add4Int(v, offset, _canbus_e);    // 4 30
+    add2Int(v, offset, _sog);         // 2 32
+    add2Int(v, offset, _cog);         // 2 34
+    add2Int(v, offset, _rpm);         // 2 36
+    add4Int(v, offset, _engine_time); // 4 40
+    add4Int(v, offset, _timestamp);   // 4 44
+    add1Int(v, offset, _services);    // 1 48
+    add4Int(v, offset, _rpmAdj);      // 4 49
 
     ble.set_field_value(0, v, offset);
   }
@@ -144,7 +149,7 @@ void BLEConf::disable()
   enabled = false;
 }
 
-void BLEConf::set_device_name(const char* name)
+void BLEConf::set_device_name(const char *name)
 {
   ble.set_device_name(name);
   ctx.conf.save_device_name(name);

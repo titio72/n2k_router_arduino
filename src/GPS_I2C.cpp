@@ -76,7 +76,7 @@ bool GPSX::set_system_time(unsigned char sid)
   {
     if (ctx.conf.get_services().send_time)
     {
-      ctx.n2k.sendTime(ctx.cache.rmc, sid);
+      ctx.n2k.sendSystemTime(ctx.cache.rmc, sid);
     }
     if (!gps_time_set)
     {

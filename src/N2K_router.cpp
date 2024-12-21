@@ -116,7 +116,7 @@ bool N2K_router::sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsi
     return n2k.send_msg(N2kMsg);
 }
 
-bool N2K_router::sendTime(RMC &rmc, unsigned char sid)
+bool N2K_router::sendSystemTime(RMC &rmc, unsigned char sid)
 {
     if (rmc.valid)
     {
@@ -142,7 +142,7 @@ bool N2K_router::sendLocalTime(GSA &gsa, RMC &rmc)
     return false;
 }
 
-bool N2K_router::sendTime(time_t _now, unsigned char sid, short ms)
+bool N2K_router::sendSystemTime(time_t _now, unsigned char sid, short ms)
 {
     tm *t = gmtime(&_now);
     int days_since_1970 = getDaysSince1970(t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
