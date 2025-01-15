@@ -133,6 +133,7 @@ void report_stats(unsigned long ms)
     gps.dumpStats();
     tacho.dumpStats();
     n2k_bus.getStats().dump();
+    n2k_bus.getStats().reset();
     dump_process_stats();
 
     app_stats.cycles = 0;

@@ -14,6 +14,8 @@
 
 #define BLE_LOG_TAG "BLE"
 
+#define BLE_UPDATE_PERIOD 1000000
+
 BLEConf::BLEConf(Context _ctx, command_callback cback)
     : enabled(false), ctx(_ctx), ble(SERVICE_UUID, nullptr), last_sent(0), c_back(cback)
 {
@@ -87,7 +89,7 @@ void add1Int(uint8_t *dest, int &offset, int8_t data8)
 
 void BLEConf::loop(unsigned long ms)
 {
-  if (enabled && check_elapsed(ms, last_sent, 1000000))
+  if (enabled && check_elapsed(ms, last_sent, BLE_UPDATE_PERIOD))
   {
     N2KStats s(ctx.n2k.get_bus().getStats());
 

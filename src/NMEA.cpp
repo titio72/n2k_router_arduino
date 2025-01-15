@@ -233,6 +233,19 @@ void NMEAUtils::dumpGSA(GSA &gsa, char *buffer)
     sprintf(buffer, "}");
 }
 
+time_t get_time(int y, int M, int d, int h, int m, int s)
+{
+    struct tm t;
+    t.tm_year = y - 1900;
+    t.tm_mon = M - 1;
+    t.tm_mday = d;
+    t.tm_hour = h;
+    t.tm_min = m;
+    t.tm_sec = s;
+    t.tm_isdst = 0;
+    return mktime(&t);
+}
+
 int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
 {
     if (s_rmc && strncmp(s_rmc + 3, GPRMC, strlen(GPRMC)) == 0)
@@ -305,6 +318,11 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
             rmc.M = atoi(token + 2 * sizeof(char));
             token[2] = 0;
             rmc.d = atoi(token);
+        }
+
+        if (rmc.y > 0)
+        {
+            rmc.unix_time = get_time(rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s);
         }
         return 0;
     }

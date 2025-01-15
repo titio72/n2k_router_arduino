@@ -72,6 +72,8 @@ void Configuration::save_engine_hours(uint64_t h)
 
 unsigned char Configuration::get_uart_speed()
 {
+    return DEFAULT_GPS_SPEED;
+    /*
     unsigned char s = EEPROM.readInt(CONF_GPS_UART_SPEED_START_BYTE);
     if (s<UART_SPEEDS)
     {
@@ -83,10 +85,12 @@ unsigned char Configuration::get_uart_speed()
         s = DEFAULT_GPS_SPEED;
     }
     return s;
+    */
 }
 
 void Configuration::save_uart_speed(unsigned char s)
 {
+    /*
     if (s<UART_SPEEDS)
     {
         bool r = EEPROM.writeInt(CONF_GPS_UART_SPEED_START_BYTE, s);
@@ -97,10 +101,15 @@ void Configuration::save_uart_speed(unsigned char s)
     {
         Log::tracex(CONF_LOG_TAG, "Write error", "illegal uart speed {%d}", s);
     }
+    */
 }
 unsigned char Configuration::get_n2k_source()
 {
     unsigned char src = EEPROM.readInt(CONF_N2K_SOURCE_START_BYTE);
+    if (src == NO_CONF)
+    {
+        src = DEFAULT_N2K_SOURCE;
+    }
     Log::tracex(CONF_LOG_TAG, "Read", "n2k src {%d}", src);
     return src;
 }

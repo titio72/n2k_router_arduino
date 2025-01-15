@@ -6,7 +6,6 @@
 
 #include <Arduino.h>
 #include <vector>
-#include <EEPROM.h>
 
 #define RPM_LOG_TAG "RPM"
 
@@ -147,7 +146,7 @@ void Tachometer::setup()
 {
     if (!is_setup)
     {
-        Log::tracex(RPM_LOG_TAG, "Setup", "Pin {%d}", pin);
+        Log::tracex(RPM_LOG_TAG, "Setup", "Pin {%d} Sim {%d}", pin, ENGINE_RPM_SIM_PIN);
         pinMode(pin, INPUT_PULLDOWN);
         init_timer();
         is_setup = true;

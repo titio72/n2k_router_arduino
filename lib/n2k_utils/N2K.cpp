@@ -1,19 +1,21 @@
 #ifdef ESP32_ARCH
-    #ifndef ESP32_CAN_TX_PIN
-    #define ESP32_CAN_TX_PIN GPIO_NUM_4
-    #endif
-    #ifndef ESP32_CAN_RX_PIN
-    #define ESP32_CAN_RX_PIN GPIO_NUM_5
-    #endif
-    #ifdef ESP32_C3
-    #include <NMEA2000_esp32xx.h>
-    #define N2K_CLASS tNMEA2000_esp32xx
-    #else
-    #include <NMEA2000_esp32.h>
-    #define N2K_CLASS tNMEA2000_esp32
-    #endif
+#ifndef ESP32_CAN_TX_PIN
+#define ESP32_CAN_TX_PIN GPIO_NUM_4
+#endif
+#ifndef ESP32_CAN_RX_PIN
+#define ESP32_CAN_RX_PIN GPIO_NUM_5
+#endif
+#ifdef ESP32_C3
+#define N2K_CLASS_NAME "esp32xx"
+#define N2K_CLASS tNMEA2000_esp32xx
+#include <NMEA2000_esp32xx.h>
 #else
-    #include <NMEA2000_SocketCAN.h>
+#define N2K_CLASS_NAME "esp32"
+#define N2K_CLASS tNMEA2000_esp32
+#include <NMEA2000_esp32.h>
+#endif
+#else
+#include <NMEA2000_SocketCAN.h>
 #endif
 
 #include <time.h>
@@ -25,16 +27,16 @@
 #define PERIOD_N2K_MICROS 100000
 
 bool static_initialized = false;
-N2K* instance = NULL;
+N2K *instance = NULL;
 N2KStats stats;
 
 void (*_handler)(const tN2kMsg &N2kMsg);
 void (*_source_handler)(const unsigned char old_source, const unsigned char new_source);
 void (*_on_sent_message)(const tN2kMsg &N2kMsg, bool success) = NULL;
 
-N2K* N2K::get_instance(void (*_msg_handler)(const tN2kMsg &N2kMsg), void (*_src_handler)(const unsigned char old_s, const unsigned char new_s))
+N2K *N2K::get_instance(void (*_msg_handler)(const tN2kMsg &N2kMsg), void (*_src_handler)(const unsigned char old_s, const unsigned char new_s))
 {
-    if (instance==NULL)
+    if (instance == NULL)
     {
         _handler = _msg_handler;
         _source_handler = _src_handler;
@@ -51,7 +53,7 @@ void N2K::set_sent_message_callback(void (*_MsgHandler)(const tN2kMsg &N2kMsg, b
 N2K::N2K()
 {
     desired_source = 22;
-    pgns = (unsigned long*)malloc(sizeof(unsigned long) * 1);
+    pgns = (unsigned long *)malloc(sizeof(unsigned long) * 1);
     pgns[0] = 0;
     n_pgns = 0;
 }
@@ -87,23 +89,23 @@ bool N2K::is_initialized()
 
 void N2K::loop(unsigned long time)
 {
-    static unsigned long t0 = time;
-    if (is_initialized() && (time-t0)>PERIOD_N2K_MICROS)
+    if (is_initialized())
     {
+        NMEA2000->ParseMessages();
+        static unsigned long t0 = time;
         t0 = time;
         unsigned char s = NMEA2000->GetN2kSource();
-        if (s!=desired_source)
+        if (s != desired_source)
         {
             // claimed new source
             Log::tracex("N2k", "Source claim", "old {%d} new {%d}", desired_source, s);
             if (_source_handler) _source_handler(desired_source, s);
             desired_source = s;
         }
-        NMEA2000->ParseMessages();
     }
 }
 
-void N2K::set_can_socket_name(const char* name)
+void N2K::set_can_socket_name(const char *name)
 {
     strcpy(socket_name, name);
 }
@@ -111,7 +113,7 @@ void N2K::set_can_socket_name(const char* name)
 void N2K::add_pgn(unsigned long pgn)
 {
     // pgns is an array terminated by a 0 (so we do not have to define the length)
-    pgns = (unsigned long*)realloc(pgns, sizeof(unsigned long) * (n_pgns + 2));
+    pgns = (unsigned long *)realloc(pgns, sizeof(unsigned long) * (n_pgns + 2));
     pgns[n_pgns] = pgn;
     pgns[n_pgns + 1] = 0;
     n_pgns++;
@@ -140,8 +142,16 @@ void N2K::setup()
                                       60,  // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
                                       2046 // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf
         );
-        NMEA2000->SetMode(tNMEA2000::N2km_ListenAndNode, desired_source);
-        NMEA2000->SetMsgHandler(private_message_handler);
+        if (_handler)
+        {
+            NMEA2000->SetMode(tNMEA2000::N2km_ListenAndNode, desired_source);
+            NMEA2000->SetMsgHandler(private_message_handler);
+        }
+        else
+        {
+            Log::trace("[N2K] Initializing node-only\n");
+            NMEA2000->SetMode(tNMEA2000::N2km_NodeOnly, desired_source);
+        }
         NMEA2000->SetN2kCANSendFrameBufSize(1000);
         NMEA2000->EnableForward(false); // Disable all msg forwarding to USB (=Serial)
         if (pgns) NMEA2000->ExtendTransmitMessages(pgns);
@@ -167,7 +177,7 @@ bool N2K::send_msg(const tN2kMsg &N2kMsg)
         }
         else
         {
-            Log::tracex("N2K", "Failed message", "PGN {%d}", N2kMsg.PGN);
+            //Log::tracex("N2K", "Failed message", "PGN {%d}", N2kMsg.PGN);
             stats.fail++;
         }
         if (_on_sent_message) _on_sent_message(N2kMsg, res);
@@ -181,7 +191,7 @@ bool N2K::send_msg(const tN2kMsg &N2kMsg)
 
 void N2KStats::dump()
 {
-    Log::trace("N2K", "Stats", "bus {%d} tx {%d/%d} rx {%d}", canbus, sent, fail, recv);
+    Log::tracex("N2K", "Stats", "bus {%d} tx {%d/%d} rx {%d}", canbus, sent, fail, recv);
 }
 
 void N2KStats::reset()

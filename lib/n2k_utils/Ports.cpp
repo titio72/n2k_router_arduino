@@ -33,7 +33,7 @@ int Port::process_char(char c)
 	{
 		if (listener)
 		{
-			Serial.printf("%s\n", read_buffer);
+			//Serial.printf("%s\n", read_buffer);
 			listener->on_line_read(read_buffer);
 		}
 		if (trace) {

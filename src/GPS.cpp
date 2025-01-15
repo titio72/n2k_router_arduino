@@ -6,6 +6,7 @@
 #include "Conf.h"
 
 NMEAUtils nmea;
+char uart_speed = DEFAULT_GPS_SPEED;
 
 GPS::GPS(Context _ctx, Port* _p):
     ctx(_ctx), p(_p), enabled(false), delta_time(0), gps_time_set(false)
@@ -127,7 +128,7 @@ void GPS::loop(unsigned long ms)
 {
     if (enabled && p)
     {
-        p->set_speed(UART_SPEED[ctx.conf.get_uart_speed()]);
+        p->set_speed(UART_SPEED[uart_speed]);
         p->listen(250);
         send_gsv(ms);
     }
@@ -135,6 +136,7 @@ void GPS::loop(unsigned long ms)
 
 void GPS::setup()
 {
+  uart_speed = ctx.conf.get_uart_speed();
   if (p!=NULL)
   {
     p->set_handler(this);
