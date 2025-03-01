@@ -101,6 +101,9 @@ void BLEConf::loop(unsigned long ms)
     const int32_t _lon = isnan(ctx.cache.rmc.lon) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lon * 1000000);
     const int16_t _sog = isnan(ctx.cache.rmc.sog) ? INVALID_U32 : (int16_t)(ctx.cache.rmc.sog * 100);
     const int16_t _cog = isnan(ctx.cache.rmc.cog) ? INVALID_U32 : (int16_t)(ctx.cache.rmc.cog * 10);
+    const int16_t _current = isnan(ctx.cache.current) ? INVALID_16 : (int16_t)(ctx.cache.current * 100);
+    const int16_t _voltage = isnan(ctx.cache.voltage) ? INVALID_16 : (int16_t)(ctx.cache.voltage * 100);
+    const int16_t _soc = isnan(ctx.cache.soc) ? INVALID_U16 : (int16_t)(ctx.cache.soc * 100);
     const int32_t _rpmAdj = isnan(ctx.conf.get_rpm_adjustment()) ? INVALID_32 : (uint32_t)(ctx.conf.get_rpm_adjustment() * 10000);
     const int32_t _timestamp = ctx.cache.rmc.unix_time;
     const int16_t _rpm = ctx.cache.rpm;
@@ -131,7 +134,9 @@ void BLEConf::loop(unsigned long ms)
     add4Int(v, offset, _timestamp);   // 4 44
     add1Int(v, offset, _services);    // 1 48
     add4Int(v, offset, _rpmAdj);      // 4 49
-
+    add2Int(v, offset, _current);     // 2 53
+    add2Int(v, offset, _voltage);     // 2 55
+    add2Int(v, offset, _soc);         // 2 57
     ble.set_field_value(0, v, offset);
   }
 }

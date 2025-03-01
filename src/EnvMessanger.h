@@ -15,6 +15,7 @@ public:
 private:
     bool enabled;
     Context& ctx;
+    unsigned long t0;
 };
 
 

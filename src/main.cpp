@@ -5,7 +5,7 @@
 
 #include <Arduino.h>
 #include <Esp.h>
-#include <ArduinoPort.h>
+#include <ArduinoPort.hpp>
 
 #include <N2K.h>
 #include <Utils.h>
@@ -54,14 +54,16 @@ Context context(n2k, conf, cache);
 #if GPS_TYPE==1
 GPSX gps(context);
 #elif GPS_TYPE==2
-Port* gpsPort = new ArduinoPort(Serial1, UART_SPEED[DEFAULT_GPS_SPEED], GPS_RX_PIN, GPS_TX_PIN, false);
+ArduinoPort<HardwareSerial> gpsPort("GPS", Serial1, UART_SPEED[UART_SPEED_9600], GPS_RX_PIN, GPS_TX_PIN, false);
+//SoftwareSerial gpsSerial;
+//ArduinoPort<SoftwareSerial> gpsPort("GPS", gpsSerial, UART_SPEED[DEFAULT_GPS_SPEED], GPS_RX_PIN, GPS_TX_PIN, false);
 GPS gps(context, gpsPort);
 #else
 Dummy gps;
 #endif
 
 #if (DO_VE_DIRECT==1)
-ArduinoPort veDirectPort(Serial1, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, true);
+ArduinoPort<HardwareSerial> veDirectPort("VE", Serial2, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, true);
 BMV712 bmv712(context, veDirectPort);
 #else
 Dummy bmv712;
@@ -95,7 +97,7 @@ struct AppStats
 } app_stats;
 
 #define MAX_RETRY 3
-#define N2K_BLINK_USEC 100000L
+#define N2K_BLINK_USEC 100000L /* micros */
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source)
 {
@@ -105,7 +107,7 @@ void on_source_claim(const unsigned char old_source, const unsigned char new_sou
 
 void on_message_sent(const tN2kMsg &N2kMsg, bool success)
 {
-  if (success) display.blink(micros(), N2K_BLINK_USEC);
+  if (success) display.blink(LED_N2K, micros(), N2K_BLINK_USEC);
 }
 
 void handle_display(unsigned long ms)
@@ -113,10 +115,18 @@ void handle_display(unsigned long ms)
   static unsigned long t0 = 0;
   if (check_elapsed(ms, t0, 1000000))
   {
-    display.draw_text("%5.2fC\n%6.1f Mb", cache.temperature, cache.pressure/100.0f);
-    //display.blink(ms, 200000 /* 0.2 seconds */);
+    display.draw_text("GPS %d\nSATS %d/%d", cache.gsa.fix, cache.gsa.nSat, cache.gsv.nSat);
     N2KStats n2k_stats = n2k.get_bus().getStats();
     static N2KStats prev = n2k_stats;
+
+    if (cache.gsa.valid && cache.gsa.fix>1)
+    {
+      display.on(LED_GPS);
+    }
+    else
+    {
+      display.off(LED_GPS);
+    }
   }
 }
 
@@ -194,7 +204,7 @@ void loop()
     handle_agent_loop(gps, conf.get_services().use_gps, &app_stats.retry_gps, t, "GPS");
     handle_agent_loop(bmp, conf.get_services().use_bmp, &app_stats.retry_bmp, t, "BMP");
     handle_agent_loop(dht, conf.get_services().use_dht, &app_stats.retry_dht, t, "DHT");
-    handle_agent_loop(bmv712, true, &app_stats.retry_bmv712, t, "BMV712");
+    handle_agent_loop(bmv712, conf.get_services().use_vedirect, &app_stats.retry_bmv712, t, "BMV712");
     handle_agent_loop(tacho, conf.get_services().use_tacho, &app_stats.retry_tacho, t, "TACHO");
     handle_agent_loop(envMessanger, true, &app_stats.retry_env_messager, t, "ENV");
     handle_agent_loop(bleConf, true, NULL, t, "BLE");
@@ -226,6 +236,8 @@ void setup()
   tacho.setup();
   msleep(500);
   started = true;
+
+  display.on(LED_PWR);
 }
 
 void on_command(char command, const char* command_value)

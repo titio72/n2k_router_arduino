@@ -22,6 +22,26 @@ char tempBuffer[2048];
 
 GSA *last_gsa = NULL;
 
+bool nmeaChecksumCompare(const char* s)
+{
+    int l = strlen(s);
+    if (l<10 && (s[0] != '$' || s[l - 3] != '*'))
+    {
+        return false;
+    }
+
+    uint8_t calcChecksum = 0;
+    for (int i = 1; s[i] != '*'; i++) // skip the $ at the beginning
+    {
+        calcChecksum ^= s[i];
+    }
+
+    uint8_t cs1 = calcChecksum / 16; cs1 += cs1 < 10 ? '0' : 'A' - 10;
+    uint8_t cs2 = calcChecksum % 16; cs2 += cs2 < 10 ? '0' : 'A' - 10;
+    return cs1 == s[l - 2] && cs2 == s[l - 1];
+
+}
+
 char *get_next_token(const char *string, size_t &start, size_t len, char *buffer, char delim, char delimEnd = 0)
 {
     if (start >= len)
@@ -69,23 +89,18 @@ const char *get_next_token_checked(const char *string, size_t &start, size_t len
     return c;
 }
 
-NMEAUtils::NMEAUtils(): last_gsv_time(0)
+NMEAUtils::NMEAUtils(): last_gsv_time(0), gsv_count(0), gsv_index(0), gsv_total(0), n_sat(0), n_snapshot_sat(0), sat_ready(false)
 {
-    sat_ready = false;
-
-    n_sat = 0;
-
-    n_snapshot_sat = 0;
 }
 
 NMEAUtils::~NMEAUtils()
 {
 }
 
-int nmea_position_parse(char *s, float *pos)
+NMEA_RESPONSE nmea_position_parse(char *s, float *pos)
 {
     if (s == 0 || s[0] == 0)
-        return -1;
+        return NMEA_ERROR;
 
     char *cursor;
 
@@ -94,13 +109,13 @@ int nmea_position_parse(char *s, float *pos)
 
     if (s == NULL || *s == '\0')
     {
-        return -1;
+        return NMEA_ERROR;
     }
 
     /* decimal minutes */
     if (NULL == (cursor = strchr(s, '.')))
     {
-        return -1;
+        return NMEA_ERROR;
     }
 
     /* minutes starts 2 digits before dot */
@@ -114,29 +129,32 @@ int nmea_position_parse(char *s, float *pos)
 
     *pos = degrees + (minutes / 60.0);
 
-    return 0;
+    return NMEA_OK;
 }
 
 bool NMEAUtils::is_sentence(const char *sentence, const char *sentence_id)
 {
-    static char id[4];
-    for (int i = 3; i < 6; i++)
-    {
-        id[i - 3] = sentence[i];
-    }
-    id[3] = 0;
+    if (sentence == NULL || sentence_id == NULL || sentence[0] != '$')
+        return false;
 
-    return (strcmp(id, sentence_id) == 0);
+    // sentences are in the form "$XXYYY," where YYY is the sentence id - we skip the first 3 characters
+    size_t l = strlen(sentence_id);
+    for (int i = 0; i < l; i++)
+    {
+        if (sentence[i + 3]==0 || sentence_id[i] != sentence[i + 3])
+            return false;
+    }
+    return true;
 }
 
-int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
+NMEA_RESPONSE NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 {
     static ulong last_gsa_time = 0;
     static int gsa_count = 0;
 
-    int ret = -1;
+    NMEA_RESPONSE ret = NMEA_ERROR;
 
-    if (s_gsa && strncmp(s_gsa + 3, GPGSA, strlen(GPGSA)) == 0)
+    if (is_sentence(s_gsa, GPGSA))
     {
 
         ulong t = _millis();
@@ -199,7 +217,7 @@ int NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 
         last_gsa = &gsa;
 
-        ret = 0;
+        ret = NMEA_OK;
     }
 
     if (sat_ready && gsa_count == N_GSA)
@@ -246,9 +264,9 @@ time_t get_time(int y, int M, int d, int h, int m, int s)
     return mktime(&t);
 }
 
-int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
+NMEA_RESPONSE NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
 {
-    if (s_rmc && strncmp(s_rmc + 3, GPRMC, strlen(GPRMC)) == 0)
+    if (is_sentence(s_rmc, GPRMC))
     {
         memset(&rmc, 0, sizeof(RMC));
 
@@ -270,7 +288,7 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
             token[2] = 0;
             rmc.h = atoi(token);
         }
-
+        //Log::tracex("GPS", "RMC", "time {%d:%d:%d.%d}\n", rmc.h, rmc.m, rmc.s, rmc.ms);
         // read validity
         token = get_next_token(s_rmc, start, len, tempBuffer, ',');
 
@@ -307,6 +325,7 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
 
         // read COG in degrees
         token = get_next_token(s_rmc, start, len, tempBuffer, ',');
+        //Log::tracex("GPS", "RMC", "COG {%s}\n", token);
         rmc.cog = (token && token[0]) ? atof(token) : NAN;
 
         // read date
@@ -324,9 +343,9 @@ int NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
         {
             rmc.unix_time = get_time(rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s);
         }
-        return 0;
+        return NMEA_OK;
     }
-    return -1;
+    return NMEA_ERROR;
 }
 
 enum SAT_PARSE
@@ -342,22 +361,23 @@ SAT_PARSE sat_parse(const char* s_gsv, size_t &start, size_t len, sat& satellite
 
     if (s_sat_id && s_sat_id[0])
     {
+
         int sat_id = atoi(s_sat_id);
 
         const char *s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
         if (s == NULL)
-            return SAT_PARSE::PARSE_ERROR; // the sentence is corrupted
+            return PARSE_ERROR; // the sentence is corrupted
         int sat_el = atoi(s);
 
         s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
         if (s == NULL)
-            return SAT_PARSE::PARSE_ERROR; // the sentence is corrupted
+            return PARSE_ERROR; // the sentence is corrupted
         int sat_az = atoi(s);
 
         int sat_db = -1;
         s = get_next_token_checked(s_gsv, start, len, tempBuffer, ',', '*');
         if (s == NULL)
-            return SAT_PARSE::PARSE_ERROR; // the sentence is corrupted
+            return PARSE_ERROR; // the sentence is corrupted
         else if (s[0])
             sat_db = atoi(s);
 
@@ -365,7 +385,7 @@ SAT_PARSE sat_parse(const char* s_gsv, size_t &start, size_t len, sat& satellite
         satellite.az = sat_az;
         satellite.elev = sat_el;
         satellite.db = sat_db;
-        return SAT_PARSE::PARSE_OK;
+        return PARSE_OK;
     }
     else
     {
@@ -373,20 +393,52 @@ SAT_PARSE sat_parse(const char* s_gsv, size_t &start, size_t len, sat& satellite
         get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
         get_next_token_checked(s_gsv, start, len, tempBuffer, ',');
         get_next_token_checked(s_gsv, start, len, tempBuffer, ',', '*');
-        return SAT_PARSE::PARSE_EMPTY;
+        return PARSE_EMPTY;
     }
 }
 
 /*
 $GPGSV,2,1,07,07,79,048,42,02,51,062,43,26,36,256,42,27,27,138,42*71
 $GPGSV,2,2,07,09,23,313,42,04,19,159,41,15,12,041,42*41
-
 */
 
-int sats_parse(const char *s_gsv, int &n_sat, sat *satellites, bool &sat_ready)
+void NMEAUtils::reset_gsv()
 {
-    //Log::trace("Parse {%s}\n", s_gsv);
-    if (s_gsv && strncmp(s_gsv + 3, GPGSV, strlen(GPGSV)) == 0)
+    sat_ready = false;
+    n_sat = 0;
+    gsv_count = 0;
+    gsv_index = 0;
+    gsv_total = 0;
+}
+
+NMEA_RESPONSE parse_gsv_sats(const char *s_gsv, size_t &start, size_t len, sat *satellites, int &n_sat)
+{
+    SAT_PARSE res = PARSE_OK;
+    for (int i = 0; i<4 && res!=PARSE_ERROR; i++) // 4 is the max N of stas per sentence
+    {
+        res = sat_parse(s_gsv, start, len, satellites[n_sat]);
+        switch (res)
+        {
+            case PARSE_OK:
+            {
+                n_sat++;
+            }
+            break;
+            case PARSE_EMPTY:
+            {
+
+            }
+            break;
+            default: return NMEA_ERROR;
+        }
+    }
+    return NMEA_OK;
+}
+
+NMEA_RESPONSE NMEAUtils::parseGSV(const char *s_gsv, GSV &gsv)
+{
+    //Log::trace("%s\n", s_gsv);
+    if (is_sentence(s_gsv, GPGSV))
     {
         size_t start = strlen(GPGSV) + 3;
         size_t len = strlen(s_gsv);
@@ -398,35 +450,51 @@ int sats_parse(const char *s_gsv, int &n_sat, sat *satellites, bool &sat_ready)
         // expected number of satellites in this block of sentences
         int x = atoi(get_next_token(s_gsv, start, len, tempBuffer, ','));
 
-        //Log::trace("Sentences {%d/%d} Sats {%d}\n", c, n, x);
-
-        for (int i = 0; i<x; i++)
+        //Log::trace("GSV: %d of %d, %d satellites\n", c, n, x);
+        if (c == 1)
         {
-            SAT_PARSE res = sat_parse(s_gsv, start, len, satellites[n_sat]);
-            //Log::trace("%d\n", res);
-            switch (res)
+            // first sentence of the series - resetting the state
+            reset_gsv();
+            n_sat = 0;
+            gsv_count = n;
+            gsv_index = 1;
+            gsv_total = x;
+        }
+        else if (n == gsv_count && c == (gsv_index + 1))
+        {
+            // received the next sentence in the series
+            gsv_index++;
+            if (gsv_index > n)
             {
-            case PARSE_OK:
-                {
-                    n_sat++;
-                    if (last_gsa)
-                        satellites[n_sat].used = array_contains(satellites[n_sat].sat_id, last_gsa->sats, last_gsa->nSat) ? 1 : 0;//2 : 0x0F;
-                    else
-                        satellites[n_sat].used = 0; //0x0F;
-                }
-                break;
-            case PARSE_EMPTY:
-                {
-
-                }
-                break;
-            default: return -1; //ERROR
+                // the index exeeds the expected number of sentences - definitely an error
+                reset_gsv();
+                return NMEA_ERROR;
             }
         }
-        sat_ready = (n == c);
-        return 0;
+        else
+        {
+            // the sentence is out of order or the number of sentences is wrong
+            reset_gsv();
+            return NMEA_ERROR;
+        }
+
+        if (parse_gsv_sats(s_gsv, start, len, satellites, n_sat)==NMEA_ERROR)
+        {
+            // there was an error parsing the sattelites
+            return NMEA_ERROR;
+        }
+
+        if (c == n)
+        {
+            //Log::trace("GSV: %d satellites\n", n_sat);
+            sat_ready = true;
+            gsv.nSat = n_sat;
+            memcpy(satellites, gsv.satellites, sizeof(satellites));
+        }
+        return NMEA_OK;
     }
-    return -1;
+    //Log::trace("GSV: invalid sentence {%s}\n", s_gsv); 
+    return NMEA_ERROR;
 }
 
 void NMEAUtils::snap_sats()
@@ -438,16 +506,4 @@ void NMEAUtils::snap_sats()
 sat *NMEAUtils::get_satellites()
 {
     return snapshots_satellites;
-}
-
-int NMEAUtils::parseGSV(const char *s_gsv)
-{
-    unsigned long t = _millis();
-    if ((t - last_gsv_time) > 200 /*ms*/)
-    {
-        n_sat = 0;
-        sat_ready = false;
-    }
-    last_gsv_time = t;
-    return sats_parse(s_gsv, n_sat, satellites, sat_ready);
 }

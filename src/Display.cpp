@@ -14,8 +14,19 @@
 #define SCREEN_HEIGHT 32    // OLED display height, in pixels
 
 
-EVODisplay::EVODisplay() : init(false), display(NULL), blink_time(0), blink_period(0), enabled(false), led_state(LOW)
+EVODisplay::EVODisplay() : init(false), display(NULL), enabled(false)
 {
+    memset(blink_time, 0, 3 * sizeof(unsigned long));
+    memset(blink_period, 0, 3 * sizeof(unsigned long));
+    memset(led_state, LOW, 3 * sizeof(uint8_t));
+    pins[LED_PWR] = LED_PIN;
+    pins[LED_GPS] = LED_PIN_GPS;
+    pins[LED_N2K] = LED_PIN_SPARE;
+}
+
+bool is_rgb(int led)
+{
+    return led == LED_N2K;
 }
 
 EVODisplay::~EVODisplay()
@@ -40,9 +51,21 @@ void EVODisplay::setup()
 #endif
         Log::trace("[DS] Initialized {%d}\n", init);
 
-        pinMode(LED_PIN, OUTPUT);
-        digitalWrite(LED_PIN, LOW);
-        led_state = LOW;
+        for (int led = 0; led < 3; led++)
+        {
+            led_state[led] = LOW;
+            blink_time[led] = 0;
+            blink_period[led] = 0;
+            if (pins[led] != -1)
+            {
+                if (!is_rgb((LEDS)led))
+                {
+                    pinMode(pins[led], OUTPUT);
+                    digitalWrite(pins[led], LOW);
+                }
+                set_on(led, false);
+            }
+        }
     }
 }
 
@@ -61,42 +84,98 @@ void EVODisplay::draw_text(const char *text, ...)
         display->setTextColor(SSD1306_WHITE); // Draw white text
         display->setCursor(0, 0);             // Start at top-left corner
         display->cp437(true);                 // Use full 256 char 'Code Page 437' font
-        display->write(text, strlen(text));
+        display->write(t, strlen(t));
         display->display();
     }
 #endif
 }
 
-void EVODisplay::blink(unsigned long micros, unsigned long period_on)
+void EVODisplay::set_on(int led, bool on)
 {
-    if (enabled && blink_period==0 && blink_time==0)
+    int pin = pins[led];
+    if (pin!=-1)
     {
-        led_state = HIGH;
-        digitalWrite(LED_PIN, HIGH);
-        blink_time = micros;
-        blink_period = period_on;
+        if (is_rgb(led))
+        {
+            int v = on?16:0;
+            neopixelWrite(pin, v, v, v);
+        }
+        else
+        {
+            digitalWrite(pin, on?HIGH:LOW);
+        }
+    }
+}
+
+void EVODisplay::on(LEDS led)
+{
+    led_state[led] = HIGH;
+    blink_time[led] = 0;
+    blink_period[led] = 0;
+    if (enabled)
+    {
+        set_on(led, true);
+    }
+}
+
+void EVODisplay::off(LEDS led)
+{
+    led_state[led] = LOW;
+    blink_time[led] = 0;
+    blink_period[led] = 0;
+    if (enabled)
+    {
+        set_on(led, false);
+    }
+}
+
+
+void EVODisplay::blink(LEDS led, unsigned long now_micros, unsigned long period_on)
+{
+    if (enabled && blink_period[led]==0 && blink_time[led]==0 && pins[led]!=-1)
+    {
+        led_state[led] = HIGH;
+        set_on(led, true);
+        blink_time[led] = now_micros;
+        blink_period[led] = period_on;
     }
 }
 
 void EVODisplay::loop(unsigned long micros)
 {
-    if (enabled && blink_period!=0 && blink_time!=0 && check_elapsed(micros, blink_time, blink_period))
+    if (enabled)
     {
-        led_state = LOW;
-        digitalWrite(LED_PIN, LOW);
-        blink_period = 0;
-        blink_time = 0;
+        for (int led = 0; led<3; led++)
+        {
+            if (blink_period[led]!=0 && blink_time[led]!=0 && check_elapsed(micros, blink_time[led], blink_period[led]))
+            {
+                led_state[led] = LOW;
+                set_on(led, false);
+                blink_period[led] = 0;
+                blink_time[led] = 0;
+            }
+        }
     }
 }
 
 void EVODisplay::enable()
 {
     enabled = true;
+    for (int led = 0; led<3; led++)
+    {
+        set_on(led, (led_state[led]==HIGH));
+    }
 }
 
 void EVODisplay::disable()
 {
     enabled = false;
+    for (int led = 0; led<3; led++)
+    {
+        set_on(led, false);
+        blink_time[led] = 0;
+        blink_period[led] = 0;
+    }
 }
 
 bool EVODisplay::is_enabled()

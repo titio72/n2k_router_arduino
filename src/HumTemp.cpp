@@ -25,7 +25,8 @@ HumTemp::~HumTemp()
 void HumTemp::setup()
 {
   Log::tracex(DHT_LOG_TAG, "Setup", "Type {%s} Pin {%d}", "DHT22", DHT_PIN);
-  DHT->setup(DHT_PIN, DHTesp::DHT22);
+  DHT->setup(DHT_PIN, DHTesp::AUTO_DETECT);
+  //DHT->setup(DHT_PIN, DHTesp::DHT22);
   ctx.cache.humidity = NAN;
   ctx.cache.temperature = NAN;
 }

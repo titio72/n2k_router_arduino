@@ -155,7 +155,14 @@ void N2K::setup()
         NMEA2000->SetN2kCANSendFrameBufSize(1000);
         NMEA2000->EnableForward(false); // Disable all msg forwarding to USB (=Serial)
         if (pgns) NMEA2000->ExtendTransmitMessages(pgns);
-        static_initialized = NMEA2000->Open();
+        do {
+            static_initialized = NMEA2000->Open();
+            if (!static_initialized)
+            {
+                Log::trace("N2K", "Failed to open N2K bus, retrying...");
+                msleep(1000);
+            }
+        } while (!static_initialized);
         stats.canbus = static_initialized;
         Log::tracex("N2K", "initialized", "success {%s}", is_initialized() ? "OK" : "KO");
     }

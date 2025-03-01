@@ -29,6 +29,8 @@ private:
     bool enabled;
     time_t delta_time;
     VEDirectObject bmv;
+
+    unsigned long last_read_time;
 };
 
 #endif

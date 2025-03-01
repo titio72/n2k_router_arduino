@@ -2,13 +2,12 @@
 #define _GPSX_H
 
 #include "Context.h"
-#if GPS_TYPE==1
 class SFE_UBLOX_GNSS;
 
 class GPSX
 {
 public:
-    GPSX(Context _ctx);
+    GPSX(Context _ctx, HardwareSerial* port = nullptr);
     ~GPSX();
 
     AB_AGENT
@@ -28,6 +27,6 @@ private:
     unsigned long last_read_time;
     time_t delta_time;
     bool gps_time_set;
+    HardwareSerial* port;
 };
 #endif //_GPS_TYPE
-#endif

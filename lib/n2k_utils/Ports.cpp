@@ -1,9 +1,11 @@
 #include "Ports.h"
 #include "Log.h"
 #include "Utils.h"
+#include <Arduino.h>
 
-Port::Port(): bytes(0), listener(NULL)
+Port::Port(const char *name): bytes(0), listener(NULL), pos(0), last_speed(DEFAULT_PORT_SPEED), speed(DEFAULT_PORT_SPEED), last_open_try(0)
 {
+	strcpy(port_name, name);
 }
 
 Port::~Port()
@@ -46,7 +48,6 @@ int Port::process_char(char c)
 	return res;
 }
 
-
 void Port::close()
 {
 	_close();
@@ -55,56 +56,50 @@ void Port::close()
 int Port::open()
 {
 	_open();
-	return 1;
+	return is_open();
 }
 
 void Port::listen(uint ms)
 {
-	static unsigned int last_speed = speed;
-
-	unsigned char c;
-	ulong t0 = _millis();
+	unsigned long t0 = _millis();
 
 	if (last_speed != speed && is_open())
 	{
-		Log::tracex("PORT", "Resetting speed", "new speed {%d}", speed);
+		Log::tracex("PORT", "Resetting speed", "name {%s} new speed {%d} old speed {%d}", port_name, speed, last_speed);
 		close();
 		last_speed = speed;
 	}
 
-	while (!is_open() && (_millis() - t0) < ms)
+	if (!is_open() && check_elapsed(t0, last_open_try, 1000))
 	{
-		if (!open())
-		{
-			sleep(250);
-		}
+		open();
 	}
 
-	if (is_open())
+	if (!is_open())
 	{
-		bool stop = false;
-		while (!stop)
+		return;
+	}
+
+	while ((_millis() - t0) < ms)
+	{
+		bool error = false;
+		bool nothing_to_read = false;
+		int c = _read(nothing_to_read, error);
+		if (!nothing_to_read && !error)
 		{
-			bool error = false;
-			bool nothing_to_read = false;
-			int c = _read(nothing_to_read, error);
-			if (!nothing_to_read && !error)
-			{
-				bytes++;
-				process_char(c);
-				stop = ((_millis() - t0) > ms);
-			}
-			else if (nothing_to_read)
-			{
-				// nothing to read
-				return;
-			}
-			else
-			{
-				//Log::tracex("POORT", "Err reading", "port {%s} {%d} {%s}\n", port, errno, strerror(errno));
-				close();
-				return;
-			}
+			bytes++;
+			process_char(c);
+		}
+		else if (nothing_to_read)
+		{
+			// nothing to read
+			return;
+		}
+		else
+		{
+			//Log::tracex("PORT", "Err reading", "port {%s} {%d} {%s}\n", port, errno, strerror(errno));
+			close();
+			return;
 		}
 	}
 }

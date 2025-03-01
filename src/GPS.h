@@ -21,7 +21,7 @@ public:
 class GPS: public PortListener
 {
 public:
-    GPS(Context ctx, Port* port);
+    GPS(Context ctx, Port& port);
     ~GPS();
 
     AB_AGENT
@@ -35,7 +35,7 @@ private:
     bool set_system_time(int sid, RMC &rmc, bool &time_set_flag);
 
     Context ctx;
-    Port* p;
+    Port& p;
     bool enabled;
     time_t delta_time;
     bool gps_time_set;

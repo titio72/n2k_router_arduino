@@ -17,8 +17,9 @@ static unsigned char UART_SPEED_115200 = 5;
 #define DEFAULT_SOG_2_STW 0
 #define DEFAULT_USE_TIME 0
 #define DEFAULT_USE_TACHO 0
+#define DEFAULT_USE_VE_DIRECT 0
 #define DEFAULT_RPM_ADJUSTMENT 1.00
-#define DEFAULT_GPS_SPEED UART_SPEED_9600
+#define DEFAULT_GPS_SPEED UART_SPEED_57600
 #define DEFAULT_N2K_SOURCE 22
 #define DEFAULT_DEVICE_NAME "ABN2K"
 
@@ -29,6 +30,7 @@ static unsigned char UART_SPEED_115200 = 5;
 #define SYT_ID 3
 #define RPM_ID 4
 #define STW_ID 5
+#define VED_ID 6
 
 #define MAX_CONF 6
 
@@ -49,6 +51,7 @@ public:
   bool send_time = DEFAULT_USE_TIME;
   bool sog_2_stw = DEFAULT_SOG_2_STW;
   bool use_tacho = DEFAULT_USE_TACHO;
+  bool use_vedirect = DEFAULT_USE_VE_DIRECT;
   char buffer[MAX_CONF+1];
 };
 
@@ -78,11 +81,15 @@ public:
   N2KServices& get_services();
   void save_services(N2KServices& s);
 
+  uint32_t get_batter_capacity();
+  void save_batter_capacity(uint32_t c);
+
 private:
 
   char cache_device_name[16];
   N2KServices cache_services;
   double cache_rpm_adj;
+  uint32_t cache_batt_cap;
   bool initialized;
 };
 

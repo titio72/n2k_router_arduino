@@ -23,7 +23,7 @@ void PressureTemp::enable()
 {
   if (!enabled)
   {
-    enabled = bmp->begin(0x76, 0x60);
+    enabled = bmp->begin(0x77, 0x60); // ste back to 0x77!!!!!!
     Log::tracex(BMP_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }
@@ -61,7 +61,6 @@ void PressureTemp::loop(unsigned long ms)
   if (enabled && check_elapsed(ms, last_read, 1000000))
   {
     read_pressure(ms);
-    last_read = ms;
   }
 }
 

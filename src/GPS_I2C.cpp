@@ -1,8 +1,8 @@
-#if (GPS_TYPE==1)
+#if GPS_TYPE==1
 #include "GPS_I2C.h"
-#include "Utils.h"
-#include "TwoWireProvider.h"
-#include "Log.h"
+#include <Utils.h>
+#include <TwoWireProvider.h>
+#include <Log.h>
 #include "N2K_router.h"
 #include "Conf.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
@@ -22,7 +22,7 @@ time_t unix_time;
 // enable/disable sending sats 130577
 #define SEND_SATS 0
 
-GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false)
+GPSX::GPSX(Context _ctx, HardwareSerial* p): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false), port(p)
 {
     pCtx = &ctx;
 }
@@ -202,19 +202,49 @@ bool GPSX::is_enabled()
     return enabled;
 }
 
+bool enableSerial(HardwareSerial& port)
+{
+    /*Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s} Tx {%d} Rx {%d}", "Serial", GPS_TX_PIN, GPS_RX_PIN);
+    port.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+    bool ok = myGNSS.begin(port, 1100U, false);
+    if (ok)
+    {
+        ok = ok && myGNSS.setUART1Output(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
+        myGNSS.setNavigationFrequency(2);
+        myGNSS.saveConfiguration();
+    }
+    return ok;*/
+}
+
+bool enableI2C()
+{
+    Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "I2C");
+    bool ok = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+    if (ok)
+    {
+        myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
+        myGNSS.setNavigationFrequency(4);
+    }
+    return ok;
+}
+
 void GPSX::enable()
 {
   if (!enabled)
   {
-    enabled = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+    if (port)
+    {
+        enabled = enableSerial(*port);
+    }
+    else
+    {
+        enabled = enableI2C();
+    }
     if (enabled)
     {
-        myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-        myGNSS.setNavigationFrequency(4);
         myGNSS.setAutoNAVSATcallbackPtr(&getSat);
         myGNSS.setAutoPVTcallbackPtr(&getPVT);
         myGNSS.setAutoDOPcallbackPtr(&getDOP);
-
     }
     Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
@@ -255,4 +285,5 @@ void GPSX::dumpStats()
             ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     }
 }
+
 #endif

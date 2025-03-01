@@ -97,6 +97,8 @@ struct data {
   double longitude = NAN;
   char longitude_EW = 'E';
   double voltage = NAN;
+  double current = NAN;
+  double soc = NAN;
   uint16_t rpm = 0;
   uint64_t engine_time = 0;
 };

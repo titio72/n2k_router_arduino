@@ -287,13 +287,15 @@ bool N2K_router::sendSatellites(const sat *sats, uint n, unsigned char sid, GSA 
 
 bool N2K_router::sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance) {
     tN2kMsg m;
-    SetN2kPGN127508(m, instance, voltage, current, temperature, sid);
+    SetN2kPGN127508(m, instance,
+        isnan(voltage)?N2kDoubleNA:voltage, isnan(current)?N2kDoubleNA:current, isnan(temperature)?N2kDoubleNA:(temperature + 273.15), sid);
     return n2k.send_msg(m);
 }
 
 bool N2K_router::sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance) {
     tN2kMsg m;
-    SetN2kPGN127506(m, sid, instance, tN2kDCType::N2kDCt_Battery, soc, 100, ttg, N2kDoubleNA, capacity * 3600);
+    SetN2kPGN127506(m, sid, instance, tN2kDCType::N2kDCt_Battery,
+        isnan(soc)?N2kDoubleNA:soc, 100, isnan(ttg)?N2kDoubleNA:ttg, N2kDoubleNA, capacity * 3600);
     return n2k.send_msg(m);
 }
 

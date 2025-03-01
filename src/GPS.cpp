@@ -6,9 +6,8 @@
 #include "Conf.h"
 
 NMEAUtils nmea;
-char uart_speed = DEFAULT_GPS_SPEED;
 
-GPS::GPS(Context _ctx, Port* _p):
+GPS::GPS(Context _ctx, Port& _p):
     ctx(_ctx), p(_p), enabled(false), delta_time(0), gps_time_set(false)
 {
 }
@@ -45,7 +44,7 @@ bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
     if (!time_set_flag)
     {
       delta_time = _gps_time_t - time(0);
-      Log::trace("[GPS] Setting time to {%d-%d-%d %d:%d:%d.%d}}\n", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
+      Log::tracex("GPS", "Setting time", "new time {%d-%d-%d %d:%d:%d.%d}}", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
       time_set_flag = true;
     }
   }
@@ -113,7 +112,7 @@ void GPS::on_line_read(const char *sentence)
   }
   else if (NMEAUtils::is_sentence(sentence, "GSV"))
   {
-    if (nmea.parseGSV(sentence) == 0)
+    if (nmea.parseGSV(sentence, ctx.cache.gsv) == 0)
     {
       stats.valid_gsv++;
     }
@@ -126,21 +125,18 @@ void GPS::on_line_read(const char *sentence)
 
 void GPS::loop(unsigned long ms)
 {
-    if (enabled && p)
+    if (enabled)
     {
-        p->set_speed(UART_SPEED[uart_speed]);
-        p->listen(250);
+        p.set_speed(UART_SPEED[ ctx.conf.get_uart_speed()]);
+        p.listen(250);
         send_gsv(ms);
     }
 }
 
 void GPS::setup()
 {
-  uart_speed = ctx.conf.get_uart_speed();
-  if (p!=NULL)
-  {
-    p->set_handler(this);
-  }
+  p.set_speed(UART_SPEED[ ctx.conf.get_uart_speed()]);
+  p.set_handler(this);
 }
 
 bool GPS::is_enabled()
@@ -150,7 +146,7 @@ bool GPS::is_enabled()
 
 void GPS::enable()
 {
-  if (!enabled && p)
+  if (!enabled)
   {
     enabled = true;
   }
@@ -180,7 +176,7 @@ void GPS::disable()
     ctx.cache.longitude_EW = 'E';
 
     enabled = false;
-    p->close();
+    p.close();
   }
 }
 
@@ -188,9 +184,10 @@ void GPS::dumpStats()
 {
   if (enabled)
   {
-    Log::trace("[STATS] Time {%04d-%02d-%02dT%02d:%02d:%02d} ", ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
-    Log::trace("Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} ", ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog);
-    Log::trace("Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}\n", ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
+    Log::tracex("GPS", "Stats", "Time {%04d-%02d-%02dT%02d:%02d:%02d} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
+      ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s,
+      ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog,
+      ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     stats.dump();
     stats.reset();
   }
@@ -198,7 +195,7 @@ void GPS::dumpStats()
 
 void GPS_stats::dump()
 {
-    Log::trace("[STATS] GPS: RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} fix {%d}\n",
+    Log::tracex("GPS", "Stats", "RMC {%d/%d} GSA {%d/%d} GSV {%d/%d} fix {%d}",
                   valid_rmc, invalid_rmc,
                   valid_gsa, invalid_gsa,
                   valid_gsv, invalid_gsv, gps_fix);
