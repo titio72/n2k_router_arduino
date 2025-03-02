@@ -123,7 +123,9 @@ void Log::tracex(const char *module, const char *action)
 {
 	if (can_trace())
 	{
-		snprintf(outbfr, MAX_TRACE_SIZE - 2, "[%s] %s", module, action);
+		int l = snprintf(outbfr, MAX_TRACE_SIZE - 2, "[%s] %s", module, action);
+		outbfr[l] = '\n';
+		outbfr[l+1] = 0;
 		_trace(outbfr);
 	}
 }

@@ -9,6 +9,9 @@
 #include <Adafruit_BMP280.h>
 
 #define BMP_LOG_TAG "BMP"
+#ifndef BMP_ADDRESS
+#define BMP_ADDRESS 0x76
+#endif
 
 PressureTemp::PressureTemp(Context _ctx) : enabled(false), ctx(_ctx), last_read(0), bmp(NULL)
 {
@@ -23,7 +26,7 @@ void PressureTemp::enable()
 {
   if (!enabled)
   {
-    enabled = bmp->begin(0x77, 0x60); // ste back to 0x77!!!!!!
+    enabled = bmp->begin(BMP_ADDRESS, 0x60); // set back to 0x76!!!!!!
     Log::tracex(BMP_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }

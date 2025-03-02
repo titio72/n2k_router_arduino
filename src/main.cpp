@@ -150,7 +150,7 @@ void report_stats(unsigned long ms)
   }
 }
 
-template<typename T> bool handle_agent_enable(T &agent, bool enable, unsigned short* retry, unsigned long t, const char* desc="")
+template<typename T> bool handle_agent_enable(T &agent, bool enable, unsigned short* retry, const char* desc="")
 {
   if (!agent.is_enabled())
   {
@@ -174,13 +174,13 @@ template<typename T> bool handle_agent_enable(T &agent, bool enable, unsigned sh
   return agent.is_enabled();
 }
 
-template<typename T> void handle_agent_loop(T &agent, bool enable, unsigned short* retry, unsigned long t, const char* desc="")
+template<typename T> void handle_agent_loop(T &agent, bool enable, unsigned short* retry, unsigned long micros, const char* desc="")
 {
   if (enable)
   {
-    if (handle_agent_enable(agent, enable, retry, t, desc))
+    if (handle_agent_enable(agent, enable, retry, desc))
     {
-      agent.loop(t);
+      agent.loop(micros);
     }
   }
   else

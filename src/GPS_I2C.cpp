@@ -19,10 +19,12 @@ UBX_NAV_PVT_data_t dPVT;
 
 time_t unix_time;
 
+bool high_freq_signal = false;
+
 // enable/disable sending sats 130577
 #define SEND_SATS 0
 
-GPSX::GPSX(Context _ctx, HardwareSerial* p): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false), port(p)
+GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false)
 {
     pCtx = &ctx;
 }
@@ -126,8 +128,6 @@ void getSat(UBX_NAV_SAT_data_t* d)
     bSAT = true;
 }
 
-bool high_freq_signal = false;
-
 void getPVT(UBX_NAV_PVT_data_t* d)
 {
     high_freq_signal = true;
@@ -202,77 +202,53 @@ bool GPSX::is_enabled()
     return enabled;
 }
 
-bool enableSerial(HardwareSerial& port)
-{
-    /*Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s} Tx {%d} Rx {%d}", "Serial", GPS_TX_PIN, GPS_RX_PIN);
-    port.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-    bool ok = myGNSS.begin(port, 1100U, false);
-    if (ok)
-    {
-        ok = ok && myGNSS.setUART1Output(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-        myGNSS.setNavigationFrequency(2);
-        myGNSS.saveConfiguration();
-    }
-    return ok;*/
-}
-
-bool enableI2C()
-{
-    Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "I2C");
-    bool ok = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
-    if (ok)
-    {
-        myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-        myGNSS.setNavigationFrequency(4);
-    }
-    return ok;
-}
-
 void GPSX::enable()
 {
   if (!enabled)
   {
-    if (port)
+    Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "I2C");
+    bool _enabled = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+    if (_enabled)
     {
-        enabled = enableSerial(*port);
-    }
-    else
-    {
-        enabled = enableI2C();
-    }
-    if (enabled)
-    {
+        myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
+        myGNSS.setNavigationFrequency(4);
         myGNSS.setAutoNAVSATcallbackPtr(&getSat);
         myGNSS.setAutoPVTcallbackPtr(&getPVT);
         myGNSS.setAutoDOPcallbackPtr(&getDOP);
     }
+    enabled = _enabled;
     Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }
 
 void GPSX::disable()
 {
-    RMC& rmc = ctx.cache.rmc;
-    rmc.unix_time = 0;
-    rmc.valid = 0xFFFF;
-    rmc.cog = NAN;
-    rmc.sog = NAN;
-    rmc.y = 0xFFFF;
-    rmc.M = 0xFFFF;
-    rmc.d = 0xFFFF;
-    rmc.h = 0xFFFF;
-    rmc.m = 0xFFFF;
-    rmc.s = 0xFFFF;
-    rmc.lat = NAN;
-    rmc.lon = NAN;
-    ctx.cache.latitude = NAN;
-    ctx.cache.latitude_NS = 'N';
-    ctx.cache.longitude = NAN;
-    ctx.cache.longitude_EW = 'E';
+    if (enabled)
+    {
+        enabled = false;
 
-    myGNSS.end();
-    enabled = false;
-    Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", !enabled);
+        RMC& rmc = ctx.cache.rmc;
+        rmc.unix_time = 0;
+        rmc.valid = 0xFFFF;
+        rmc.cog = NAN;
+        rmc.sog = NAN;
+        rmc.y = 0xFFFF;
+        rmc.M = 0xFFFF;
+        rmc.d = 0xFFFF;
+        rmc.h = 0xFFFF;
+        rmc.m = 0xFFFF;
+        rmc.s = 0xFFFF;
+        rmc.lat = NAN;
+        rmc.lon = NAN;
+        ctx.cache.latitude = NAN;
+        ctx.cache.latitude_NS = 'N';
+        ctx.cache.longitude = NAN;
+        ctx.cache.longitude_EW = 'E';
+
+        myGNSS.end();
+
+        Log::tracex(GPS_LOG_TAG, "Disable", "Success {%d}", !enabled);
+    }
 }
 
 void GPSX::dumpStats()
