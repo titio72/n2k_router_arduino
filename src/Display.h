@@ -11,6 +11,7 @@ enum LEDS
     LED_GPS = 1,
     LED_N2K = 2,
 };
+#define NUM_LEDS 3
 
 class EVODisplay {
 
@@ -31,11 +32,11 @@ private:
     bool init;
     Adafruit_SSD1306* display;
 
-    uint8_t led_state[3];
+    uint8_t led_state[NUM_LEDS];
 
-    unsigned long blink_time[3];
-    unsigned long blink_period[3];
-    int pins[3];
+    unsigned long blink_time[NUM_LEDS];
+    unsigned long blink_period[NUM_LEDS];
+    int pins[NUM_LEDS];
     bool enabled;
 
     void set_on(int led, bool on);

@@ -55,8 +55,6 @@ Context context(n2k, conf, cache);
 GPSX gps(context);
 #elif GPS_TYPE==2
 ArduinoPort<HardwareSerial> gpsPort("GPS", Serial1, UART_SPEED[UART_SPEED_9600], GPS_RX_PIN, GPS_TX_PIN, false);
-//SoftwareSerial gpsSerial;
-//ArduinoPort<SoftwareSerial> gpsPort("GPS", gpsSerial, UART_SPEED[DEFAULT_GPS_SPEED], GPS_RX_PIN, GPS_TX_PIN, false);
 GPS gps(context, gpsPort);
 #else
 Dummy gps;

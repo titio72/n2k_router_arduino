@@ -28,7 +28,8 @@ int Port::process_char(char c)
 		read_buffer[pos] = 0;
 		if (listener)
 		{
-			listener->on_partial(read_buffer);
+			listener->on_partial_x(read_buffer, pos);
+			listener->on_partial(read_buffer); // to be deprecated
 		}
 	}
 	else if (pos != 0)

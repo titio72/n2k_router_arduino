@@ -14,8 +14,8 @@ along with n2k_battery_monitor.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "VeDirect.h"
-#include "Utils.h"
-#include "Log.h"
+//#include "Utils.h"
+//#include "Log.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -36,6 +36,52 @@ AR      4
 BMV     712 Smart
 FW      0408
 MON     0
+
+FMT Line:
+/r/n<name>/t<value>
+
+00000000  0d 0a 50 49 44 09 30 78  32 30 33 0d 0a 56 09 32  |..PID.0x203..V.2|
+00000010  36 32 30 31 0d 0a 49 09  30 0d 0a 50 09 30 0d 0a  |6201..I.0..P.0..|
+00000020  43 45 09 30 0d 0a 53 4f  43 09 31 30 30 30 0d 0a  |CE.0..SOC.1000..|
+00000030  54 54 47 09 2d 31 0d 0a  41 6c 61 72 6d 09 4f 46  |TTG.-1..Alarm.OF|
+00000040  46 0d 0a 52 65 6c 61 79  09 4f 46 46 0d 0a 41 52  |F..Relay.OFF..AR|
+00000050  09 30 0d 0a 42 4d 56 09  37 30 30 0d 0a 46 57 09  |.0..BMV.700..FW.|
+00000060  30 33 30 37 0d 0a 43 68  65 63 6b 73 75 6d 09 d8  |0307..Checksum..|
+
+/*
+PID	0xA381
+V	13406
+VS	13152
+I	0
+P	0
+CE	-89423
+SOC	689
+TTG	-1
+Alarm	OFF
+Relay	OFF
+AR	0
+BMV	712 Smart
+FW	0413
+MON	0
+Checksum	y
+H1	-277191
+H2	-89430
+H3	-137695
+H4	21
+H5	1
+H6	-5966596
+H7	30
+H8	16200
+H9	86935
+H10	17
+H11	71
+H12	0
+H15	22
+H16	15394
+H17	7749
+H18	9056
+Checksum
+
  */
 
 static const char *EMPTY_STRING = "";
@@ -135,7 +181,7 @@ void VEDirectObject::reset()
 
 void VEDirectObject::print()
 {
-    Log::trace("New ve.direct object\n");
+    /*Log::trace("New ve.direct object\n");
     for (int i = 0; i < n_fields; i++)
     {
         if (last_time[i])
@@ -157,7 +203,7 @@ void VEDirectObject::print()
                 break;
             }
     }
-    Log::trace("End ve.direct object\n");
+    Log::trace("End ve.direct object\n");*/
 }
 
 void VEDirectObject::load_VEDirect_key_value(const char *line, unsigned long time)
@@ -275,37 +321,28 @@ bool VEDirectObject::is_valid()
     return valid;
 }
 
-/*
-PID	0xA381
-V	13406
-VS	13152
-I	0
-P	0
-CE	-89423
-SOC	689
-TTG	-1
-Alarm	OFF
-Relay	OFF
-AR	0
-BMV	712 Smart
-FW	0413
-MON	0
-Checksum	y
-H1	-277191
-H2	-89430
-H3	-137695
-H4	21
-H5	1
-H6	-5966596
-H7	30
-H8	16200
-H9	86935
-H10	17
-H11	71
-H12	0
-H15	22
-H16	15394
-H17	7749
-H18	9056
-Checksum
-*/
+int main()
+{
+    const char* line =
+    "\r\nPID	0xA381"
+    "\r\nV	13406"
+    "\r\nVS	13152"
+    "\r\nI	0"
+    "\r\nP	0"
+    "\r\nCE	-89423"
+    "\r\nSOC	689"
+    "\r\nTTG	-1"
+    "\r\nAlarm	OFF"
+    "\r\nRelay	OFF"
+    "\r\nAR	0"
+    "\r\nBMV	712 Smart"
+    "\r\nFW	0413"
+    "\r\nMON	0"
+    "\r\nChecksum	y";
+
+
+    VEDirectObject ve(BMV_FIELDS, BMV_N_FIELDS);
+
+
+    return 0;
+}

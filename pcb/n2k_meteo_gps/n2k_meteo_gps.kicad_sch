@@ -2573,23 +2573,12 @@
 				)
 			)
 		)
-		(symbol "Regulator_Linear:LM7805_TO220"
-			(pin_names
-				(offset 0.254)
-			)
+		(symbol "Regulator_Switching:TSR_1-2450"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(property "Reference" "U"
-				(at -3.81 3.175 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "LM7805_TO220"
-				(at 0 3.175 0)
+				(at -7.62 6.35 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -2597,26 +2586,27 @@
 					(justify left)
 				)
 			)
-			(property "Footprint" "Package_TO_SOT_THT:TO-220-3_Vertical"
-				(at 0 5.715 0)
+			(property "Value" "TSR_1-2450"
+				(at -1.27 6.35 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "Converter_DCDC:Converter_DCDC_TRACO_TSR-1_THT"
+				(at 0 -3.81 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 						(italic yes)
 					)
+					(justify left)
 					(hide yes)
 				)
 			)
-			(property "Datasheet" "https://www.onsemi.cn/PowerSolutions/document/MC7800-D.PDF"
-				(at 0 -1.27 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Positive 1A 35V Linear Regulator, Fixed Output 5V, TO-220"
+			(property "Datasheet" "http://www.tracopower.com/products/tsr1.pdf"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2625,7 +2615,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "Voltage Regulator 1A Positive"
+			(property "Description" "1A step-down regulator module, fixed 5V output voltage, 5-36V input voltage, -40°C to +85°C temperature range, TO-220 compatible LM78xx replacement"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2634,7 +2624,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_fp_filters" "TO?220*"
+			(property "ki_keywords" "dc-dc traco buck"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2643,10 +2633,19 @@
 					(hide yes)
 				)
 			)
-			(symbol "LM7805_TO220_0_1"
+			(property "ki_fp_filters" "Converter*DCDC*TRACO*TSR?1*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "TSR_1-2450_0_1"
 				(rectangle
-					(start -5.08 1.905)
-					(end 5.08 -5.08)
+					(start -7.62 5.08)
+					(end 7.62 -2.54)
 					(stroke
 						(width 0.254)
 						(type default)
@@ -2656,11 +2655,11 @@
 					)
 				)
 			)
-			(symbol "LM7805_TO220_1_1"
+			(symbol "TSR_1-2450_1_1"
 				(pin power_in line
-					(at -7.62 0 0)
+					(at -10.16 2.54 0)
 					(length 2.54)
-					(name "VI"
+					(name "Vin"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -2676,7 +2675,7 @@
 					)
 				)
 				(pin power_in line
-					(at 0 -7.62 90)
+					(at 0 -5.08 90)
 					(length 2.54)
 					(name "GND"
 						(effects
@@ -2694,9 +2693,9 @@
 					)
 				)
 				(pin power_out line
-					(at 7.62 0 180)
+					(at 10.16 2.54 180)
 					(length 2.54)
-					(name "VO"
+					(name "Vout"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -3183,6 +3182,12 @@
 		(uuid "20181170-b670-486b-a0c3-91ae3bcaf209")
 	)
 	(junction
+		(at 63.5 49.53)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "24b6bb01-3c91-4e55-95a9-ddefb65d7967")
+	)
+	(junction
 		(at 76.2 184.15)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3235,12 +3240,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "9e6cdc04-a5c8-44fe-b6c2-93a3c8225964")
-	)
-	(junction
-		(at 63.5 49.53)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "a8199839-21b8-43d8-b9e0-57d8e511b6b1")
 	)
 	(junction
 		(at 33.02 95.25)
@@ -3513,16 +3512,6 @@
 			(type default)
 		)
 		(uuid "29b06b8f-0583-426a-b019-9f571b766304")
-	)
-	(wire
-		(pts
-			(xy 83.82 49.53) (xy 92.71 49.53)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2ac3f39f-eb10-4bd2-b1f2-bef1430d5ec3")
 	)
 	(wire
 		(pts
@@ -4006,6 +3995,16 @@
 	)
 	(wire
 		(pts
+			(xy 86.36 49.53) (xy 92.71 49.53)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "71aae60f-59df-4095-8ba8-644143517d2a")
+	)
+	(wire
+		(pts
 			(xy 190.5 58.42) (xy 190.5 66.04)
 		)
 		(stroke
@@ -4326,6 +4325,16 @@
 	)
 	(wire
 		(pts
+			(xy 63.5 49.53) (xy 66.04 49.53)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b8d0772d-285e-45f7-847a-a49282bb06fe")
+	)
+	(wire
+		(pts
 			(xy 135.89 50.8) (xy 135.89 55.88)
 		)
 		(stroke
@@ -4473,16 +4482,6 @@
 			(type default)
 		)
 		(uuid "dc4de4dc-9fac-412f-aedc-13f06020789d")
-	)
-	(wire
-		(pts
-			(xy 63.5 49.53) (xy 68.58 49.53)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "df0c09ee-2f74-4331-9447-b1530096df49")
 	)
 	(wire
 		(pts
@@ -6455,6 +6454,79 @@
 		)
 	)
 	(symbol
+		(lib_id "Regulator_Switching:TSR_1-2450")
+		(at 76.2 52.07 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "59763ea8-7138-4693-a24c-194f04257bce")
+		(property "Reference" "U2"
+			(at 76.2 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "TSR_1-2450"
+			(at 76.2 44.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Converter_DCDC:Converter_DCDC_TRACO_TSR-1_THT"
+			(at 76.2 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.tracopower.com/products/tsr1.pdf"
+			(at 76.2 52.07 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "1A step-down regulator module, fixed 5V output voltage, 5-36V input voltage, -40°C to +85°C temperature range, TO-220 compatible LM78xx replacement"
+			(at 76.2 52.07 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "3"
+			(uuid "12161275-a03f-4abc-976a-175d0aae979d")
+		)
+		(pin "1"
+			(uuid "82cc4b72-7202-4c53-b4c5-0bcb9e3e1e0a")
+		)
+		(pin "2"
+			(uuid "185ac5a1-eca7-432a-a4f6-169fd5eed3a9")
+		)
+		(instances
+			(project ""
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "U2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+5V")
 		(at 57.15 72.39 0)
 		(unit 1)
@@ -7067,78 +7139,6 @@
 			(project "n2k_meteo_gps"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "#PWR022")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Regulator_Linear:LM7805_TO220")
-		(at 76.2 49.53 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a28d8543-f40f-4cf4-b3cb-2cce36877b73")
-		(property "Reference" "U1"
-			(at 76.2 43.18 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "LM7805_TO220"
-			(at 76.2 45.72 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Package_TO_SOT_THT:TO-220-3_Vertical"
-			(at 76.2 43.815 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.onsemi.cn/PowerSolutions/document/MC7800-D.PDF"
-			(at 76.2 50.8 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Positive 1A 35V Linear Regulator, Fixed Output 5V, TO-220"
-			(at 76.2 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "2"
-			(uuid "5481921e-3749-481f-aa1d-e6dd67b21a90")
-		)
-		(pin "1"
-			(uuid "27c6f983-17a6-46b2-a0cd-2dd727c95de2")
-		)
-		(pin "3"
-			(uuid "a55d6a60-f139-4d9d-b9e6-59f030af968c")
-		)
-		(instances
-			(project ""
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "U1")
 					(unit 1)
 				)
 			)
@@ -8046,7 +8046,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "1uF"
+		(property "Value" "10uF"
 			(at 59.69 56.7689 0)
 			(effects
 				(font
@@ -8055,7 +8055,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:CP_Radial_D4.0mm_P2.00mm"
+		(property "Footprint" "Capacitor_THT:C_Disc_D7.0mm_W2.5mm_P5.00mm"
 			(at 64.4652 50.8 0)
 			(effects
 				(font
@@ -8681,7 +8681,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "1uF"
+		(property "Value" "22uF"
 			(at 102.87 54.9909 0)
 			(effects
 				(font
@@ -8690,7 +8690,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:CP_Radial_D4.0mm_P2.00mm"
+		(property "Footprint" "Capacitor_THT:C_Disc_D7.0mm_W2.5mm_P5.00mm"
 			(at 98.0948 58.42 0)
 			(effects
 				(font

@@ -21,8 +21,8 @@ public:
     double getVoltage();
 
 private:
-    virtual void on_line_read(const char *sentence);
-    virtual void on_partial(const char *sentence);
+    virtual void on_line_read(const char *line);
+    virtual void on_partial_x(const char *line, int len);
 
     Context& ctx;
     Port& p;
@@ -31,6 +31,8 @@ private:
     VEDirectObject bmv;
 
     unsigned long last_read_time;
+
+    int checksum;
 };
 
 #endif

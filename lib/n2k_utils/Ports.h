@@ -18,8 +18,9 @@ class PrivatePort;
 class PortListener
 {
 public:
-	virtual void on_line_read(const char* line) = 0;
-	virtual void on_partial(const char* liine) = 0;
+	virtual void on_line_read(const char* line) {}
+	virtual void on_partial(const char* line) {}
+	virtual void on_partial_x(const char* line, int len) {}
 };
 
 class Port {

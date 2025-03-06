@@ -1,5 +1,5 @@
 #include "Display.h"
-#include "Log.h"
+#include <Log.h>
 
 #include <Arduino.h>
 
@@ -16,9 +16,9 @@
 
 EVODisplay::EVODisplay() : init(false), display(NULL), enabled(false)
 {
-    memset(blink_time, 0, 3 * sizeof(unsigned long));
-    memset(blink_period, 0, 3 * sizeof(unsigned long));
-    memset(led_state, LOW, 3 * sizeof(uint8_t));
+    memset(blink_time, 0, NUM_LEDS * sizeof(unsigned long));
+    memset(blink_period, 0, NUM_LEDS * sizeof(unsigned long));
+    memset(led_state, LOW, NUM_LEDS * sizeof(uint8_t));
     pins[LED_PWR] = LED_PIN;
     pins[LED_GPS] = LED_PIN_GPS;
     pins[LED_N2K] = LED_PIN_SPARE;
@@ -26,7 +26,11 @@ EVODisplay::EVODisplay() : init(false), display(NULL), enabled(false)
 
 bool is_rgb(int led)
 {
+    #ifdef ESP32_C3
     return led == LED_N2K;
+    #else
+    return false;
+    #endif
 }
 
 EVODisplay::~EVODisplay()
@@ -58,7 +62,11 @@ void EVODisplay::setup()
             blink_period[led] = 0;
             if (pins[led] != -1)
             {
-                if (!is_rgb((LEDS)led))
+                if (is_rgb((LEDS)led))
+                {
+                    // nothing to initialize?
+                }
+                else
                 {
                     pinMode(pins[led], OUTPUT);
                     digitalWrite(pins[led], LOW);
