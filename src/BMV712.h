@@ -6,7 +6,7 @@
 #include <time.h>
 #include "Context.h"
 
-class BMV712: public PortListener
+class BMV712: public PortListener, VEDirectListener
 {
 public:
     BMV712(Context& ctx, Port& port);
@@ -21,8 +21,9 @@ public:
     double getVoltage();
 
 private:
-    virtual void on_line_read(const char *line);
-    virtual void on_partial_x(const char *line, int len);
+    void on_line_read(const char *line);
+    void on_partial_x(const char *line, int len);
+    void on_complete(VEDirectObject &ve);
 
     Context& ctx;
     Port& p;

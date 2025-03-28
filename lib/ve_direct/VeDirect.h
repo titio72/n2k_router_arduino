@@ -22,7 +22,16 @@ enum VEFieldType
 {
     VE_STRING,
     VE_NUMBER,
-    VE_BOOLEAN
+    VE_BOOLEAN,
+    VE_HEX
+};
+
+class VEDirectObject;
+
+class VEDirectListener
+{
+public:
+    virtual void on_complete(VEDirectObject &ve) = 0;
 };
 
 class VEDirectValueDefinition
@@ -37,8 +46,75 @@ public:
     const char *veUnit = NULL;
 };
 
+class VEDirectField
+{
+public:
+    VEDirectField(const VEDirectValueDefinition& def);
+
+    const VEDirectValueDefinition& get_definition();
+
+    bool is_set();
+
+    unsigned long get_last_time();
+    void set_last_time(unsigned long time);
+
+    virtual bool parse(const char* value) = 0;
+
+    void unset();
+
+protected:
+    void set_value_set(bool b);
+
+private:
+    const VEDirectValueDefinition& def;
+    bool value_set;
+    unsigned long last_time;
+};
+
+class VEDirectFieldNumber: public VEDirectField
+{
+public:
+    VEDirectFieldNumber(const VEDirectValueDefinition& def);
+
+    void set_value(int v);
+    int get_value();
+
+    virtual bool parse(const char* v);
+
+private:
+    int value;
+};
+
+class VEDirectFieldString: public VEDirectField
+{
+public:
+    VEDirectFieldString(const VEDirectValueDefinition& def);
+
+    void set_value(const char* v);
+    const char* get_value();
+
+    virtual bool parse(const char* v);
+
+private:
+    char value[16];
+};
+
+class VEDirectFieldBool: public VEDirectField
+{
+public:
+    VEDirectFieldBool(const VEDirectValueDefinition& def);
+
+    void set_value(bool v);
+    bool get_value();
+
+    virtual bool parse(const char* v);
+
+private:
+    bool value;
+};
+
 static const unsigned int BMV_N_FIELDS = 14;
-static const VEDirectValueDefinition BMV_PID(VE_NUMBER, "PID", 0);
+static const VEDirectValueDefinition BMV_PID(VE_HEX, "PID", 0);
 static const VEDirectValueDefinition BMV_VOLTAGE(VE_NUMBER, "V", 1, "mV");
 static const VEDirectValueDefinition BMV_VOLTAGE_1(VE_NUMBER, "VS", 2, "mV");
 static const VEDirectValueDefinition BMV_CURRENT(VE_NUMBER, "I", 3, "mA");
@@ -71,8 +147,10 @@ static const VEDirectValueDefinition BMV_FIELDS[BMV_N_FIELDS] = {
 class VEDirectObject
 {
 public:
-    VEDirectObject(const VEDirectValueDefinition *definition, int len);
+    VEDirectObject();
     ~VEDirectObject();
+
+    void init(const VEDirectValueDefinition *fields, unsigned int n_fields);
 
     void load_VEDirect_key_value(const char *line, unsigned long time);
 
@@ -94,13 +172,22 @@ public:
 
     void print();
 
+    void on_line_read(const char *line);
+    void on_partial(const char *line, int len);
+
+    void set_listener(VEDirectListener* listener);
+
 private:
-    int n_fields;
-    int *i_values;
-    char** s_values;
-    unsigned long *last_time;
+
+    unsigned int n_fields;
+    VEDirectField** values;
+    //int *i_values;
+    //char** s_values;
+    //unsigned long *last_time;
     int valid;
-    const VEDirectValueDefinition *fields;
+    //const VEDirectValueDefinition *fields;
+    int checksum;
+    VEDirectListener *listener;
 };
 
 #endif

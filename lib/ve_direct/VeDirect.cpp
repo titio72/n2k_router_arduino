@@ -14,8 +14,7 @@ along with n2k_battery_monitor.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "VeDirect.h"
-//#include "Utils.h"
-//#include "Log.h"
+#include "Utils.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -86,6 +85,17 @@ Checksum
 
 static const char *EMPTY_STRING = "";
 
+bool start_with_unsafe(const char *test_str, const char* string)
+{
+    int i = 0;
+    do
+    {
+        if (string[i]!=test_str[i] || string[i]==0) return false;
+        i++;
+    } while (test_str[i]);
+    return true;
+}
+
 int _read_vedirect(char *output, const char *tag, const char *line)
 {
     char str[80];
@@ -144,39 +154,152 @@ int read_vedirect_onoff(bool &v, const char *tag, const char *line)
     return 0;
 }
 
-VEDirectObject::VEDirectObject(const VEDirectValueDefinition *definition, int len) : valid(0), n_fields(len), fields(definition)
+VEDirectField::VEDirectField(const VEDirectValueDefinition& d): def(d), value_set(false), last_time(0)
+{}
+
+const VEDirectValueDefinition& VEDirectField::get_definition()
 {
-    i_values = new int[n_fields];
-    last_time = new unsigned long[n_fields];
-    s_values = new char *[n_fields];
-    for (int i = 0; i < n_fields; i++)
-        s_values[i] = NULL;
+    return def;
+}
+
+unsigned long VEDirectField::get_last_time()
+{
+    return last_time;
+}
+
+bool VEDirectField::is_set()
+{
+    return value_set;
+}
+
+void VEDirectField::set_last_time(unsigned long t)
+{
+    last_time = t;
+}
+
+void VEDirectField::set_value_set(bool b)
+{
+    value_set = b;
+}
+
+void VEDirectField::unset()
+{
+    value_set = false;
+}
+
+VEDirectFieldNumber::VEDirectFieldNumber(const VEDirectValueDefinition& d): VEDirectField(d)
+{}
+
+int VEDirectFieldNumber::get_value()
+{
+    return value;
+}
+
+void VEDirectFieldNumber::set_value(int v)
+{
+    value = v;
+    set_value_set(true);
+}
+
+bool VEDirectFieldNumber::parse(const char* v)
+{
+    if (start_with_unsafe("0x", v))
+        set_value(strtol(v, 0, 16));
+    else
+        set_value(atoi(v));
+    return true;
+}
+
+VEDirectFieldBool::VEDirectFieldBool(const VEDirectValueDefinition& d): VEDirectField(d)
+{}
+
+bool VEDirectFieldBool::get_value()
+{
+    return value;
+}
+
+void VEDirectFieldBool::set_value(bool v)
+{
+    value = v;
+    set_value_set(true);
+}
+
+bool VEDirectFieldBool::parse(const char* v)
+{
+    set_value(strcmp("ON", v)==0);
+    return true;
+}
+
+VEDirectFieldString::VEDirectFieldString(const VEDirectValueDefinition& d): VEDirectField(d)
+{}
+
+const char* VEDirectFieldString::get_value()
+{
+    return value;
+}
+
+void VEDirectFieldString::set_value(const char* v)
+{
+    strlcpy(value, v, 16);
+    set_value_set(true);
+}
+
+bool VEDirectFieldString::parse(const char* v)
+{
+    set_value(v);
+    return true;
+}
+
+VEDirectObject::VEDirectObject() : valid(0), n_fields(0), checksum(0), listener(nullptr), values(nullptr)
+{}
+
+void VEDirectObject::init(const VEDirectValueDefinition *definition, unsigned int n)
+{
+    n_fields = n;
+    values = new VEDirectField*[n_fields];
+    for (int i = 0; i<n_fields; i++)
+    {
+        switch (definition[i].veType)
+        {
+            case VE_BOOLEAN:
+                values[i] = new VEDirectFieldBool(definition[i]);
+                break;
+            case VE_NUMBER:
+            case VE_HEX:
+                values[i] = new VEDirectFieldNumber(definition[i]);
+                break;
+            case VE_STRING:
+            default:
+                values[i] = new VEDirectFieldString(definition[i]);
+                break;
+        }
+    }
     reset();
 }
 
 VEDirectObject::~VEDirectObject()
 {
-    delete i_values;
-    delete last_time;
     for (int i = 0; i < n_fields; i++)
     {
-        if (s_values[i])
-            delete s_values[i];
+        if (values[i]) delete values[i];
     }
-    delete s_values;
+    delete values;
+}
+
+void VEDirectObject::set_listener(VEDirectListener *l)
+{
+    listener = l;
 }
 
 void VEDirectObject::reset()
 {
     for (int i = 0; i < n_fields; i++)
     {
-        last_time[i] = 0;
-        i_values[i] = 0;
-        if (s_values[i])
-            delete s_values[i];
-        s_values[i] = NULL;
+        values[i]->set_last_time(0);
+        values[i]->unset();
     }
     valid = 0;
+    checksum = 0;
 }
 
 void VEDirectObject::print()
@@ -206,59 +329,66 @@ void VEDirectObject::print()
     Log::trace("End ve.direct object\n");*/
 }
 
-void VEDirectObject::load_VEDirect_key_value(const char *line, unsigned long time)
+bool load_key_value(const char* line, char* key, int max_key_len, char* value, int max_value_len)
 {
-    for (int i = 0; i < BMV_N_FIELDS; i++)
+    key[0] = 0;
+    value[0] = 0;
+    int tab = -1;
+    for (int i = 0; line[i]; i++)
     {
-        const VEDirectValueDefinition def = BMV_FIELDS[i];
-        switch (def.veType)
+        if (line[i] == '\t')
         {
-        case VEFieldType::VE_NUMBER:
-        {
-            if (read_vedirect_int(i_values[i], def.veName, line))
-            {
-                last_time[i] = time;
-                valid++;
-            }
+            tab = i;
         }
-        break;
-        case VEFieldType::VE_BOOLEAN:
+        else if (tab!=-1)
         {
-            bool res;
-            if (read_vedirect_onoff(res, def.veName, line))
-            {
-                i_values[i] = res ? 1 : 0;
-                last_time[i] = time;
-                valid++;
-            }
+            int ix = i - tab;
+            if (ix == max_value_len) return false; // value too long
+            value[ix - 1] = line[i];
+            value[ix] = 0;
         }
-        break;
-        case VEFieldType::VE_STRING:
+        else
         {
-            static char str[80];
-            if (_read_vedirect(str, def.veName, line))
-            {
-                if (s_values[def.veIndex] == NULL)
-                    delete s_values[def.veIndex];
-                s_values[def.veIndex] = strdup(str);
-                last_time[i] = time;
-                valid++;
-            }
-        }
-        default:
-            break;
+            if ((i + 1) == max_key_len) return false; // key too long
+            key[i] = line[i];
+            key[i + 1] = 0;
         }
     }
+    return key[0] && value[0];
+}
+
+int get_field_def(VEDirectField** vs, int array_size, const char* key)
+{
+    for (int i = 0; i<array_size; i++)
+        if (vs[i] && strcmp(key, vs[i]->get_definition().veName)==0) return i;
+    return -1;
+}
+
+void VEDirectObject::load_VEDirect_key_value(const char *line, unsigned long time)
+{
+    char key[16];
+    char value[16];
+    if (!load_key_value(line, key, 16, value, 16)) return;
+    //printf("Key {%s} Value {%s}\n", key, value);
+
+    int field_ix = get_field_def(values, n_fields, key);
+    if (field_ix==-1) return;
+    //printf("Match key {%s} index {%d} ", key, i);
+
+    if (values[field_ix]->parse(value)) valid++;
 }
 
 int VEDirectObject::get_number_value(int &value, unsigned int index)
 {
     if (index > n_fields)
-        return 0;
-    VEDirectValueDefinition field = fields[index];
-    if (field.veIndex < BMV_N_FIELDS && last_time[field.veIndex])
     {
-        value = i_values[field.veIndex];
+        //printf("Index %d out of range %d\n", index, n_fields);
+        return 0;
+    }
+    VEDirectValueDefinition field = values[index]->get_definition();
+    if (field.veIndex < BMV_N_FIELDS && (field.veType==VE_NUMBER || field.veType==VE_HEX) /*&& last_time[field.veIndex]*/)
+    {
+        value = ((VEDirectFieldNumber*)values[field.veIndex])->get_value();
         return -1;
     }
     else
@@ -270,11 +400,14 @@ int VEDirectObject::get_number_value(int &value, unsigned int index)
 int VEDirectObject::get_number_value(double &value, double precision, unsigned int index)
 {
     if (index > n_fields)
-        return 0;
-    VEDirectValueDefinition field = fields[index];
-    if (field.veIndex < BMV_N_FIELDS && last_time[field.veIndex])
     {
-        value = i_values[field.veIndex] * precision;
+        //printf("Index %d out of range %d\n", index, n_fields);
+        return 0;
+    }
+    VEDirectValueDefinition field = values[index]->get_definition();
+    if (field.veType==VE_NUMBER /*&& last_time[field.veIndex]*/)
+    {
+        value = ((VEDirectFieldNumber*)values[field.veIndex])->get_value() * precision;
         return -1;
     }
     else
@@ -287,10 +420,26 @@ int VEDirectObject::get_boolean_value(bool &value, unsigned int index)
 {
     if (index > n_fields)
         return 0;
-    VEDirectValueDefinition field = fields[index];
-    if (field.veIndex < BMV_N_FIELDS && last_time[field.veIndex])
+    VEDirectValueDefinition field = values[index]->get_definition();
+    if (field.veType==VE_BOOLEAN/* && last_time[field.veIndex]*/)
     {
-        value = i_values[field.veIndex];
+        value = ((VEDirectFieldBool*)values[field.veIndex])->get_value();
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+int VEDirectObject::get_string_value(char *value, unsigned int index)
+{
+    if (index > n_fields)
+        return 0;
+    VEDirectValueDefinition field = values[index]->get_definition();
+    if (field.veType==VE_STRING/* && last_time[field.veIndex]*/)
+    {
+        strcpy(value, ((VEDirectFieldString*)values[field.veIndex])->get_value());
         return -1;
     }
     else
@@ -303,46 +452,50 @@ unsigned long VEDirectObject::get_last_timestamp(unsigned int index)
 {
     if (index > n_fields)
         return 0;
-    return last_time[index];
-}
-
-int VEDirectObject::get_string_value(char *value, unsigned int index)
-{
-    if (s_values[index])
-    {
-        strcpy(value, s_values[index]);
-        return -1;
-    }
-    return 0;
+    return values[index]->get_last_time();
 }
 
 bool VEDirectObject::is_valid()
 {
-    return valid;
+    return valid && checksum == 0;
 }
 
-int main()
+int update_checksum(int checksum, const char *line)
 {
-    const char* line =
-    "\r\nPID	0xA381"
-    "\r\nV	13406"
-    "\r\nVS	13152"
-    "\r\nI	0"
-    "\r\nP	0"
-    "\r\nCE	-89423"
-    "\r\nSOC	689"
-    "\r\nTTG	-1"
-    "\r\nAlarm	OFF"
-    "\r\nRelay	OFF"
-    "\r\nAR	0"
-    "\r\nBMV	712 Smart"
-    "\r\nFW	0413"
-    "\r\nMON	0"
-    "\r\nChecksum	y";
+    uint8_t c;
+    int i = 0;
+    checksum = (checksum + '\n') & 0xFF;
+    checksum = (checksum + '\r') & 0xFF;
+    do
+    {
+        c = line[i];
+        checksum = (checksum + c) & 0xFF;
+        i++;
+    } while (c);
+    return checksum;
+}
 
+void VEDirectObject::on_line_read(const char *line)
+{
+    checksum = update_checksum(checksum, line);
+    //printf("Line {%s} ", line);
+    if (line[0])
+    {
+        load_VEDirect_key_value(line, 0);
+    }
+}
 
-    VEDirectObject ve(BMV_FIELDS, BMV_N_FIELDS);
-
-
-    return 0;
+void VEDirectObject::on_partial(const char *line, int len)
+{
+    static size_t l_checkusm = strlen("Checksum\tx");
+    static size_t l_PID = strlen("PID\t");
+    if (len == l_checkusm && start_with_unsafe("Checksum", line))
+    {
+        checksum = update_checksum(checksum, line);
+        if (listener) listener->on_complete(*this);
+    }
+    else if (len == l_PID && start_with_unsafe("PID", line))
+    {
+        reset();
+    }
 }

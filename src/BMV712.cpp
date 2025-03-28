@@ -11,7 +11,7 @@
 #define VE_LOG_PREFIX "VE"
 
 BMV712::BMV712(Context& _c, Port& _p):
-    ctx(_c), p(_p), enabled(false), delta_time(0), bmv(BMV_FIELDS, BMV_N_FIELDS), last_read_time(0), checksum(0)
+    ctx(_c), p(_p), enabled(false), delta_time(0), bmv(), last_read_time(0), checksum(0)
 {
 }
 
@@ -28,12 +28,8 @@ void reset_cache(data& cache)
   cache.soc = NAN;
 }
 
-void BMV712::on_partial_x(const char* line, int len)
+void BMV712::on_complete(VEDirectObject &obj)
 {
-  static size_t l_checkusm = strlen("Checksum\tx");
-  static size_t l_PID = strlen("PID\t");
-  if (len==l_checkusm && startswith("Checksum", line))
-  {
     last_read_time = micros();
     static N2KSid n2ksid;
     unsigned char sid = n2ksid.getNew();
@@ -56,11 +52,11 @@ void BMV712::on_partial_x(const char* line, int len)
     ctx.cache.voltage = voltage;
     ctx.cache.current = current;
     ctx.cache.soc = soc;
-  }
-  else if (len==l_PID && startswith("PID", line))
-  {
-    bmv.reset();
-  }
+}
+
+void BMV712::on_partial_x(const char* line, int len)
+{
+  bmv.on_partial(line, len);
 }
 
 double BMV712::getVoltage()
@@ -70,14 +66,9 @@ double BMV712::getVoltage()
   return v;
 }
 
-
 void BMV712::on_line_read(const char *line)
 {
-  //Log::tracex(VE_LOG_PREFIX, "Read", "line {%s}", line);
-  if (line[0])
-  {
-    bmv.load_VEDirect_key_value(line, _millis());
-  }
+  bmv.on_line_read(line);
 }
 
 void BMV712::loop(unsigned long micros)
@@ -98,6 +89,8 @@ void BMV712::loop(unsigned long micros)
 
 void BMV712::setup()
 {
+  bmv.init(BMV_FIELDS, BMV_N_FIELDS);
+  bmv.set_listener(this);
   p.set_handler(this);
   Log::tracex(VE_LOG_PREFIX, "Setup", "Setting port speed {%d}", VEDIRECT_BAUD_RATE);
   p.set_speed(VEDIRECT_BAUD_RATE);
