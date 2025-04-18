@@ -30,7 +30,7 @@
 
 #define CONF_LOG_TAG "CONF"
 
-Configuration::Configuration(): initialized(false), cache_rpm_adj(1.0), cache_batt_cap(0xFFFFFFFF)
+Configuration::Configuration(): initialized(false), cache_rpm_adj(1.0), cache_batt_cap(0xFFFFFFFF), n2k_source(NO_CONF)
 {
     strcpy(cache_device_name, DEFAULT_DEVICE_NAME);
 }
@@ -116,17 +116,21 @@ void Configuration::save_uart_speed(unsigned char s)
 
 unsigned char Configuration::get_n2k_source()
 {
-    unsigned char src = EEPROM.readInt(CONF_N2K_SOURCE_START_BYTE);
-    if (src == NO_CONF)
+    if (n2k_source == NO_CONF)
     {
-        src = DEFAULT_N2K_SOURCE;
+        n2k_source = EEPROM.readInt(CONF_N2K_SOURCE_START_BYTE);
+        Log::tracex(CONF_LOG_TAG, "Read", "n2k src {%d}", n2k_source);
+        if (n2k_source == NO_CONF)
+        {
+            n2k_source = DEFAULT_N2K_SOURCE;
+        }
     }
-    Log::tracex(CONF_LOG_TAG, "Read", "n2k src {%d}", src);
-    return src;
+    return n2k_source;
 }
 
 void Configuration::save_n2k_source(unsigned char src)
 {
+    n2k_source = src;
     bool r = EEPROM.writeInt(CONF_N2K_SOURCE_START_BYTE, src);
     r = r &&  EEPROM.commit();
     Log::tracex(CONF_LOG_TAG, "Write", "n2k src {%d} success {%d}", src, r);

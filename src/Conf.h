@@ -91,6 +91,7 @@ private:
   double cache_rpm_adj;
   uint32_t cache_batt_cap;
   bool initialized;
+  unsigned char n2k_source;
 };
 
 
