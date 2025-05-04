@@ -1,8 +1,10 @@
 .pio
 .vscode
-pcb/n2k_meteo_gps/n2k_meteo_gps-backups
 
-pcb/n2k_meteo_gps/fp-info-cache
-pcb/n2k_meteo_gps/fp-info-cache
-pcb/n2k_meteo_gps_1.0/fp-info-cache
-pcb/n2k_meteo_gps_1.0_s3/fp-info-cache
+*fp-info-cache*
+_autosave*
+~*
+*-backups
+*.zip
+
+n2k_router_arduino.code-workspace
