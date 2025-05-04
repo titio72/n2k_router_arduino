@@ -26,6 +26,9 @@ int sim_cycles = DOWN_CYCLES;
 #endif
 #define TACHO_TIMER_DIVIDER 80
 #define TACHO_TIMER_ALARM_VALUE 100
+#ifndef ENGINE_RPM_SIM_PIN
+#define ENGINE_RPM_SIM_PIN -1
+#endif
 hw_timer_t* timer = NULL;
 
 std::vector<Tachometer*> _tach = {};
