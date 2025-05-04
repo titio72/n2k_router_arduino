@@ -70,7 +70,7 @@ Dummy bmv712;
 #if (DO_TACHOMETER==1)
 Tachometer tacho(context, ENGINE_RPM_PIN, 12, 1.5, 1.0);
 #else
-Dummy tacho;
+DummyTachometer tacho;
 #endif
 
 HumTemp dht(context);
