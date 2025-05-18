@@ -162,10 +162,14 @@ void BLEConf::loop(unsigned long ms)
   {
     N2KStats s(ctx.n2k.get_bus().getStats());
 
+    double p = ctx.cache.get_pressure(ctx.conf);
+    double h = ctx.cache.get_humidity(ctx.conf);
+    double t = ctx.cache.get_temperature(ctx.conf);
+
     const int8_t _gpsFix = ctx.cache.gsa.fix;
-    const uint32_t _atmo = isnan(ctx.cache.pressure) ? INVALID_U32 : (uint32_t)(ctx.cache.pressure * 10.0);
-    const int16_t _temp = isnan(ctx.cache.temperature) ? INVALID_16 : (int16_t)(ctx.cache.temperature * 10);
-    const int16_t _hum = isnan(ctx.cache.humidity) ? INVALID_16 : (int16_t)(ctx.cache.humidity * 100);
+    const uint32_t _atmo = isnan(p) ? INVALID_U32 : (uint32_t)(p * 10.0);
+    const int16_t _temp = isnan(t) ? INVALID_16 : (int16_t)(t * 10);
+    const int16_t _hum = isnan(h) ? INVALID_16 : (int16_t)(h * 100);
     const int32_t _lat = isnan(ctx.cache.rmc.lat) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lat * 1000000);
     const int32_t _lon = isnan(ctx.cache.rmc.lon) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lon * 1000000);
     const int16_t _sog = isnan(ctx.cache.rmc.sog) ? INVALID_16 : (int16_t)(ctx.cache.rmc.sog * 100);

@@ -23,8 +23,8 @@
 #if DO_TACHOMETER==1
 #include "Tachometer.h"
 #endif
-#include "HumTemp.h"
-#include "PressureTemp.h"
+#include "MeteoBME.h"
+#include "MeteoDHT.h"
 #include "Display.h"
 
 #if DO_VE_DIRECT==1
@@ -43,7 +43,7 @@ void on_command(char command, const char* caommand_value);
 
 #pragma region CONTEXT
 Configuration conf;
-data cache;
+Data cache;
 N2K n2k_bus = *(N2K::get_instance(NULL, on_source_claim));
 N2K_router n2k(n2k_bus);
 Context context(n2k, conf, cache);
@@ -73,8 +73,8 @@ Tachometer tacho(context, ENGINE_RPM_PIN, 12, 1.5, 1.0);
 DummyTachometer tacho;
 #endif
 
-HumTemp dht(context);
-PressureTemp bmp(context);
+MeteoDHT dht(context);
+MeteoBME bme(context);
 EVODisplay display;
 BLEConf bleConf(context, on_command);
 EnvMessanger envMessanger(context);
@@ -87,7 +87,7 @@ struct AppStats
   unsigned long cycles = 0;
   unsigned short retry_gps = 0;
   unsigned short retry_dht = 0;
-  unsigned short retry_bmp = 0;
+  unsigned short retry_bme = 0;
   unsigned short retry_bmv712 = 0;
   unsigned short retry_tacho = 0;
   unsigned short retry_display = 0;
@@ -113,7 +113,8 @@ void handle_display(unsigned long ms)
   static unsigned long t0 = 0;
   if (check_elapsed(ms, t0, 1000000))
   {
-    display.draw_text("GPS %d\nSATS %d/%d", cache.gsa.fix, cache.gsa.nSat, cache.gsv.nSat);
+    //display.draw_text("GPS %d\nSATS %d/%d", cache.gsa.fix, cache.gsa.nSat, cache.gsv.nSat);
+    display.draw_text("%.1fmB\n%d%% %.1fC", cache.get_pressure(conf)/100.0f, (int)cache.get_humidity(conf), cache.get_temperature(conf));
     N2KStats n2k_stats = n2k.get_bus().getStats();
     static N2KStats prev = n2k_stats;
 
@@ -200,7 +201,7 @@ void loop()
     n2k_bus.loop(t);
     handle_agent_loop(display, true, &app_stats.retry_display, t, "Display");
     handle_agent_loop(gps, conf.get_services().use_gps, &app_stats.retry_gps, t, "GPS");
-    handle_agent_loop(bmp, conf.get_services().use_bmp, &app_stats.retry_bmp, t, "BMP");
+    handle_agent_loop(bme, conf.get_services().use_bme, &app_stats.retry_bme, t, "BMP");
     handle_agent_loop(dht, conf.get_services().use_dht, &app_stats.retry_dht, t, "DHT");
     handle_agent_loop(bmv712, conf.get_services().use_vedirect, &app_stats.retry_bmv712, t, "BMV712");
     handle_agent_loop(tacho, conf.get_services().use_tacho, &app_stats.retry_tacho, t, "TACHO");
@@ -228,7 +229,7 @@ void setup()
   display.setup();
   gps.setup();
   dht.setup();
-  bmp.setup();
+  bme.setup();
   bleConf.setup();
   bmv712.setup();
   tacho.setup();

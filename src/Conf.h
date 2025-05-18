@@ -13,6 +13,7 @@ static unsigned char UART_SPEED_115200 = 5;
 
 #define DEFAULT_USE_GPS 0
 #define DEFAULT_USE_BMP 0
+#define DEFAULT_USE_BME 0
 #define DEFAULT_USE_DHT 0
 #define DEFAULT_SOG_2_STW 0
 #define DEFAULT_USE_TIME 0
@@ -26,7 +27,7 @@ static unsigned char UART_SPEED_115200 = 5;
 
 #define GPS_ID 0
 #define DHT_ID 1
-#define BMP_ID 2
+#define BME_ID 2
 #define SYT_ID 3
 #define RPM_ID 4
 #define STW_ID 5
@@ -46,13 +47,20 @@ public:
   N2KServices& operator =(const N2KServices &svc);
 
   bool use_gps = DEFAULT_USE_GPS;
-  bool use_bmp = DEFAULT_USE_BMP;
+  bool use_bme = DEFAULT_USE_BME;
   bool use_dht = DEFAULT_USE_DHT;
   bool send_time = DEFAULT_USE_TIME;
   bool sog_2_stw = DEFAULT_SOG_2_STW;
   bool use_tacho = DEFAULT_USE_TACHO;
   bool use_vedirect = DEFAULT_USE_VE_DIRECT;
   char buffer[MAX_CONF+1];
+};
+
+enum MeteoSource
+{
+  METEO_BME = 0,
+  METEO_DHT = 1,
+  METEO_NONE = 2
 };
 
 class Configuration {
@@ -83,6 +91,12 @@ public:
 
   uint32_t get_batter_capacity();
   void save_batter_capacity(uint32_t c);
+
+  MeteoSource get_pressure_source();
+  MeteoSource get_temperature_source();
+  MeteoSource get_temperature_el_source();
+  MeteoSource get_humidity_source();
+
 
 private:
 

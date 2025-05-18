@@ -1,6 +1,7 @@
 #include "BMV712.h"
 #include "Utils.h"
 #include "N2K_router.h"
+#include "Data.h"
 #include <Log.h>
 
 #define CAPACITY 280.0
@@ -21,7 +22,7 @@ BMV712::~BMV712()
 
 #define N2K_NAN -1e9
 
-void reset_cache(data& cache)
+void reset_cache(Data& cache)
 {
   cache.voltage = NAN;
   cache.current = NAN;

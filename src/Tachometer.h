@@ -1,7 +1,7 @@
 #ifndef _Tachometer_H
 #define _Tachometer_H
 
-#include <stdlib.h>
+#include "Utils.h"
 #include "Context.h"
 
 class Adafruit_BMP280;

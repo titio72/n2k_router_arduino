@@ -5,6 +5,7 @@
 #include <Log.h>
 #include "N2K_router.h"
 #include "Conf.h"
+#include "Data.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
 #define GPS_LOG_TAG "GPS"
@@ -12,19 +13,23 @@
 Context* pCtx = NULL;
 SFE_UBLOX_GNSS myGNSS;
 
-bool bSAT, bDOP, bPVT;
+bool bSAT = false;
+bool bDOP = false;
+bool bPVT = false;
 UBX_NAV_SAT_data_t dSAT;
 UBX_NAV_DOP_data_t dDOP;
 UBX_NAV_PVT_data_t dPVT;
 
 time_t unix_time;
 
-bool high_freq_signal = false;
-
 // enable/disable sending sats 130577
 #define SEND_SATS 0
 
-GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false)
+#define READ_PERIOD    50000 // microseconds
+#define HIG_LOW_FREQ_RATIO 5 // manage a low freq event every 4 high freq events
+#define NAVIGATION_DATA_FREQUENCY 5 // Hz
+
+GPSX::GPSX(Context _ctx): ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false), count_sent(0)
 {
     pCtx = &ctx;
 }
@@ -63,57 +68,13 @@ void loadSats(sat* satellites, UBX_NAV_SAT_data_t* d, GSA& gsa, GSV& gsv)
     //Log::trace("[GPS] Loaded {%d/%d} sats\n", gsv.nSat, gsa.nSat);
 }
 
-void loadFix(UBX_NAV_SAT_data_t* d, GSA& gsa) {
-    gsa.fix = dPVT.fixType;
-    gsa.hdop = dDOP.hDOP / 100.0;
-    gsa.vdop = dDOP.vDOP / 100.0;
-    gsa.tdop = dDOP.tDOP / 100.0;
-    gsa.pdop = dDOP.pDOP / 100.0;
-    gsa.valid = dPVT.flags.bits.gnssFixOK;
-}
-
-bool GPSX::set_system_time(unsigned char sid)
-{
-  if (unix_time > 0)
-  {
-    if (ctx.conf.get_services().send_time)
-    {
-      ctx.n2k.sendSystemTime(ctx.cache.rmc, sid);
-    }
-    if (!gps_time_set)
-    {
-      delta_time = unix_time - time(0);
-      Log::tracex(GPS_LOG_TAG, "Set time", "UTC {%04d-%02d-%02d %02d:%02d:%02d}",
-        ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
-      gps_time_set = true;
-    }
-  }
-  return false;
-}
-
-void GPSX::manageLowFrequency(unsigned long ms)
-{
-    static unsigned long lastT = 0;
-    if (bSAT && bDOP && bPVT && (ms-lastT)>950)
-    {
-        lastT = ms;
-
-        loadSats(ctx.cache.gsv.satellites, &dSAT, ctx.cache.gsa, ctx.cache.gsv);
-        loadFix(&dSAT, ctx.cache.gsa);
-
-        static N2KSid _sid;
-        unsigned char sid = _sid.getNew();
-        ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
-        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
-        if (ctx.conf.get_services().sog_2_stw)
-        {
-            ctx.n2k.sendSTW(ctx.cache.rmc.sog);
-        }
-        #if (SEND_SATS==1)
-        ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
-        #endif
-        set_system_time(sid);
-    }
+void loadFix(UBX_NAV_DOP_data_t* d, UBX_NAV_PVT_data_t* n, GSA& gsa) {
+    gsa.fix = n->fixType;
+    gsa.hdop = d->hDOP / 100.0;
+    gsa.vdop = d->vDOP / 100.0;
+    gsa.tdop = d->tDOP / 100.0;
+    gsa.pdop = d->pDOP / 100.0;
+    gsa.valid = gsa.fix==2 || gsa.fix==3; //dPVT.flags.bits.gnssFixOK;
 }
 
 void getDOP(UBX_NAV_DOP_data_t* d)
@@ -130,11 +91,13 @@ void getSat(UBX_NAV_SAT_data_t* d)
 
 void getPVT(UBX_NAV_PVT_data_t* d)
 {
-    high_freq_signal = true;
-    RMC& rmc = pCtx->cache.rmc;
     dPVT = *d;
     bPVT = true;
+}
 
+void loadPVT(UBX_NAV_PVT_data_t* d)
+{
+    RMC& rmc = pCtx->cache.rmc;
     if (d->fixType>=1)
     {
         unix_time = myGNSS.getUnixEpoch();
@@ -144,7 +107,7 @@ void getPVT(UBX_NAV_PVT_data_t* d)
         rmc.unix_time = 0;
     }
 
-    rmc.valid = d->flags.bits.gnssFixOK;
+    rmc.valid = d->fixType==2 || d->fixType==3; // d->flags.bits.gnssFixOK;
     // set cog in deg
     rmc.cog = d->headMot / 100000.0f; // headVeh is deg*1e-05
     // set sog in Kn
@@ -165,31 +128,66 @@ void getPVT(UBX_NAV_PVT_data_t* d)
     pCtx->cache.longitude_EW = d->lon>0.0?'W':'E';
 }
 
-void GPSX::manageHighFrequency(unsigned long ms)
+bool GPSX::set_system_time(unsigned char sid)
 {
-    ctx.n2k.sendCOGSOG(ctx.cache.rmc);
-    ctx.n2k.sendPosition(ctx.cache.rmc);
+  if (unix_time > 0)
+  {
+    if (!gps_time_set)
+    {
+      delta_time = unix_time - time(0);
+      Log::tracex(GPS_LOG_TAG, "Set time", "UTC {%04d-%02d-%02d %02d:%02d:%02d}",
+        ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
+      gps_time_set = true;
+    }
+  }
+  return false;
 }
 
-void GPSX::loop(unsigned long ms)
+void GPSX::manageLowFrequency(unsigned long micros)
 {
-    if (enabled)
+    if (bSAT && bDOP && bPVT && count_sent == 0)
     {
-        if (check_elapsed(ms, last_read_time, 20000))
+        static N2KSid _sid;
+        unsigned char sid = _sid.getNew();
+        ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
+        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+        if (ctx.conf.get_services().sog_2_stw)
         {
-            pCtx = &ctx;
-            bDOP = false;
-            bPVT = false;
-            bSAT = false;
-            myGNSS.checkUblox();
-            myGNSS.checkCallbacks();
-            if (high_freq_signal)
-            {
-                high_freq_signal = false;
-                manageHighFrequency(ms);
-                manageLowFrequency(ms);
-            }
+            ctx.n2k.sendSTW(ctx.cache.rmc.sog);
         }
+        #if (SEND_SATS==1)
+        ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
+        #endif
+        set_system_time(sid);
+    }
+}
+
+void GPSX::manageHighFrequency(unsigned long micros)
+{
+    if (bPVT) //no need to check the timeout because the ublox is configured for a 4Hz navigation rate
+    {
+        ctx.n2k.sendCOGSOG(ctx.cache.rmc);
+        ctx.n2k.sendPosition(ctx.cache.rmc);
+        count_sent++;
+        count_sent %= HIG_LOW_FREQ_RATIO;
+    }
+}
+
+void GPSX::loop(unsigned long micros)
+{
+    if (enabled && check_elapsed(micros, last_read_time, READ_PERIOD))
+    {
+        pCtx = &ctx;
+        //bDOP = false;
+        bPVT = false;
+        //bSAT = false;
+        myGNSS.checkUblox();
+        myGNSS.checkCallbacks();
+        loadPVT(&dPVT);
+        loadFix(&dDOP, &dPVT, ctx.cache.gsa);
+        loadSats(ctx.cache.gsv.satellites, &dSAT, ctx.cache.gsa, ctx.cache.gsv);
+        manageHighFrequency(micros);
+        manageLowFrequency(micros);
     }
 }
 
@@ -211,7 +209,7 @@ void GPSX::enable()
     if (_enabled)
     {
         myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-        myGNSS.setNavigationFrequency(4);
+        myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
         myGNSS.setAutoNAVSATcallbackPtr(&getSat);
         myGNSS.setAutoPVTcallbackPtr(&getPVT);
         myGNSS.setAutoDOPcallbackPtr(&getDOP);

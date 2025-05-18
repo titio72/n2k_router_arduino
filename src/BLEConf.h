@@ -1,9 +1,9 @@
 #ifndef _BLEConf_H
 #define _BLEConf_H
 
-#include <stdlib.h>
-#include <BTInterface.h>
+#include "Utils.h"
 #include "Context.h"
+#include <BTInterface.h>
 
 typedef void (*command_callback)(char command, const char* command_value);
 

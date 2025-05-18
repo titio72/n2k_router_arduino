@@ -66,6 +66,62 @@ void Configuration::init()
     initialized = true;
 }
 
+MeteoSource Configuration::get_pressure_source()
+{
+    if (cache_services.use_bme)
+    {
+        return METEO_BME;
+    }
+    else
+    {
+        return METEO_NONE;
+    }
+}
+
+MeteoSource Configuration::get_temperature_source()
+{
+    if (cache_services.use_dht)
+    {
+        return METEO_DHT;
+    }
+    else if (cache_services.use_bme)
+    {
+        return METEO_BME;
+    }
+    else
+    {
+        return METEO_NONE;
+    }
+}
+
+MeteoSource Configuration::get_temperature_el_source()
+{
+    if (cache_services.use_bme && cache_services.use_dht)
+    {
+        return METEO_BME;
+    }
+    else
+    {
+        return METEO_NONE;
+    }
+}
+
+MeteoSource Configuration::get_humidity_source()
+{
+    if (cache_services.use_dht)
+    {
+        return METEO_DHT;
+    }
+    else if (cache_services.use_bme)
+    {
+        return METEO_BME;
+    }
+    else
+    {
+        return METEO_NONE;
+    }
+}
+
 uint64_t Configuration::get_engine_hours()
 {
     uint64_t hh = EEPROM.readULong64(CONF_ENGINE_TIME_START_BYTE);
@@ -206,8 +262,8 @@ N2KServices& Configuration::get_services()
     {
         uint8_t c = EEPROM.read(CONF_SERVICES_START_BYTE);
         cache_services.deserialize(c);
-        Log::tracex(CONF_LOG_TAG, "Read", "gps {%d} bmp {%d} dht {%d} time {%d} tacho {%d} stw {%d} ved {%d} value {%x}",
-                cache_services.use_gps, cache_services.use_bmp, cache_services.use_dht, cache_services.send_time,
+        Log::tracex(CONF_LOG_TAG, "Read", "gps {%d} bme {%d} dht {%d} time {%d} tacho {%d} stw {%d} ved {%d} value {%x}",
+                cache_services.use_gps, cache_services.use_bme, cache_services.use_dht, cache_services.send_time,
                 cache_services.use_tacho, cache_services.sog_2_stw, cache_services.use_vedirect, c);
     }
     return cache_services;
@@ -219,15 +275,15 @@ void Configuration::save_services(N2KServices& s)
     uint8_t c = cache_services.serialize();
     EEPROM.write(CONF_SERVICES_START_BYTE, c);
     bool r = EEPROM.commit();
-    Log::tracex(CONF_LOG_TAG, "Write", "gps {%d} bmp {%d} dht {%d} time {%d} tacho {%d} stw {%d} ved {%d} value {%x} success {%d}",
-                cache_services.use_gps, cache_services.use_bmp, cache_services.use_dht, cache_services.send_time,
+    Log::tracex(CONF_LOG_TAG, "Write", "gps {%d} bme {%d} dht {%d} time {%d} tacho {%d} stw {%d} ved {%d} value {%x} success {%d}",
+                cache_services.use_gps, cache_services.use_bme, cache_services.use_dht, cache_services.send_time,
                 cache_services.use_tacho, cache_services.sog_2_stw, cache_services.use_vedirect, c, r);
 }
 
 void N2KServices::deserialize(uint8_t v)
 {
     use_gps = (v & 0x01);
-    use_bmp = (v & 0x02);
+    use_bme = (v & 0x02);
     use_dht = (v & 0x04);
     send_time = (v & 0x08);
     sog_2_stw = (v & 0x10);
@@ -238,7 +294,7 @@ void N2KServices::deserialize(uint8_t v)
 uint8_t N2KServices::serialize()
 {
     return (use_gps ? 0x01 : 0) +
-           (use_bmp ? 0x02 : 0) +
+           (use_bme ? 0x02 : 0) +
            (use_dht ? 0x04 : 0) +
            (send_time ? 0x08 : 0) +
            (sog_2_stw ? 0x10 : 0) +
@@ -249,7 +305,7 @@ uint8_t N2KServices::serialize()
 N2KServices& N2KServices::operator =(const N2KServices &svc)
 {
     use_gps = svc.use_gps;
-    use_bmp = svc.use_bmp;
+    use_bme = svc.use_bme;
     use_dht = svc.use_dht;
     send_time = svc.send_time;
     sog_2_stw = svc.sog_2_stw;
@@ -277,7 +333,7 @@ bool N2KServices::from_string(const char* value)
 {
     use_gps = set_conf(GPS_ID, value, "GPS");
     use_dht = set_conf(DHT_ID, value, "DHT");
-    use_bmp = set_conf(BMP_ID, value, "BMP");
+    use_bme = set_conf(BME_ID, value, "BME");
     send_time = set_conf(SYT_ID, value, "SYT");
     sog_2_stw = set_conf(STW_ID, value, "STW");
     use_tacho = set_conf(RPM_ID, value, "RPM");
@@ -289,12 +345,12 @@ const char* N2KServices::to_string()
 {
   buffer[MAX_CONF] = 0;
   buffer[GPS_ID] = use_gps ? '1' : '0';
-  buffer[BMP_ID] = use_bmp ? '1' : '0';
   buffer[DHT_ID] = use_dht ? '1' : '0';
   buffer[SYT_ID] = send_time ? '1' : '0';
   buffer[STW_ID] = sog_2_stw ? '1' : '0';
   buffer[RPM_ID] = use_tacho ? '1' : '0';
   buffer[VED_ID] = use_vedirect ? '1' : '0';
+  buffer[BME_ID] = use_bme ? '1' : '0';
   return buffer;
 }
 

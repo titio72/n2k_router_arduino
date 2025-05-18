@@ -1,6 +1,8 @@
 #ifndef _GPS_H
 #define _GPS_H
 
+#include "Utils.h"
+#include "Data.h"
 #include "Ports.h"
 #include "Context.h"
 

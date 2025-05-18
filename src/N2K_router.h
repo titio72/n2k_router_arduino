@@ -3,6 +3,7 @@
 
 #include <Utils.h>
 #include <N2K.h>
+#include "Data.h"
 
 #ifndef N2K_SOURCE
 #define N2K_SOURCE 22
@@ -23,15 +24,15 @@ class N2K_router
         bool sendLocalTime(GSA& gsa, RMC& rmc);
         bool sendPosition(RMC& rmc);
         bool sendPosition(double latitude, double longitude);
-        bool sendCabinTemp(const float temperature, unsigned char sid = 0xFF);
-        bool sendEnvironmentXRaymarine(const float pressure, const float humidity, const float temperature);
-        bool sendHumidity(const float humidity, unsigned char sid = 0xFF);
-        bool sendPressure(const float pressure, unsigned char sid = 0xFF);
-        bool sendElectronicTemperature(const float temp, unsigned char sid = 0xFF);
+        bool sendCabinTemp(const double temperature, unsigned char sid = 0xFF);
+        bool sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature);
+        bool sendHumidity(const double humidity, unsigned char sid = 0xFF);
+        bool sendPressure(const double pressure, unsigned char sid = 0xFF);
+        bool sendElectronicTemperature(const double temp, unsigned char sid = 0xFF);
         bool sendGNSSPosition(GSA& gsa, RMC& rmc, unsigned char sid);
-        bool sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsigned long unixTime, float lat, float lon, int nsat, float hdop, float pdop, unsigned char sid);
+        bool sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsigned long unixTime, double lat, double lon, int nsat, double hdop, double pdop, unsigned char sid);
         bool sendGNNSStatus(GSA& gsa, unsigned char sid);
-        bool sendGNNSStatus(int fix, float hdop, float vdop, float tdop, unsigned char sid);
+        bool sendGNNSStatus(int fix, double hdop, double vdop, double tdop, unsigned char sid);
         bool sendSatellites(const sat* sats, uint n, unsigned char sid, GSA& gsa);
         bool sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance);
         bool sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance);

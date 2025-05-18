@@ -1,8 +1,9 @@
 #ifndef _GPSX_H
 #define _GPSX_H
 
+#include "Utils.h"
 #include "Context.h"
-class SFE_UBLOX_GNSS;
+//class SFE_UBLOX_GNSS;
 
 class GPSX
 {
@@ -27,6 +28,7 @@ private:
     unsigned long last_read_time;
     time_t delta_time;
     bool gps_time_set;
+    int count_sent;
 
 };
 #endif //_GPS_TYPE

@@ -1,17 +1,17 @@
-#ifndef _HumTemp_H
-#define _HumTemp_H
+#ifndef _MeteoDHT_H
+#define _MeteoDHT_H
 
-#include <stdlib.h>
+#include "Utils.h"
 #include "Context.h"
 
 class DHTesp;
 
-class HumTemp 
+class MeteoDHT 
 {
 public:
-    HumTemp(const HumTemp& humtemp);
-    HumTemp(Context ctx);
-    ~HumTemp();
+    MeteoDHT(const MeteoDHT& humtemp);
+    MeteoDHT(Context ctx);
+    ~MeteoDHT();
 
     AB_AGENT
 

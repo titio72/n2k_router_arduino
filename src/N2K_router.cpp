@@ -1,4 +1,5 @@
 #include "N2K_router.h"
+#include "Data.h"
 #include <N2kMessages.h>
 #include <N2kMsg.h>
 
@@ -61,7 +62,7 @@ bool N2K_router::sendCOGSOG(double sog, double cog, unsigned char sid)
     }
 }
 
-bool N2K_router::sendGNNSStatus(int fix, float hdop, float vdop, float tdop, unsigned char sid)
+bool N2K_router::sendGNNSStatus(int fix, double hdop, double vdop, double tdop, unsigned char sid)
 {
     tN2kMsg m(n2k.get_source());
     tN2kGNSSDOPmode mode;
@@ -106,7 +107,7 @@ bool N2K_router::sendGNSSPosition(GSA &gsa, RMC &rmc, unsigned char sid)
     return false;
 }
 
-bool N2K_router::sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsigned long unixTime, float lat, float lon, int nsat, float hdop, float pdop, unsigned char sid)
+bool N2K_router::sendGNSSPosition(int y, int M, int d, int h, int m, int s, unsigned long unixTime, double lat, double lon, int nsat, double hdop, double pdop, unsigned char sid)
 {
     tN2kMsg N2kMsg(n2k.get_source());
     int days_since_1970 = getDaysSince1970(y, M, d);
@@ -173,7 +174,7 @@ bool N2K_router::sendPosition(double lat, double lon)
     }
 }
 
-bool N2K_router::sendElectronicTemperature(const float temp, unsigned char sid)
+bool N2K_router::sendElectronicTemperature(const double temp, unsigned char sid)
 {
     tN2kMsg m(n2k.get_source());
     m.SetPGN(130312L);
@@ -187,7 +188,7 @@ bool N2K_router::sendElectronicTemperature(const float temp, unsigned char sid)
     return n2k.send_msg(m);
 }
 
-bool N2K_router::sendEnvironmentXRaymarine(const float pressure, const float humidity, const float temperature)
+bool N2K_router::sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature)
 {
     //Log::trace("[N2K] Send {%f} {%f} {%f}\n", CToKelvin(temperature), humidity, pressure);
     tN2kMsg N2kMsg(n2k.get_source());
@@ -198,21 +199,21 @@ bool N2K_router::sendEnvironmentXRaymarine(const float pressure, const float hum
     return n2k.send_msg(N2kMsg);
 }
 
-bool N2K_router::sendPressure(const float pressurePA, unsigned char sid)
+bool N2K_router::sendPressure(const double pressurePA, unsigned char sid)
 {
     tN2kMsg N2kMsg(n2k.get_source());
     SetN2kPressure(N2kMsg, sid, 0, tN2kPressureSource::N2kps_Atmospheric, pressurePA);
     return n2k.send_msg(N2kMsg);
 }
 
-bool N2K_router::sendHumidity(const float humidity, unsigned char sid)
+bool N2K_router::sendHumidity(const double humidity, unsigned char sid)
 {
     tN2kMsg N2kMsg(n2k.get_source());
     SetN2kHumidity(N2kMsg, sid, 0, tN2kHumiditySource::N2khs_InsideHumidity, humidity);
     return n2k.send_msg(N2kMsg);
 }
 
-bool N2K_router::sendCabinTemp(const float temperature, unsigned char sid)
+bool N2K_router::sendCabinTemp(const double temperature, unsigned char sid)
 {
     tN2kMsg N2kMsg(n2k.get_source());
     SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_MainCabinTemperature, CToKelvin(temperature));

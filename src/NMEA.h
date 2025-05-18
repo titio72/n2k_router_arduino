@@ -7,6 +7,7 @@
 #define NMEA_H_
 
 #include "Utils.h"
+#include "Data.h"
 
 enum NMEA_RESPONSE
 {
