@@ -9,7 +9,7 @@
 class BMV712: public PortListener, VEDirectListener
 {
 public:
-    BMV712(Context& ctx, Port& port);
+    BMV712(Context& ctx, Port& port, BatteryData& data);
     ~BMV712();
 
     void loop(unsigned long t);
@@ -27,6 +27,7 @@ private:
 
     Context& ctx;
     Port& p;
+    BatteryData& data;
     bool enabled;
     time_t delta_time;
     VEDirectObject bmv;

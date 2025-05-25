@@ -1,6 +1,8 @@
 #ifndef _CONTEXT_H
 #define _CONTEXT_H
 
+#include "Data.h"
+
 class N2K_router;
 class Configuration;
 class Data;

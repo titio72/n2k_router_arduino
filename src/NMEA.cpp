@@ -90,14 +90,13 @@ const char *get_next_token_checked(const char *string, size_t &start, size_t len
 }
 
 NMEAUtils::NMEAUtils(): last_gsv_time(0), gsv_count(0), gsv_index(0), gsv_total(0), n_sat(0), n_snapshot_sat(0), sat_ready(false)
-{
-}
+{}
 
 NMEAUtils::~NMEAUtils()
 {
 }
 
-NMEA_RESPONSE nmea_position_parse(char *s, float *pos)
+NMEA_RESPONSE nmea_position_parse(char *s, double *pos)
 {
     if (s == 0 || s[0] == 0)
         return NMEA_ERROR;

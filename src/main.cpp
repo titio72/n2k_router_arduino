@@ -38,8 +38,16 @@
 #include "BLEConf.h"
 #include <Ports.h>
 
+#ifndef BME_ADDRESS
+#define BME_ADDRESS 0x76 // 0x76 or 0x77
+#endif
+
+#ifndef DHT_TYPE
+#define DHT_TYPE DHT22
+#endif
+
 void on_source_claim(const unsigned char old_source, const unsigned char new_source);
-void on_command(char command, const char* caommand_value);
+void on_command(char command, const char* command_value);
 
 #pragma region CONTEXT
 Configuration conf;
@@ -62,26 +70,25 @@ Dummy gps;
 
 #if (DO_VE_DIRECT==1)
 ArduinoPort<HardwareSerial> veDirectPort("VE", Serial2, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, true);
-BMV712 bmv712(context, veDirectPort);
+BMV712 bmv712(context, veDirectPort, cache.battery);
 #else
 Dummy bmv712;
 #endif
 
 #if (DO_TACHOMETER==1)
-Tachometer tacho(context, ENGINE_RPM_PIN, 12, 1.5, 1.0);
+Tachometer tacho(context, cache.engine, ENGINE_RPM_PIN, 12, 1.5, 1.0);
 #else
 DummyTachometer tacho;
 #endif
 
-MeteoDHT dht(context);
-MeteoBME bme(context);
+MeteoDHT dht(context, DHT_PIN, MeteoDHT::DHT_MODEL::DHT_TYPE, cache.meteo_1);
+MeteoBME bme(context, BME_ADDRESS, cache.meteo_0);
 EVODisplay display;
 BLEConf bleConf(context, on_command);
 EnvMessanger envMessanger(context);
 #pragma endregion
 
 bool started = false;
-
 struct AppStats
 {
   unsigned long cycles = 0;

@@ -10,7 +10,7 @@ class TachometerPrivate;
 class Tachometer
 {
 public:
-    Tachometer(Context ctx, uint8_t pin, uint8_t poles = 12, double ratio = 1.5, double adjustment = 1.0, uint8_t timer_n = 0);
+    Tachometer(Context ctx, EngineData& data, uint8_t pin, uint8_t poles = 12, double ratio = 1.5, double adjustment = 1.0, uint8_t timer_n = 0);
     ~Tachometer();
 
     void dumpStats();
@@ -31,6 +31,7 @@ public:
 private:
     bool enabled;
     Context ctx;
+    EngineData& data;
     uint8_t pin;
     uint8_t poles;
     double rpm_ratio;

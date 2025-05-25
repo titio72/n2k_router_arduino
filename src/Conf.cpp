@@ -30,7 +30,7 @@
 
 #define CONF_LOG_TAG "CONF"
 
-Configuration::Configuration(): initialized(false), cache_rpm_adj(1.0), cache_batt_cap(0xFFFFFFFF), n2k_source(NO_CONF)
+Configuration::Configuration(): initialized(false), cache_rpm_adj(1.0), cache_batt_cap(0xFFFFFFFF), n2k_source(NO_CONF), cache_services()
 {
     strcpy(cache_device_name, DEFAULT_DEVICE_NAME);
 }
@@ -311,6 +311,7 @@ N2KServices& N2KServices::operator =(const N2KServices &svc)
     sog_2_stw = svc.sog_2_stw;
     use_tacho = svc.use_tacho;
     use_vedirect = svc.use_vedirect;
+    memccpy(buffer, svc.buffer, 0, MAX_CONF + 1);
     return *this;
 }
 

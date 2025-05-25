@@ -99,8 +99,8 @@ double add_and_get_freq(double freq, double* freqs, int &ix)
     return sum / FREQ_SMOOTHING_BUFFER_SIZE;
 }
 
-Tachometer::Tachometer(Context _ctx, uint8_t _pin, uint8_t _poles, double _rpm_ratio, double _rpm_adjustment, uint8_t _timer_n)
-    :enabled(false), ctx(_ctx), pin(_pin), poles(_poles), rpm_ratio(_rpm_ratio), rpm_adjustment(_rpm_adjustment),
+Tachometer::Tachometer(Context _ctx, EngineData& _data, uint8_t _pin, uint8_t _poles, double _rpm_ratio, double _rpm_adjustment, uint8_t _timer_n)
+    :enabled(false), ctx(_ctx), data(_data), pin(_pin), poles(_poles), rpm_ratio(_rpm_ratio), rpm_adjustment(_rpm_adjustment),
     last_read(0), last_read_eng_h(0), freq_buffer(NULL), freq_buffer_ix(0), is_setup(false), engine_time(0), counter(0), state(LOW)
 {
     freq_buffer = new double[FREQ_SMOOTHING_BUFFER_SIZE];
@@ -139,7 +139,7 @@ void Tachometer::disable()
     if (enabled)
     {
         remove_tacho(this);
-        ctx.cache.rpm = 0xFFFF;
+        data.rpm = 0xFFFF;
         Log::tracex(RPM_LOG_TAG, "Disable", "Success {1}");
         enabled = false;
     }
@@ -174,7 +174,7 @@ void Tachometer::loop(unsigned long micros)
             {
                 set_engine_time(engine_time + (uint64_t)(dT / 1000), true); // milliseconds
             }
-            ctx.cache.rpm = rpm;
+            data.rpm = rpm;
             ctx.n2k.sendEngineRPM(0, rpm);
         }
     }
@@ -192,9 +192,9 @@ void Tachometer::loop(unsigned long micros)
 
 void Tachometer::calibrate(int rpm)
 {
-    if (rpm && ctx.cache.rpm)
+    if (rpm && data.rpm)
     {
-        double current_rpm = ctx.cache.rpm / rpm_adjustment;
+        double current_rpm = data.rpm / rpm_adjustment;
         double new_adj = (double)rpm / current_rpm;
         Log::tracex(RPM_LOG_TAG, "Set RPM adjustment", "RPM {%d} 2RPM {%d} Adj {%.2f} 2Adj {%.2f}", current_rpm, rpm, rpm_adjustment, new_adj);
         set_adjustment(new_adj, true);
@@ -221,7 +221,7 @@ void Tachometer::dumpStats()
     uint32_t h = ts / 3600;
     uint32_t m = (ts % 3600) / 60;
     uint32_t s = (ts % 60);
-    Log::tracex(RPM_LOG_TAG, "Stats", "RPM {%d} Engine Hours {%lu:%02lu:%02lu %lu%03d}", ctx.cache.rpm, h, m, s, (uint32_t)(engine_time/1000),(uint16_t)(engine_time%1000));
+    Log::tracex(RPM_LOG_TAG, "Stats", "RPM {%d} Engine Hours {%lu:%02lu:%02lu %lu%03d}", data.rpm, h, m, s, (uint32_t)(engine_time/1000),(uint16_t)(engine_time%1000));
 }
 
 bool Tachometer::is_enabled()
@@ -232,7 +232,7 @@ bool Tachometer::is_enabled()
 void Tachometer::set_engine_time(uint64_t t, bool save)
 {
     engine_time = t;
-    ctx.cache.engine_time = engine_time;
+    data.engine_time = engine_time;
     if (save) ctx.conf.save_engine_hours(engine_time);
 }
 

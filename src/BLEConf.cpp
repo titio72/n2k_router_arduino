@@ -114,7 +114,7 @@ public:
 
 #define BLE_UPDATE_PERIOD 1000000
 
-BLEConf::BLEConf(Context _ctx, command_callback cback)
+BLEConf::BLEConf(const Context& _ctx, command_callback cback)
     : enabled(false), ctx(_ctx), ble(SERVICE_UUID, nullptr), last_sent(0), c_back(cback)
 {
 }
@@ -174,17 +174,17 @@ void BLEConf::loop(unsigned long ms)
     const int32_t _lon = isnan(ctx.cache.rmc.lon) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lon * 1000000);
     const int16_t _sog = isnan(ctx.cache.rmc.sog) ? INVALID_16 : (int16_t)(ctx.cache.rmc.sog * 100);
     const int16_t _cog = isnan(ctx.cache.rmc.cog) ? INVALID_16 : (int16_t)(ctx.cache.rmc.cog * 10);
-    const int16_t _current = isnan(ctx.cache.current) ? INVALID_16 : (int16_t)(ctx.cache.current * 100);
-    const int16_t _voltage = isnan(ctx.cache.voltage) ? INVALID_16 : (int16_t)(ctx.cache.voltage * 100);
-    const int16_t _soc = isnan(ctx.cache.soc) ? INVALID_U16 : (int16_t)(ctx.cache.soc * 100);
+    const int16_t _current = isnan(ctx.cache.battery.current) ? INVALID_16 : (int16_t)(ctx.cache.battery.current * 100);
+    const int16_t _voltage = isnan(ctx.cache.battery.voltage) ? INVALID_16 : (int16_t)(ctx.cache.battery.voltage * 100);
+    const int16_t _soc = isnan(ctx.cache.battery.soc) ? INVALID_U16 : (int16_t)(ctx.cache.battery.soc * 100);
     const uint32_t _rpmAdj = isnan(ctx.conf.get_rpm_adjustment()) ? INVALID_U32 : (uint32_t)(ctx.conf.get_rpm_adjustment() * 10000);
     const int32_t _timestamp = ctx.cache.rmc.unix_time;
-    const uint16_t _rpm = ctx.cache.rpm;
+    const uint16_t _rpm = ctx.cache.engine.rpm;
     const int32_t _mem = get_free_mem();
     const int8_t _canbus = s.canbus;
     const int32_t _canbus_s = s.sent;
     const int32_t _canbus_e = s.fail;
-    const uint32_t _engine_time = static_cast<uint32_t>(ctx.cache.engine_time / 1000L); // send engine time in seconds
+    const uint32_t _engine_time = static_cast<uint32_t>(ctx.cache.engine.engine_time / 1000L); // send engine time in seconds
     const uint8_t _services = ctx.conf.get_services().serialize();
     const uint8_t _n2k_source = ctx.conf.get_n2k_source();
 

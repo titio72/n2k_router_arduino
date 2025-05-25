@@ -3,14 +3,18 @@
 
 #include "Utils.h"
 #include "Context.h"
+#include <DHTesp.h>
 
-class DHTesp;
-
-class MeteoDHT 
+class MeteoDHT
 {
 public:
-    MeteoDHT(const MeteoDHT& humtemp);
-    MeteoDHT(Context ctx);
+    typedef enum
+    {
+        DHT11 = 0,
+        DHT22 = 2
+    } DHT_MODEL;
+
+    MeteoDHT(Context ctx, int pin, DHT_MODEL model, MeteoData& data);
     ~MeteoDHT();
 
     AB_AGENT
@@ -18,8 +22,11 @@ public:
 private:
     bool enabled;
     Context ctx;
-    DHTesp* DHT;
+    MeteoData& data;
+    DHTesp dht;
     unsigned long last_read_time;
+    int pin;
+    DHT_MODEL model;
 
     void read_temp_hum(unsigned long ms);
 };

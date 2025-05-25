@@ -4,36 +4,30 @@
 #include "Data.h"
 #include "Conf.h"
 #include <Log.h>
-#include <DHTesp.h>
 
 #define DHT_LOG_TAG "DHT"
-#ifndef DHT_MODEL
-#define DHT_MODEL DHT22
-#endif
 
-MeteoDHT::MeteoDHT(Context _ctx) : enabled(false), ctx(_ctx), last_read_time(0)
-{
-  DHT = new DHTesp();
-}
+MeteoDHT::MeteoDHT(Context _ctx, int _pin, DHT_MODEL _model, MeteoData& _data) : enabled(false), ctx(_ctx), data(_data), dht(), last_read_time(0), pin(_pin), model(_model)
+{}
 
 MeteoDHT::~MeteoDHT()
 {
-  delete DHT;
+  disable();
 }
 
 void MeteoDHT::setup()
 {
-  Log::tracex(DHT_LOG_TAG, "Setup", "Type {%d} Pin {%d}", DHT->DHT_MODEL_t::DHT_MODEL, DHT_PIN);
+  Log::tracex(DHT_LOG_TAG, "Setup", "Type {%d} Pin {%d}", model==DHT11?dht.DHT_MODEL_t::DHT11:dht.DHT_MODEL_t::DHT22, pin);
 }
 
 void MeteoDHT::read_temp_hum(unsigned long micros)
 {
-  if (enabled && check_elapsed(micros, last_read_time, DHT->getMinimumSamplingPeriod() * 1000L))
+  if (enabled && check_elapsed(micros, last_read_time, dht.getMinimumSamplingPeriod() * 1000L))
   {
-    TempAndHumidity th = DHT->getTempAndHumidity();
-    ctx.cache.humidity_1 = th.humidity;
-    ctx.cache.temperature_1 = th.temperature;
-    //Log::tracex(DHT_LOG_TAG, "Read", "Temp {%.1fC} Hum {%.1f%%}\n", ctx.cache.temperature, ctx.cache.humidity);
+    TempAndHumidity th = dht.getTempAndHumidity();
+    data.humidity = th.humidity;
+    data.temperature = th.temperature;
+    //Log::tracex(DHT_LOG_TAG, "Read", "Temp {%.1fC} Hum {%.1f%%}\n", data.temperature, data.humidity);
   }
 }
 
@@ -51,10 +45,10 @@ void MeteoDHT::enable()
 {
   if (!enabled)
   {
-    DHT->setup(DHT_PIN, DHT->DHT_MODEL_t::DHT_MODEL);
-    enabled = DHT->getStatus() == DHTesp::ERROR_NONE;
-    ctx.cache.humidity_1 = NAN;
-    ctx.cache.temperature_1 = NAN;
+    dht.setup(pin, model==DHT11?dht.DHT_MODEL_t::DHT11:dht.DHT_MODEL_t::DHT22);
+    enabled = dht.getStatus() == DHTesp::ERROR_NONE;
+    data.humidity = NAN;
+    data.temperature = NAN;
     Log::tracex(DHT_LOG_TAG, "Enable", "Success {%d}", enabled);
   }
 }
@@ -64,8 +58,8 @@ void MeteoDHT::disable()
   if (enabled)
   {
     enabled = false;
-    ctx.cache.humidity_1 = NAN;
-    ctx.cache.temperature_1 = NAN;
+    data.humidity = NAN;
+    data.temperature = NAN;
     Log::tracex(DHT_LOG_TAG, "Disable", "Succcess {%d}", !enabled);
   }
 }

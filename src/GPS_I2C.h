@@ -3,7 +3,7 @@
 
 #include "Utils.h"
 #include "Context.h"
-//class SFE_UBLOX_GNSS;
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
 class GPSX
 {
@@ -30,5 +30,10 @@ private:
     bool gps_time_set;
     int count_sent;
 
+    SFE_UBLOX_GNSS myGNSS;
+
+    bool loadFix();
+    bool loadSats();
+    bool loadPVT();
 };
 #endif //_GPS_TYPE

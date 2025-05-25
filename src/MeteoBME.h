@@ -9,7 +9,7 @@ class Adafruit_BME280;
 class MeteoBME
 {
 public:
-    MeteoBME(Context ctx);
+    MeteoBME(Context ct, int address, MeteoData& data);
     ~MeteoBME();
 
     AB_AGENT
@@ -17,9 +17,10 @@ public:
 private:
     bool enabled;
     Context ctx;
+    MeteoData& data;
     Adafruit_BME280 *bme;
     unsigned long last_read;
-
+    int address;
     void read(unsigned long ms);
 };
 

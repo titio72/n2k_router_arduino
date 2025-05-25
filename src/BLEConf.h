@@ -10,7 +10,7 @@ typedef void (*command_callback)(char command, const char* command_value);
 class BLEConf: public ABBLEWriteCallback
 {
 public:
-    BLEConf(Context ctx, command_callback callback);
+    BLEConf(const Context& ctx, command_callback callback);
     ~BLEConf();
 
     AB_AGENT
@@ -21,7 +21,7 @@ public:
 
 private:
     bool enabled;
-    Context ctx;
+    const Context& ctx;
     BTInterface ble;
     ulong last_sent;
     command_callback c_back;
