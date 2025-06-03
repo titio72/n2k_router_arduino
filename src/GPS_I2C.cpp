@@ -14,8 +14,8 @@
 #define SEND_SATS 0
 
 #define READ_PERIOD 50000           // microseconds
-#define HIG_LOW_FREQ_RATIO 5        // manage a low freq event every 4 high freq events
-#define NAVIGATION_DATA_FREQUENCY 5 // Hz
+#define HIG_LOW_FREQ_RATIO 4        // manage a low freq event every 4 high freq events
+#define NAVIGATION_DATA_FREQUENCY 4 // Hz
 
 #pragma region GPS_UTILS
 const char *SATS_TYPES[] = {
@@ -24,7 +24,23 @@ const char *SATS_TYPES[] = {
 
 void reset_gps_data(Data& data)
 {
+    data.latitude_signed = NAN; // Signed latitude for NMEA
+    data.longitude_signed = NAN; // Signed longitude for NMEA
+    data.cog = NAN; // Course over ground
+    data.sog = NAN; // Speed over ground
+    data.hdop = NAN; // Horizontal Dilution of Precision
+    data.pdop = NAN; // Position Dilution of Precision
+    data.vdop = NAN; // Vertical Dilution of Precision
+    data.tdop = NAN; // Time Dilution of Precision
+    data.fix = 0; // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
+    data.gps_unix_time = 0; // in seconds since epoch
+    data.latitude = NAN;
+    data.latitude_NS = 'N';
+    data.longitude = NAN;
+    data.longitude_EW = 'E';
+
     RMC &rmc = data.rmc;
+    rmc.fix = 0;
     rmc.unix_time = 0;
     rmc.valid = 0xFFFF;
     rmc.cog = NAN;
@@ -37,10 +53,6 @@ void reset_gps_data(Data& data)
     rmc.s = 0xFFFF;
     rmc.lat = NAN;
     rmc.lon = NAN;
-    data.latitude = NAN;
-    data.latitude_NS = 'N';
-    data.longitude = NAN;
-    data.longitude_EW = 'E';
 
     GSA &gsa = data.gsa;
     gsa.nSat = 0;
@@ -57,8 +69,6 @@ void reset_gps_data(Data& data)
 
 bool GPSX::loadSats()
 {
-    if (!myGNSS.getNAVSAT()) return false;
-
     sat *satellites = ctx.cache.gsv.satellites;
     UBX_NAV_SAT_data_t* d = &myGNSS.packetUBXNAVSAT->data;
     int usedSats = 0;
@@ -87,62 +97,101 @@ bool GPSX::loadSats()
 
 bool GPSX::loadFix()
 {
-    // 0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix
     GSA& gsa = ctx.cache.gsa;
-    if (myGNSS.getDOP() && myGNSS.getPVT())
-    {
-        gsa.fix = myGNSS.getFixType();
-        gsa.hdop = myGNSS.getHorizontalDOP() / 100.0;
-        gsa.vdop = myGNSS.getVerticalDOP() / 100.0;
-        gsa.tdop = myGNSS.getTimeDOP() / 100.0;
-        gsa.pdop = myGNSS.getPDOP() / 100.0;
-        gsa.valid = gsa.fix == 2 || gsa.fix == 3; // dPVT.flags.bits.gnssFixOK;
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    gsa.fix = ctx.cache.fix;
+    gsa.hdop = myGNSS.getHorizontalDOP() / 100.0;
+    gsa.vdop = myGNSS.getVerticalDOP() / 100.0;
+    gsa.tdop = myGNSS.getTimeDOP() / 100.0;
+    gsa.pdop = myGNSS.getPDOP() / 100.0;
+    gsa.valid = gsa.fix == 2 || gsa.fix == 3; // dPVT.flags.bits.gnssFixOK;
+    return true;
 }
 
 bool GPSX::loadPVT()
 {
+    cache_ok = false;
     if (!myGNSS.getPVT()) return false;
 
+    cache_ok = true;
     RMC &rmc = ctx.cache.rmc;
-    uint8_t fixType = myGNSS.getFixType();
-    if (fixType >= 1)
+
+    ctx.cache.fix = myGNSS.getFixType();
+    ctx.cache.gsa.fix = ctx.cache.fix;
+    ctx.cache.rmc.fix = ctx.cache.fix;
+
+    if (myGNSS.getTimeFullyResolved())
     {
-        rmc.unix_time = myGNSS.getUnixEpoch();
+        ctx.cache.gps_unix_time = myGNSS.getUnixEpoch();
+        ctx.cache.rmc.unix_time = myGNSS.getUnixEpoch();
+        rmc.y = myGNSS.getYear();
+        rmc.M = myGNSS.getMonth();
+        rmc.d = myGNSS.getDay();
+        rmc.h = myGNSS.getHour();
+        rmc.m = myGNSS.getMinute();
+        rmc.s = myGNSS.getSecond();
     }
     else
     {
-        rmc.unix_time = 0;
+        ctx.cache.gps_unix_time = 0;
+        ctx.cache.rmc.unix_time = 0;
+        rmc.y = 0;
+        rmc.M = 0;
+        rmc.d = 0;
+        rmc.h = 0;
+        rmc.m = 0;
+        rmc.s = 0;
     }
 
-    rmc.valid = fixType == 2 || fixType == 3; // d->flags.bits.gnssFixOK;
-    // set cog in deg
-    rmc.cog = myGNSS.getHeading() / 100000.0f; // headVeh is deg*1e-05
-    // set sog in Kn
-    rmc.sog = (myGNSS.getGroundSpeed() / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
-    rmc.y = myGNSS.getYear();
-    rmc.M = myGNSS.getMonth();
-    rmc.d = myGNSS.getDay();
-    rmc.h = myGNSS.getHour();
-    rmc.m = myGNSS.getMinute();
-    rmc.s = myGNSS.getSecond();
-    rmc.lat = myGNSS.getLatitude() / 10000000.0f;
-    rmc.lon = myGNSS.getLongitude() / 10000000.0f;
+    if (myGNSS.getGnssFixOk())
+    {
+        ctx.cache.hdop = myGNSS.getHorizontalDOP() / 100.0;
+        ctx.cache.vdop = myGNSS.getVerticalDOP() / 100.0;
+        ctx.cache.tdop = myGNSS.getTimeDOP() / 100.0;
+        ctx.cache.pdop = myGNSS.getPDOP() / 100.0;
+        ctx.cache.gps_unix_time = myGNSS.getUnixEpoch();
+        ctx.cache.latitude_signed = myGNSS.getLatitude() / 10000000.0f;
+        ctx.cache.longitude_signed = myGNSS.getLongitude() / 10000000.0f;
+        ctx.cache.latitude = abs(ctx.cache.latitude_signed);
+        ctx.cache.latitude_NS = ctx.cache.latitude_signed > 0.0 ? 'N' : 'S';
+        ctx.cache.longitude = abs(ctx.cache.longitude_signed);
+        ctx.cache.longitude_EW = ctx.cache.longitude_signed > 0.0 ? 'E' : 'W';
+        ctx.cache.cog = myGNSS.getHeading() / 100000.0f; // headVeh is deg*1e-05
+        ctx.cache.sog = (myGNSS.getGroundSpeed() / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
+        ctx.cache.fix = myGNSS.getFixType();
 
-    ctx.cache.latitude = abs(rmc.lat / 10000000.0f);
-    ctx.cache.latitude_NS = rmc.lat > 0.0 ? 'N' : 'S';
-    ctx.cache.longitude = abs(rmc.lon / 10000000.0f);
-    ctx.cache.longitude_EW = rmc.lon > 0.0 ? 'W' : 'E';
+        rmc.cog = myGNSS.getHeading() / 100000.0f; // headVeh is deg*1e-05
+        rmc.sog = (myGNSS.getGroundSpeed() / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
+        rmc.lat = myGNSS.getLatitude() / 10000000.0f;
+        rmc.lon = myGNSS.getLongitude() / 10000000.0f;
+        rmc.valid = 1;
+    }
+    else
+    {
+        ctx.cache.hdop = NAN;
+        ctx.cache.vdop = NAN;
+        ctx.cache.tdop = NAN;
+        ctx.cache.pdop = NAN;
+        ctx.cache.gps_unix_time = 0;
+        ctx.cache.latitude_signed = NAN;
+        ctx.cache.longitude_signed = NAN;
+        ctx.cache.latitude = NAN;
+        ctx.cache.latitude_NS = 'N';
+        ctx.cache.longitude = NAN;
+        ctx.cache.longitude_EW = 'E';
+        ctx.cache.cog = NAN;
+        ctx.cache.sog = NAN;
+        ctx.cache.fix = 0; // no fix
 
+        rmc.cog = NAN;
+        rmc.sog = NAN;
+        rmc.lat = NAN;
+        rmc.lon = NAN;
+        rmc.valid = 1;
+    }
     return true;
 }
 
-GPSX::GPSX(Context _ctx) : ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false), count_sent(0), myGNSS()
+GPSX::GPSX(Context _ctx) : ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false), count_sent(0), myGNSS(), cache_ok(false)
 {
 }
 
@@ -167,26 +216,29 @@ bool GPSX::set_system_time(unsigned char sid)
 
 void GPSX::manageLowFrequency(unsigned long micros)
 {
-    if (loadFix() && loadPVT() && count_sent == 0)
+    if (cache_ok && count_sent == 0)
     {
         static N2KSid _sid;
         unsigned char sid = _sid.getNew();
-        ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
-        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+        if (loadFix() && loadSats())
+        {
+            ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+        }
+            ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
         if (ctx.conf.get_services().sog_2_stw)
         {
             ctx.n2k.sendSTW(ctx.cache.rmc.sog);
         }
-#if (SEND_SATS == 1)
+        #if (SEND_SATS == 1)
         ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
-#endif
+        #endif
         set_system_time(sid);
     }
 }
 
 void GPSX::manageHighFrequency(unsigned long micros)
 {
-    if (loadPVT())
+    //if (loadPVT())
     {
         ctx.n2k.sendCOGSOG(ctx.cache.rmc);
         ctx.n2k.sendPosition(ctx.cache.rmc);
@@ -198,7 +250,7 @@ void GPSX::manageHighFrequency(unsigned long micros)
 
 void GPSX::loop(unsigned long micros)
 {
-    if (enabled && check_elapsed(micros, last_read_time, READ_PERIOD))
+    if (enabled && loadPVT())
     {
         manageHighFrequency(micros);
         manageLowFrequency(micros);
@@ -225,8 +277,8 @@ void GPSX::enable()
             myGNSS.setI2COutput(COM_TYPE_UBX); // Set the I2C port to output UBX only (turn off NMEA noise)
             myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
             myGNSS.setAutoPVT(true);
-            myGNSS.setAutoNAVSAT(true);
             myGNSS.setAutoDOP(true);
+            myGNSS.setAutoNAVSAT(true);
         }
         enabled = _enabled;
         Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);

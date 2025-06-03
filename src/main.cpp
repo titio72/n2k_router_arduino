@@ -70,7 +70,7 @@ Dummy gps;
 
 #if (DO_VE_DIRECT==1)
 ArduinoPort<HardwareSerial> veDirectPort("VE", Serial2, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, true);
-BMV712 bmv712(context, veDirectPort, cache.battery);
+BMV712 bmv712(context, veDirectPort, cache.battery_svc, cache.battery_eng);
 #else
 Dummy bmv712;
 #endif
@@ -112,7 +112,7 @@ void on_source_claim(const unsigned char old_source, const unsigned char new_sou
 
 void on_message_sent(const tN2kMsg &N2kMsg, bool success)
 {
-  if (success) display.blink(LED_N2K, micros(), N2K_BLINK_USEC);
+  display.blink(LED_N2K, micros(), N2K_BLINK_USEC, !success);
 }
 
 void handle_display(unsigned long ms)

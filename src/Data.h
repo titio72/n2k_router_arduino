@@ -29,6 +29,9 @@ struct GSA {
 
 struct RMC {
     short valid = 0;
+
+    unsigned short fix = 0;
+
     double lat = NAN;
     double lon = NAN;
 
@@ -82,12 +85,21 @@ public:
   MeteoData meteo_0;
   MeteoData meteo_1;
 
-  double latitude = NAN;
-  char latitude_NS = 'N';
-  double longitude = NAN;
-  char longitude_EW = 'E';
+  double latitude_signed = NAN; // Signed latitude for NMEA
+  double longitude_signed = NAN; // Signed longitude for NMEA
+  double cog = NAN; // Course over ground
+  double sog = NAN; // Speed over ground
+  double hdop = NAN; // Horizontal Dilution of Precision
+  double pdop = NAN; // Position Dilution of Precision
+  double vdop = NAN; // Vertical Dilution of Precision
+  double tdop = NAN; // Time Dilution of Precision
+  unsigned char fix = 0; // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
+  double latitude = NAN;  char latitude_NS = 'N';
+  double longitude = NAN; char longitude_EW = 'E';
+  unsigned long gps_unix_time = 0; // in seconds since epoch
 
-  BatteryData battery;
+  BatteryData battery_svc;
+  BatteryData battery_eng;
 
   EngineData engine;
 

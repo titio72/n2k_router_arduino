@@ -11,8 +11,8 @@
 
 #define VE_LOG_PREFIX "VE"
 
-BMV712::BMV712(Context& _c, Port& _p, BatteryData& _data):
-    ctx(_c), p(_p), data(_data), enabled(false), delta_time(0), bmv(), last_read_time(0), checksum(0)
+BMV712::BMV712(Context& _c, Port& _p, BatteryData& _data_0, BatteryData& _data_1):
+    ctx(_c), p(_p), data_0(_data_0), data_1(_data_1), enabled(false), delta_time(0), bmv(), last_read_time(0), checksum(0)
 {
 }
 
@@ -50,9 +50,12 @@ void BMV712::on_complete(VEDirectObject &obj)
     if (!isnan(voltage)) ctx.n2k.sendBattery(sid, voltage, current, temperature, INSTANCE);
     if (!isnan(voltage1)) ctx.n2k.sendBattery(sid, voltage1, N2kDoubleNA, N2kDoubleNA, INSTANCE_E);
     if (!isnan(soc)) ctx.n2k.sendBatteryStatus(sid, soc, CAPACITY, ttg, INSTANCE);
-    data.voltage = voltage;
-    data.current = current;
-    data.soc = soc;
+    data_0.voltage = voltage;
+    data_0.current = current;
+    data_0.soc = soc;
+    data_1.voltage = voltage1;
+    data_1.current = NAN;
+    data_1.soc = NAN;
 }
 
 void BMV712::on_partial_x(const char* line, int len)
@@ -78,7 +81,8 @@ void BMV712::loop(unsigned long micros)
     {
       // Log::tracexx(VE_LOG_PREFIX, "Reset cache", "No activity detected for 10 seconds");
       // no activity for 10 seconds, reset values
-      reset_cache(data);
+      reset_cache(data_0);
+      reset_cache(data_1);
       bmv.reset();
     }
 
@@ -115,7 +119,8 @@ void BMV712::disable()
 {
   if (enabled)
   {
-    reset_cache(data);
+    reset_cache(data_0);
+    reset_cache(data_1);
     bmv.reset();
     enabled = false;
     p.close();

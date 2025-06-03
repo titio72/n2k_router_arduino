@@ -29,6 +29,7 @@ private:
     time_t delta_time;
     bool gps_time_set;
     int count_sent;
+    bool cache_ok;
 
     SFE_UBLOX_GNSS myGNSS;
 

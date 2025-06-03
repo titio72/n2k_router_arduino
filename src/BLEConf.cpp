@@ -5,10 +5,10 @@
 #include <Log.h>
 #include "DHTesp.h"
 
-#define INVALID_32 0xFFFFFF7F
-#define INVALID_U32 0xFFFFFFFF
-#define INVALID_16 0xFF7F
-#define INVALID_U16 0xFFFF
+const int32_t INVALID_32 = 0xFFFFFF7F;
+const uint32_t INVALID_U32 = 0xFFFFFFFF;
+const int16_t INVALID_16 = 0xFF7F;
+const uint16_t INVALID_U16 = 0xFFFF;
 
 #pragma region BLEBuffer
 // BLEBuffer is a simple buffer to store data to be sent over BLE
@@ -156,6 +156,14 @@ void BLEConf::setup()
   Log::tracex(BLE_LOG_TAG, "Setup", "Conf {%s}", c.to_string());
 }
 
+template <typename T>
+static inline T to_int(double value, double factor, T invalid_value)
+{
+  if (isnan(value))
+    return invalid_value;
+  return (T)(value * factor);
+}
+
 void BLEConf::loop(unsigned long ms)
 {
   if (enabled && check_elapsed(ms, last_sent, BLE_UPDATE_PERIOD))
@@ -167,17 +175,17 @@ void BLEConf::loop(unsigned long ms)
     double t = ctx.cache.get_temperature(ctx.conf);
 
     const int8_t _gpsFix = ctx.cache.gsa.fix;
-    const uint32_t _atmo = isnan(p) ? INVALID_U32 : (uint32_t)(p * 10.0);
-    const int16_t _temp = isnan(t) ? INVALID_16 : (int16_t)(t * 10);
-    const int16_t _hum = isnan(h) ? INVALID_16 : (int16_t)(h * 100);
-    const int32_t _lat = isnan(ctx.cache.rmc.lat) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lat * 1000000);
-    const int32_t _lon = isnan(ctx.cache.rmc.lon) ? INVALID_32 : (int32_t)(ctx.cache.rmc.lon * 1000000);
-    const int16_t _sog = isnan(ctx.cache.rmc.sog) ? INVALID_16 : (int16_t)(ctx.cache.rmc.sog * 100);
-    const int16_t _cog = isnan(ctx.cache.rmc.cog) ? INVALID_16 : (int16_t)(ctx.cache.rmc.cog * 10);
-    const int16_t _current = isnan(ctx.cache.battery.current) ? INVALID_16 : (int16_t)(ctx.cache.battery.current * 100);
-    const int16_t _voltage = isnan(ctx.cache.battery.voltage) ? INVALID_16 : (int16_t)(ctx.cache.battery.voltage * 100);
-    const int16_t _soc = isnan(ctx.cache.battery.soc) ? INVALID_U16 : (int16_t)(ctx.cache.battery.soc * 100);
-    const uint32_t _rpmAdj = isnan(ctx.conf.get_rpm_adjustment()) ? INVALID_U32 : (uint32_t)(ctx.conf.get_rpm_adjustment() * 10000);
+    const uint32_t _atmo =  to_int(p, 10.0, INVALID_U32);
+    const int16_t _temp = to_int(t, 10.0, INVALID_16);
+    const int16_t _hum = to_int(h, 100.0, INVALID_16);
+    const int32_t _lat = to_int(ctx.cache.rmc.lat, 1000000.0, INVALID_32);
+    const int32_t _lon = to_int(ctx.cache.rmc.lon, 1000000.0, INVALID_32);
+    const int16_t _sog = to_int(ctx.cache.rmc.sog, 100.0, INVALID_16);
+    const int16_t _cog = to_int(ctx.cache.rmc.cog, 10.0, INVALID_16);
+    const int16_t _current = to_int(ctx.cache.battery_svc.current, 100.0, INVALID_16);
+    const int16_t _voltage = to_int(ctx.cache.battery_svc.voltage, 100.0, INVALID_16);
+    const int16_t _soc = to_int(ctx.cache.battery_svc.soc, 100.0, INVALID_16);
+    const uint32_t _rpmAdj = to_int(ctx.conf.get_rpm_adjustment(), 10000.0, INVALID_U32);
     const int32_t _timestamp = ctx.cache.rmc.unix_time;
     const uint16_t _rpm = ctx.cache.engine.rpm;
     const int32_t _mem = get_free_mem();

@@ -13,12 +13,16 @@
 #define SCREEN_WIDTH 128    // OLED display width, in pixels
 #define SCREEN_HEIGHT 32    // OLED display height, in pixels
 
+#define RGB_ON_ERROR 0,16,0
+#define RGB_ON 16,0,0
+#define RGB_OFF 0,0,0
 
 EVODisplay::EVODisplay() : init(false), display(NULL), enabled(false)
 {
     memset(blink_time, 0, NUM_LEDS * sizeof(unsigned long));
     memset(blink_period, 0, NUM_LEDS * sizeof(unsigned long));
     memset(led_state, LOW, NUM_LEDS * sizeof(uint8_t));
+    memset(blink_error, false, NUM_LEDS * sizeof(bool));
     pins[LED_PWR] = LED_PIN;
     pins[LED_GPS] = LED_PIN_GPS;
     pins[LED_N2K] = LED_PIN_SPARE;
@@ -98,15 +102,25 @@ void EVODisplay::draw_text(const char *text, ...)
 #endif
 }
 
-void EVODisplay::set_on(int led, bool on)
+void EVODisplay::set_on(int led, bool on, bool error)
 {
     int pin = pins[led];
     if (pin!=-1)
     {
         if (is_rgb(led))
         {
-            int v = on?16:0;
-            neopixelWrite(pin, v, v, v);
+            if (on && error)
+            {
+                neopixelWrite(pin, RGB_ON_ERROR);
+            }
+            else if (on && !error)
+            {
+                neopixelWrite(pin, RGB_ON);
+            }
+            else
+            {
+                neopixelWrite(pin, RGB_OFF);
+            }
         }
         else
         {
@@ -115,14 +129,14 @@ void EVODisplay::set_on(int led, bool on)
     }
 }
 
-void EVODisplay::on(LEDS led)
+void EVODisplay::on(LEDS led, bool error)
 {
     led_state[led] = HIGH;
     blink_time[led] = 0;
     blink_period[led] = 0;
     if (enabled)
     {
-        set_on(led, true);
+        set_on(led, true, error);
     }
 }
 
@@ -131,6 +145,7 @@ void EVODisplay::off(LEDS led)
     led_state[led] = LOW;
     blink_time[led] = 0;
     blink_period[led] = 0;
+    blink_error[led] = false;
     if (enabled)
     {
         set_on(led, false);
@@ -138,14 +153,15 @@ void EVODisplay::off(LEDS led)
 }
 
 
-void EVODisplay::blink(LEDS led, unsigned long now_micros, unsigned long period_on)
+void EVODisplay::blink(LEDS led, unsigned long now_micros, unsigned long period_on, bool error)
 {
     if (enabled && blink_period[led]==0 && blink_time[led]==0 && pins[led]!=-1)
     {
         led_state[led] = HIGH;
-        set_on(led, true);
+        set_on(led, true, error);
         blink_time[led] = now_micros;
         blink_period[led] = period_on;
+        blink_error[led] = error;
     }
 }
 

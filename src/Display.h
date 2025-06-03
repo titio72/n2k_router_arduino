@@ -23,9 +23,9 @@ public:
 
     void draw_text(const char* text, ...);
 
-    void blink(LEDS led, unsigned long ms, unsigned long period_on);
+    void blink(LEDS led, unsigned long ms, unsigned long period_on, bool error = false);
 
-    void on(LEDS led);
+    void on(LEDS led, bool error = false);
     void off(LEDS led);
 
 private:
@@ -36,10 +36,11 @@ private:
 
     unsigned long blink_time[NUM_LEDS];
     unsigned long blink_period[NUM_LEDS];
+    bool blink_error[NUM_LEDS];
     int pins[NUM_LEDS];
     bool enabled;
 
-    void set_on(int led, bool on);
+    void set_on(int led, bool on, bool error = false);
 };
 
 
