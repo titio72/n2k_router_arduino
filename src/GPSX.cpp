@@ -1,12 +1,11 @@
-#if GPS_TYPE == 1
-#include "GPS_I2C.h"
+
+#include "GPSX.h"
 #include <Utils.h>
 #include <TwoWireProvider.h>
 #include <Log.h>
 #include "N2K_router.h"
 #include "Conf.h"
 #include "Data.h"
-
 
 #define GPS_LOG_TAG "GPS"
 
@@ -17,23 +16,25 @@
 #define HIG_LOW_FREQ_RATIO 4        // manage a low freq event every 4 high freq events
 #define NAVIGATION_DATA_FREQUENCY 4 // Hz
 
+#define GPS_SERIAL_SPEED 57600 // Default speed for GPS serial port
+
 #pragma region GPS_UTILS
 const char *SATS_TYPES[] = {
     "GPS     ", "SBAS    ", "Galileo ",
     "BeiDou  ", "IMES    ", "QZSS    ", "GLONASS "};
 
-void reset_gps_data(Data& data)
+void reset_gps_data(Data &data)
 {
-    data.latitude_signed = NAN; // Signed latitude for NMEA
+    data.latitude_signed = NAN;  // Signed latitude for NMEA
     data.longitude_signed = NAN; // Signed longitude for NMEA
-    data.cog = NAN; // Course over ground
-    data.sog = NAN; // Speed over ground
-    data.hdop = NAN; // Horizontal Dilution of Precision
-    data.pdop = NAN; // Position Dilution of Precision
-    data.vdop = NAN; // Vertical Dilution of Precision
-    data.tdop = NAN; // Time Dilution of Precision
-    data.fix = 0; // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
-    data.gps_unix_time = 0; // in seconds since epoch
+    data.cog = NAN;              // Course over ground
+    data.sog = NAN;              // Speed over ground
+    data.hdop = NAN;             // Horizontal Dilution of Precision
+    data.pdop = NAN;             // Position Dilution of Precision
+    data.vdop = NAN;             // Vertical Dilution of Precision
+    data.tdop = NAN;             // Time Dilution of Precision
+    data.fix = 0;                // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
+    data.gps_unix_time = 0;      // in seconds since epoch
     data.latitude = NAN;
     data.latitude_NS = 'N';
     data.longitude = NAN;
@@ -66,11 +67,10 @@ void reset_gps_data(Data& data)
     data.gsv.nSat = 0;
 }
 
-
 bool GPSX::loadSats()
 {
     sat *satellites = ctx.cache.gsv.satellites;
-    UBX_NAV_SAT_data_t* d = &myGNSS.packetUBXNAVSAT->data;
+    UBX_NAV_SAT_data_t *d = &myGNSS.packetUBXNAVSAT->data;
     int usedSats = 0;
     for (int i = 0; i < d->header.numSvs; i++)
     {
@@ -97,7 +97,7 @@ bool GPSX::loadSats()
 
 bool GPSX::loadFix()
 {
-    GSA& gsa = ctx.cache.gsa;
+    GSA &gsa = ctx.cache.gsa;
     gsa.fix = ctx.cache.fix;
     gsa.hdop = myGNSS.getHorizontalDOP() / 100.0;
     gsa.vdop = myGNSS.getVerticalDOP() / 100.0;
@@ -110,7 +110,8 @@ bool GPSX::loadFix()
 bool GPSX::loadPVT()
 {
     cache_ok = false;
-    if (!myGNSS.getPVT()) return false;
+    if (!myGNSS.getPVT())
+        return false;
 
     cache_ok = true;
     RMC &rmc = ctx.cache.rmc;
@@ -155,11 +156,11 @@ bool GPSX::loadPVT()
         ctx.cache.latitude_NS = ctx.cache.latitude_signed > 0.0 ? 'N' : 'S';
         ctx.cache.longitude = abs(ctx.cache.longitude_signed);
         ctx.cache.longitude_EW = ctx.cache.longitude_signed > 0.0 ? 'E' : 'W';
-        ctx.cache.cog = myGNSS.getHeading() / 100000.0f; // headVeh is deg*1e-05
+        ctx.cache.cog = myGNSS.getHeading() / 100000.0f;                         // headVeh is deg*1e-05
         ctx.cache.sog = (myGNSS.getGroundSpeed() / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
         ctx.cache.fix = myGNSS.getFixType();
 
-        rmc.cog = myGNSS.getHeading() / 100000.0f; // headVeh is deg*1e-05
+        rmc.cog = myGNSS.getHeading() / 100000.0f;                         // headVeh is deg*1e-05
         rmc.sog = (myGNSS.getGroundSpeed() / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
         rmc.lat = myGNSS.getLatitude() / 10000000.0f;
         rmc.lon = myGNSS.getLongitude() / 10000000.0f;
@@ -191,7 +192,10 @@ bool GPSX::loadPVT()
     return true;
 }
 
-GPSX::GPSX(Context _ctx) : ctx(_ctx), enabled(false), last_read_time(0), delta_time(0), gps_time_set(false), count_sent(0), myGNSS(), cache_ok(false)
+GPSX::GPSX(Context _ctx, HardwareSerial *serial, int rx, int tx) : ctx(_ctx), enabled(false), last_read_time(0), delta_time(0),
+                                                                   gps_time_set(false), count_sent(0), myGNSS(), cache_ok(false),
+                                                                   serial_port(serial), rx_pin(rx), tx_pin(tx)
+
 {
 }
 
@@ -224,28 +228,27 @@ void GPSX::manageLowFrequency(unsigned long micros)
         {
             ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
         }
-            ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
         if (ctx.conf.get_services().sog_2_stw)
         {
             ctx.n2k.sendSTW(ctx.cache.rmc.sog);
         }
-        #if (SEND_SATS == 1)
+#if (SEND_SATS == 1)
         ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
-        #endif
+#endif
         set_system_time(sid);
     }
 }
 
 void GPSX::manageHighFrequency(unsigned long micros)
 {
-    //if (loadPVT())
+    // if (loadPVT())
     {
         ctx.n2k.sendCOGSOG(ctx.cache.rmc);
         ctx.n2k.sendPosition(ctx.cache.rmc);
     }
     count_sent++;
     count_sent %= HIG_LOW_FREQ_RATIO;
-
 }
 
 void GPSX::loop(unsigned long micros)
@@ -270,18 +273,65 @@ void GPSX::enable()
 {
     if (!enabled)
     {
-        Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "I2C");
-        bool _enabled = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
-        if (_enabled)
+        if (serial_port == nullptr)
         {
-            myGNSS.setI2COutput(COM_TYPE_UBX); // Set the I2C port to output UBX only (turn off NMEA noise)
-            myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
-            myGNSS.setAutoPVT(true);
-            myGNSS.setAutoDOP(true);
-            myGNSS.setAutoNAVSAT(true);
+            Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "I2C");
+            bool _enabled = myGNSS.begin(*TwoWireProvider::get_two_wire(), 0x42, 1100U, false);
+            if (_enabled)
+            {
+                myGNSS.setI2COutput(COM_TYPE_UBX); // Set the I2C port to output UBX only (turn off NMEA noise)
+                myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
+                myGNSS.setAutoPVT(true);
+                myGNSS.setAutoDOP(true);
+                myGNSS.setAutoNAVSAT(true);
+            }
+            enabled = _enabled;
+            Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
         }
-        enabled = _enabled;
-        Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
+        else
+        {
+            Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "Serial");
+            bool _enabled = false;
+            int retry_count = 0;
+            while (retry_count < 3)
+            {
+                Log::tracex(GPS_LOG_TAG, "Enabling", "Trying %d baud", GPS_SERIAL_SPEED);
+                serial_port->end();
+                serial_port->begin(GPS_SERIAL_SPEED, SERIAL_8N1, rx_pin, tx_pin); // RX, TX
+                if (myGNSS.begin(*serial_port))
+                {
+                    _enabled = true;
+                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connected at %d baud", GPS_SERIAL_SPEED);
+                    break;
+                }
+                else
+                {
+                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connection failed at %d baud, trying 9600\n", GPS_SERIAL_SPEED);
+                    serial_port->end();
+                    serial_port->begin(9600, SERIAL_8N1, rx_pin, tx_pin);
+                    if (myGNSS.begin(*serial_port))
+                    {
+                        myGNSS.setSerialRate(GPS_SERIAL_SPEED); // Set the serial port to 57600 baud)
+                        myGNSS.saveConfiguration();             // Save the new baud rate to flash and BBR
+                        myGNSS.end();
+                        serial_port->end();
+                        Log::tracex(GPS_LOG_TAG, "Enabling", "Port speeed set to %d baud\n", GPS_SERIAL_SPEED);
+                    }
+                }
+                retry_count++;
+            }
+
+            if (_enabled)
+            {
+                myGNSS.setUART1Output(COM_TYPE_UBX); // Set the port to output UBX only (turn off NMEA noise)
+                myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
+                myGNSS.setAutoPVT(true);
+                myGNSS.setAutoDOP(true);
+                myGNSS.setAutoNAVSAT(true);
+            }
+            enabled = _enabled;
+            Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
+        }
     }
 }
 
@@ -309,5 +359,3 @@ void GPSX::dumpStats()
                     ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     }
 }
-
-#endif

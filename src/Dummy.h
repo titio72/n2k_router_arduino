@@ -25,4 +25,12 @@ public:
     void set_adjustment(double adj, bool save) {}
     void calibrate(int rpm) {}
 };
+
+class DummyDisplay: public Dummy
+{
+public:
+    DummyDisplay(): Dummy() {}
+
+    void draw_text(const char *text, ...) {}
+};
 #endif

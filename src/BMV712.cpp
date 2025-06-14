@@ -44,12 +44,12 @@ void BMV712::on_complete(VEDirectObject &obj)
     bmv.get_number_value(voltage, 0.001, BMV_VOLTAGE); // convert in V from mV
     bmv.get_number_value(voltage1, 0.001, BMV_VOLTAGE_1); // convert in V from mV
     bmv.get_number_value(current, 0.001, BMV_CURRENT); // convert in A from mA
-    bmv.get_number_value(soc, 0.1, BMV_SOC); // convert in percentage from 1000ths
+    bmv.get_number_value(soc, 0.001, BMV_SOC); // convert in percentage from 1000ths
     bmv.get_number_value(temperature, 1, BMV_TEMPERATURE); // celsius
     //Log::trace("[BMV] Read values: SOC {%.2f%} V0 {%.2f V} V1 {%.2f V} Current {%.2f A} Temp {%.2f}\n", soc, voltage, voltage1, current, temperature);
     if (!isnan(voltage)) ctx.n2k.sendBattery(sid, voltage, current, temperature, INSTANCE);
     if (!isnan(voltage1)) ctx.n2k.sendBattery(sid, voltage1, N2kDoubleNA, N2kDoubleNA, INSTANCE_E);
-    if (!isnan(soc)) ctx.n2k.sendBatteryStatus(sid, soc, CAPACITY, ttg, INSTANCE);
+    if (!isnan(soc)) ctx.n2k.sendBatteryStatus(sid, soc * 100.0, CAPACITY, ttg, INSTANCE);
     data_0.voltage = voltage;
     data_0.current = current;
     data_0.soc = soc;
