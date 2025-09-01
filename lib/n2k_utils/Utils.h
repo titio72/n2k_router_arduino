@@ -28,6 +28,7 @@ class N2KSid
 
 bool startswith(const char* str_to_find, const char* str);
 int getDaysSince1970(int y, int m, int d);
+const char* time_to_ISO(time_t t, int millis);
 char* replace(char const * const original, char const * const pattern, char const * const replacement, bool first = false);
 char *replace_and_free(char *orig, const char *pattern, const char *new_string, bool first);
 int indexOf(const char* haystack, const char* needle);

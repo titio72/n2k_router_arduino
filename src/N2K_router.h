@@ -19,7 +19,7 @@ class N2K_router
         bool sendCOGSOG(RMC& rmc, unsigned char sid = 0xFF);
         bool sendCOGSOG(double sog, double cog, unsigned char sid);
         bool sendSTW(double sog);
-        bool sendSystemTime(time_t t, unsigned char sid, short ms = 0);
+        bool sendSystemTime(uint32_t t, unsigned char sid, uint16_t t_ms = 0);
         bool sendSystemTime(RMC& rmc, unsigned char sid);
         bool sendLocalTime(GSA& gsa, RMC& rmc);
         bool sendPosition(RMC& rmc);

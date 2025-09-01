@@ -230,8 +230,8 @@ NMEA_RESPONSE NMEAUtils::parseGSA(const char *s_gsa, GSA &gsa)
 
 void NMEAUtils::dumpRMC(RMC &rmc, char *buffer)
 {
-    sprintf(buffer, "RMC valid {%d} lat {%.4f} lon {%.4f} cog {%.1f} sog {%.2f} time {%d-%d-%dT%d:%d:%dZ}",
-            rmc.valid, rmc.lat, rmc.lon, rmc.cog, rmc.sog, rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s);
+    sprintf(buffer, "RMC valid {%d} lat {%.4f} lon {%.4f} cog {%.1f} sog {%.2f} time {%s}",
+            rmc.valid, rmc.lat, rmc.lon, rmc.cog, rmc.sog, time_to_ISO(rmc.unix_time, rmc.unix_time_ms));
 }
 
 void NMEAUtils::dumpGSA(GSA &gsa, char *buffer)
@@ -272,6 +272,9 @@ NMEA_RESPONSE NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
         size_t start = strlen(GPRMC) + 3;
         size_t len = strlen(s_rmc);
 
+        int y, M, d;
+        int h, m, s, ms;
+
         // read UTC time
         char *token = get_next_token(s_rmc, start, len, tempBuffer, ',');
         if (token && strlen(token) >= 6)
@@ -279,13 +282,13 @@ NMEA_RESPONSE NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
             if (strlen(token) > 6)
             {
                 token[6] = 0;
-                rmc.ms = atoi(token + 7 * sizeof(char));
+                ms = atoi(token + 7 * sizeof(char));
             }
-            rmc.s = atoi(token + 4 * sizeof(char));
+            s = atoi(token + 4 * sizeof(char));
             token[4] = 0;
-            rmc.m = atoi(token + 2 * sizeof(char));
+            m = atoi(token + 2 * sizeof(char));
             token[2] = 0;
-            rmc.h = atoi(token);
+            h = atoi(token);
         }
         //Log::tracex("GPS", "RMC", "time {%d:%d:%d.%d}\n", rmc.h, rmc.m, rmc.s, rmc.ms);
         // read validity
@@ -331,16 +334,17 @@ NMEA_RESPONSE NMEAUtils::parseRMC(const char *s_rmc, RMC &rmc)
         token = get_next_token(s_rmc, start, len, tempBuffer, ',');
         if (token && token[0])
         {
-            rmc.y = atoi(token + 4 * sizeof(char)) + 2000;
+            y = atoi(token + 4 * sizeof(char)) + 2000;
             token[4] = 0;
-            rmc.M = atoi(token + 2 * sizeof(char));
+            M = atoi(token + 2 * sizeof(char));
             token[2] = 0;
-            rmc.d = atoi(token);
+            d = atoi(token);
         }
 
-        if (rmc.y > 0)
+        if (y > 0)
         {
-            rmc.unix_time = get_time(rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s);
+            rmc.unix_time = get_time(y, M, d, h, m, s);
+            rmc.unix_time_ms = ms;
         }
         return NMEA_OK;
     }

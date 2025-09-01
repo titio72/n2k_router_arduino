@@ -16,27 +16,12 @@ GPS::~GPS()
 {
 }
 
-time_t get_time(RMC &rmc, time_t &t, short &ms)
-{
-  tm _gps_time;
-  _gps_time.tm_hour = rmc.h;
-  _gps_time.tm_min = rmc.m;
-  _gps_time.tm_sec = rmc.s;
-  _gps_time.tm_year = rmc.y - 1900;
-  _gps_time.tm_mon = rmc.M - 1;
-  _gps_time.tm_mday = rmc.d;
-  t = mktime(&_gps_time);
-  ms = rmc.ms;
-  return t;
-}
-
 bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
 {
-  if (rmc.y > 0)
+  if (rmc.unix_time)
   {
-    time_t _gps_time_t;
-    short _gps_ms;
-    get_time(rmc, _gps_time_t, _gps_ms);
+    time_t _gps_time_t = rmc.unix_time;
+    short _gps_ms = rmc.unix_time_ms;
     if (ctx.conf.get_services().send_time)
     {
       ctx.n2k.sendSystemTime(rmc, sid);
@@ -44,7 +29,7 @@ bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
     if (!time_set_flag)
     {
       delta_time = _gps_time_t - time(0);
-      Log::tracex("GPS", "Setting time", "new time {%d-%d-%d %d:%d:%d.%d}}", rmc.y, rmc.M, rmc.d, rmc.h, rmc.m, rmc.s, rmc.ms);
+      Log::tracex("GPS", "Setting time", "new time {%s}}", time_to_ISO(_gps_time_t, _gps_ms));
       time_set_flag = true;
     }
   }
@@ -162,12 +147,6 @@ void GPS::disable()
     rmc.valid = 0xFFFF;
     rmc.cog = NAN;
     rmc.sog = NAN;
-    rmc.y = 0xFFFF;
-    rmc.M = 0xFFFF;
-    rmc.d = 0xFFFF;
-    rmc.h = 0xFFFF;
-    rmc.m = 0xFFFF;
-    rmc.s = 0xFFFF;
     rmc.lat = NAN;
     rmc.lon = NAN;
     ctx.cache.latitude = NAN;
@@ -184,8 +163,8 @@ void GPS::dumpStats()
 {
   if (enabled)
   {
-    Log::tracex("GPS", "Stats", "Time {%04d-%02d-%02dT%02d:%02d:%02d} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
-      ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s,
+    Log::tracex("GPS", "Stats", "Time {%s} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
+      time_to_ISO(ctx.cache.rmc.unix_time, ctx.cache.rmc.unix_time_ms),
       ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog,
       ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     stats.dump();

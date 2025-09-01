@@ -46,12 +46,6 @@ void reset_gps_data(Data &data)
     rmc.valid = 0xFFFF;
     rmc.cog = NAN;
     rmc.sog = NAN;
-    rmc.y = 0xFFFF;
-    rmc.M = 0xFFFF;
-    rmc.d = 0xFFFF;
-    rmc.h = 0xFFFF;
-    rmc.m = 0xFFFF;
-    rmc.s = 0xFFFF;
     rmc.lat = NAN;
     rmc.lon = NAN;
 
@@ -122,25 +116,20 @@ bool GPSX::loadPVT()
 
     if (myGNSS.getTimeFullyResolved())
     {
-        ctx.cache.gps_unix_time = myGNSS.getUnixEpoch();
-        ctx.cache.rmc.unix_time = myGNSS.getUnixEpoch();
-        rmc.y = myGNSS.getYear();
-        rmc.M = myGNSS.getMonth();
-        rmc.d = myGNSS.getDay();
-        rmc.h = myGNSS.getHour();
-        rmc.m = myGNSS.getMinute();
-        rmc.s = myGNSS.getSecond();
+        uint32_t micros = 0;
+        uint32_t time = myGNSS.getUnixEpoch(micros);
+        //Serial.printf("[GPS] Time %d.%03d\n", time, micros / 1000);
+        ctx.cache.gps_unix_time = time;
+        ctx.cache.gps_unix_time_ms = micros / 1000; // convert to milliseconds
+        ctx.cache.rmc.unix_time = time;
+        ctx.cache.rmc.unix_time_ms = micros / 1000; // convert to milliseconds
     }
     else
     {
         ctx.cache.gps_unix_time = 0;
+        ctx.cache.gps_unix_time_ms = 0;
         ctx.cache.rmc.unix_time = 0;
-        rmc.y = 0;
-        rmc.M = 0;
-        rmc.d = 0;
-        rmc.h = 0;
-        rmc.m = 0;
-        rmc.s = 0;
+        ctx.cache.rmc.unix_time_ms = 0;
     }
 
     if (myGNSS.getGnssFixOk())
@@ -210,8 +199,7 @@ bool GPSX::set_system_time(unsigned char sid)
         if (!gps_time_set)
         {
             delta_time = ctx.cache.rmc.unix_time - time(0);
-            Log::tracex(GPS_LOG_TAG, "Set time", "UTC {%04d-%02d-%02d %02d:%02d:%02d}",
-                        ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s);
+            Log::tracex(GPS_LOG_TAG, "Set time", "UTC {%s}", time_to_ISO(ctx.cache.rmc.unix_time, ctx.cache.rmc.unix_time_ms));
             gps_time_set = true;
         }
     }
@@ -228,10 +216,14 @@ void GPSX::manageLowFrequency(unsigned long micros)
         {
             ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
         }
-        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+//        ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
         if (ctx.conf.get_services().sog_2_stw)
         {
             ctx.n2k.sendSTW(ctx.cache.rmc.sog);
+        }
+        if (ctx.conf.get_services().send_time)
+        {
+            ctx.n2k.sendSystemTime(ctx.cache.gps_unix_time, sid, ctx.cache.rmc.unix_time_ms);
         }
 #if (SEND_SATS == 1)
         ctx.n2k.sendSatellites(ctx.cache.gsv.satellites, ctx.cache.gsv.nSat, sid, ctx.cache.gsa);
@@ -353,8 +345,8 @@ void GPSX::dumpStats()
 {
     if (enabled)
     {
-        Log::tracex(GPS_LOG_TAG, "Stats", "UTC {%04d-%02d-%02dT%02d:%02d:%02d} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
-                    ctx.cache.rmc.y, ctx.cache.rmc.M, ctx.cache.rmc.d, ctx.cache.rmc.h, ctx.cache.rmc.m, ctx.cache.rmc.s,
+        Log::tracex(GPS_LOG_TAG, "Stats", "UTC {%s} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
+                    time_to_ISO(ctx.cache.gps_unix_time, ctx.cache.gps_unix_time_ms),
                     ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog,
                     ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
     }

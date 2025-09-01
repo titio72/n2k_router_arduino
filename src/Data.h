@@ -35,18 +35,19 @@ struct RMC {
     double lat = NAN;
     double lon = NAN;
 
-    short y = 0;
-    short M = 0;
-    short d = 0;
-    short h = 0;
-    short m = 0;
-    short s = 0;
-    short ms = 0;
+    /*uint16_t y = 0;
+    uint8_t M = 0;
+    uint8_t d = 0;
+    uint8_t h = 0;
+    uint8_t m = 0;
+    uint8_t s = 0;
+    uint16_t ms = 0;*/
 
     double cog = NAN;
     double sog = NAN;
 
-    time_t unix_time = 0;
+    uint32_t unix_time = 0; // in seconds since epoch
+    uint16_t unix_time_ms = 0; //  the milliseconds part of the time (0-999)
 };
 
 struct GSV {
@@ -96,7 +97,8 @@ public:
   unsigned char fix = 0; // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
   double latitude = NAN;  char latitude_NS = 'N';
   double longitude = NAN; char longitude_EW = 'E';
-  unsigned long gps_unix_time = 0; // in seconds since epoch
+  uint32_t gps_unix_time = 0; // in seconds since epoch
+  uint32_t gps_unix_time_ms = 0; // the milliseconds part of the time (0-999)
 
   BatteryData battery_svc;
   BatteryData battery_eng;

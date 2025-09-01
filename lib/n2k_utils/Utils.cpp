@@ -219,6 +219,14 @@ int getDaysSince1970(int y, int m, int d) {
     return (n2 - n1);
 }
 
+const char* time_to_ISO(time_t t, int millis)
+{
+  static char buf[32];
+  strftime(buf, sizeof "2011-10-08T07:07:09.000Z", "%FT%T", gmtime(&t));
+  sprintf(buf + 19, ".%03dZ", millis);
+  return buf;
+}
+
 bool array_contains(short test, short* int_set, int set_size) {
     for (int i=0; i<set_size; i++) {
         if (test==int_set[i]) return true;

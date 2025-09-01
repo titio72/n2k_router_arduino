@@ -98,8 +98,8 @@ bool N2K_router::sendGNSSPosition(GSA &gsa, RMC &rmc, unsigned char sid)
     if (gsa.valid && rmc.valid && gsa.fix >= 2)
     {
         tN2kMsg N2kMsg(n2k.get_source());
-        int days_since_1970 = getDaysSince1970(rmc.y, rmc.M, rmc.d);
-        double second_since_midnight = rmc.h * 60 * 60 + rmc.m * 60 + rmc.s + rmc.ms / 1000.0;
+        int days_since_1970 = rmc.unix_time / 86400;
+        double second_since_midnight = rmc.unix_time % 86400 + rmc.unix_time_ms / 1000.0;
         SetN2kPGN129029(N2kMsg, sid, days_since_1970, second_since_midnight, rmc.lat, rmc.lon, N2kDoubleNA, tN2kGNSStype::N2kGNSSt_GPS,
                         tN2kGNSSmethod::N2kGNSSm_GNSSfix, gsa.nSat, gsa.hdop);
         return n2k.send_msg(N2kMsg);
@@ -122,8 +122,8 @@ bool N2K_router::sendSystemTime(RMC &rmc, unsigned char sid)
     if (rmc.valid)
     {
         tN2kMsg N2kMsg(n2k.get_source());
-        int days_since_1970 = getDaysSince1970(rmc.y, rmc.M, rmc.d);
-        double second_since_midnight = rmc.h * 60 * 60 + rmc.m * 60 + rmc.s + rmc.ms / 1000.0;
+        int days_since_1970 = rmc.unix_time / 86400;
+        double second_since_midnight = rmc.unix_time % 86400 + rmc.unix_time_ms / 1000.0;
         SetN2kSystemTime(N2kMsg, sid, days_since_1970, second_since_midnight);
         return n2k.send_msg(N2kMsg);
     }
@@ -135,19 +135,18 @@ bool N2K_router::sendLocalTime(GSA &gsa, RMC &rmc)
     if (gsa.valid && rmc.valid && gsa.fix >= 2)
     {
         tN2kMsg N2kMsg(n2k.get_source());
-        int days_since_1970 = getDaysSince1970(rmc.y, rmc.M, rmc.d);
-        double second_since_midnight = rmc.h * 60 * 60 + rmc.m * 60 + rmc.s + rmc.ms / 1000.0;
+        int days_since_1970 = rmc.unix_time / 86400;
+        double second_since_midnight = rmc.unix_time % 86400 + rmc.unix_time_ms / 1000.0;
         SetN2kLocalOffset(N2kMsg, days_since_1970, second_since_midnight, 0);
         return n2k.send_msg(N2kMsg);
     }
     return false;
 }
 
-bool N2K_router::sendSystemTime(time_t _now, unsigned char sid, short ms)
+bool N2K_router::sendSystemTime(uint32_t _now, unsigned char sid, uint16_t _now_ms)
 {
-    tm *t = gmtime(&_now);
-    int days_since_1970 = getDaysSince1970(t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
-    double second_since_midnight = t->tm_hour * 3600 + t->tm_min * 60 + t->tm_sec * (double)ms / 1000.0;
+    int days_since_1970 = _now / 86400;
+    double second_since_midnight =_now % 86400 + _now_ms / 1000.0;
     tN2kMsg N2kMsg(n2k.get_source());
     SetN2kSystemTime(N2kMsg, sid, days_since_1970, second_since_midnight);
     return n2k.send_msg(N2kMsg);
