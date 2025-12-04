@@ -373,12 +373,12 @@ void VEDirectObject::load_VEDirect_key_value(const char *line, unsigned long tim
 
     int field_ix = get_field_def(values, n_fields, key);
     if (field_ix==-1) return;
-    //printf("Match key {%s} index {%d} ", key, i);
+    //printf("Match key {%s} index {%d} ", key, field_ix);
 
     if (values[field_ix]->parse(value)) valid++;
 }
 
-int VEDirectObject::get_number_value(int &value, unsigned int index)
+bool VEDirectObject::get_number_value(int &value, unsigned int index) const
 {
     if (index > n_fields)
     {
@@ -389,7 +389,7 @@ int VEDirectObject::get_number_value(int &value, unsigned int index)
     if (field.veIndex < BMV_N_FIELDS && (field.veType==VE_NUMBER || field.veType==VE_HEX) /*&& last_time[field.veIndex]*/)
     {
         value = ((VEDirectFieldNumber*)values[field.veIndex])->get_value();
-        return -1;
+        return 1;
     }
     else
     {
@@ -397,7 +397,7 @@ int VEDirectObject::get_number_value(int &value, unsigned int index)
     }
 }
 
-int VEDirectObject::get_number_value(double &value, double precision, unsigned int index)
+bool VEDirectObject::get_number_value(double &value, double precision, unsigned int index) const
 {
     if (index > n_fields)
     {
@@ -408,7 +408,7 @@ int VEDirectObject::get_number_value(double &value, double precision, unsigned i
     if (field.veType==VE_NUMBER /*&& last_time[field.veIndex]*/)
     {
         value = ((VEDirectFieldNumber*)values[field.veIndex])->get_value() * precision;
-        return -1;
+        return 1;
     }
     else
     {
@@ -416,7 +416,7 @@ int VEDirectObject::get_number_value(double &value, double precision, unsigned i
     }
 }
 
-int VEDirectObject::get_boolean_value(bool &value, unsigned int index)
+bool VEDirectObject::get_boolean_value(bool &value, unsigned int index) const
 {
     if (index > n_fields)
         return 0;
@@ -424,7 +424,7 @@ int VEDirectObject::get_boolean_value(bool &value, unsigned int index)
     if (field.veType==VE_BOOLEAN/* && last_time[field.veIndex]*/)
     {
         value = ((VEDirectFieldBool*)values[field.veIndex])->get_value();
-        return -1;
+        return 1;
     }
     else
     {
@@ -432,7 +432,7 @@ int VEDirectObject::get_boolean_value(bool &value, unsigned int index)
     }
 }
 
-int VEDirectObject::get_string_value(char *value, unsigned int index)
+bool VEDirectObject::get_string_value(char *value, unsigned int index) const
 {
     if (index > n_fields)
         return 0;
@@ -440,7 +440,7 @@ int VEDirectObject::get_string_value(char *value, unsigned int index)
     if (field.veType==VE_STRING/* && last_time[field.veIndex]*/)
     {
         strcpy(value, ((VEDirectFieldString*)values[field.veIndex])->get_value());
-        return -1;
+        return 1;
     }
     else
     {
@@ -448,14 +448,14 @@ int VEDirectObject::get_string_value(char *value, unsigned int index)
     }
 }
 
-unsigned long VEDirectObject::get_last_timestamp(unsigned int index)
+unsigned long VEDirectObject::get_last_timestamp(unsigned int index) const
 {
     if (index > n_fields)
         return 0;
     return values[index]->get_last_time();
 }
 
-bool VEDirectObject::is_valid()
+bool VEDirectObject::is_valid() const
 {
     return valid && checksum == 0;
 }
@@ -475,10 +475,12 @@ int update_checksum(int checksum, const char *line)
     return checksum;
 }
 
+static size_t l_checkusm = strlen("Checksum\tx");
+static size_t l_PID = strlen("PID\t");
+
 void VEDirectObject::on_line_read(const char *line)
 {
     checksum = update_checksum(checksum, line);
-    //printf("Line {%s} ", line);
     if (line[0])
     {
         load_VEDirect_key_value(line, 0);
@@ -487,12 +489,10 @@ void VEDirectObject::on_line_read(const char *line)
 
 void VEDirectObject::on_partial(const char *line, int len)
 {
-    static size_t l_checkusm = strlen("Checksum\tx");
-    static size_t l_PID = strlen("PID\t");
     if (len == l_checkusm && start_with_unsafe("Checksum", line))
     {
         checksum = update_checksum(checksum, line);
-        if (listener) listener->on_complete(*this);
+        if (listener && checksum==0) listener->on_complete(*this);
     }
     else if (len == l_PID && start_with_unsafe("PID", line))
     {

@@ -1,19 +1,18 @@
-#include <time.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
+#ifndef NATIVE
 #include <Arduino.h>
-#include <Esp.h>
-#include <ArduinoPort.hpp>
 
-#include <N2K.h>
+#include "Constants.h"
+
+#include <Ports.h>
+#include <ArduinoPort.hpp>
 #include <Utils.h>
 #include <Log.h>
+#include <N2K.h>
 
+#include "N2K_router.h"
 #include "Context.h"
 #include "Conf.h"
-#include "N2K_router.h"
+
 #if GPS_TYPE == 1
 #include "GPSX.h"
 #elif GPS_TYPE == 2
@@ -34,51 +33,30 @@
 #include "BMV712.h"
 #endif
 
-#define CMD_LOG_TAG "CMD"
-#define APP_LOG_TAG "APP"
-
-#include "EnvMessanger.h"
+#include "EnvMessenger.h"
 #include "BLEConf.h"
-#include <Ports.h>
-
-#ifndef BME_ADDRESS
-#define BME_ADDRESS 0x76 // 0x76 or 0x77
-#endif
-
-#ifndef DHT_TYPE
-#define DHT_TYPE DHT22
-#endif
-
-#ifndef TACHO_POLES
-#define TACHO_POLES 12 // Default number of poles for tachometer
-#endif
-#ifndef TACHO_RPM_RATIO
-#define TACHO_RPM_RATIO 1.5 // Default ratio for tachometer RPM calculation
-#endif
-#ifndef TACHO_RPM_ADJUSTMENT
-#define TACHO_RPM_ADJUSTMENT 0.0 // Default adjustment for tachometer RPM calculation
-#endif
+#include "CommandHandler.hpp"
+#include "Agents.hpp"
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source);
 void on_command(char command, const char *command_value);
 
 #pragma region CONTEXT
-Configuration conf;
+ConfigurationRW conf;
 Data cache;
-N2K n2k_bus = *(N2K::get_instance(NULL, on_source_claim));
-N2K_router n2k(n2k_bus);
+N2K_router n2k(on_source_claim);
 Context context(n2k, conf, cache);
 #pragma endregion
 
 #pragma region AGENTS
 
 // GPS_TYPE
-//       0 -> Dummy
+//      0 -> Dummy
 //			1 -> I2C (u-blox lib is required)
 //			2 -> UART (u-blox lib is required)
 //			3 -> UART (NMEA parser)
 #if GPS_TYPE == 1
-GPSX gps(context);
+GPSX gps;
 #elif GPS_TYPE == 2
 HardwareSerial gpsSerial(Serial1);
 GPSX gps(context, &gpsSerial, GPS_RX_PIN, GPS_TX_PIN);
@@ -90,14 +68,14 @@ Dummy gps;
 #endif
 
 #if (DO_VE_DIRECT == 1)
-ArduinoPort<HardwareSerial> veDirectPort("VE", Serial2, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, false);
-BMV712 bmv712(context, veDirectPort, cache.battery_svc, cache.battery_eng);
+ArduinoPort<HardwareSerial> veDirectPort("VE", Serial1, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, false);
+BMV712 bmv712(veDirectPort);
 #else
 Dummy bmv712;
 #endif
 
 #if (DO_TACHOMETER == 1)
-Tachometer tacho(context, cache.engine, ENGINE_RPM_PIN, TACHO_POLES, TACHO_RPM_RATIO, TACHO_RPM_ADJUSTMENT);
+Tachometer tacho(ENGINE_RPM_PIN, &conf, TACHO_POLES, TACHO_RPM_RATIO, TACHO_RPM_ADJUSTMENT);
 #else
 DummyTachometer tacho;
 #endif
@@ -108,11 +86,11 @@ EVODisplay display;
 DummyDisplay display;
 #endif
 
-MeteoDHT dht(context, DHT_PIN, MeteoDHT::DHT_MODEL::DHT_TYPE, cache.meteo_1);
-MeteoBME bme(context, BME_ADDRESS, cache.meteo_0);
+MeteoDHT dht(DHT_PIN, MeteoDHT::DHT_MODEL::DHT_TYPE, 1);
+MeteoBME bme(BME_ADDRESS, 0);
 Leds leds;
-BLEConf bleConf(context, on_command);
-EnvMessanger envMessanger(context);
+BLEConf bleConf(on_command);
+EnvMessenger envMessanger;
 #pragma endregion
 
 bool started = false;
@@ -128,9 +106,6 @@ struct AppStats
   unsigned short retry_leds = 0;
   unsigned short retry_env_messager = 0;
 } app_stats;
-
-#define MAX_RETRY 3
-#define N2K_BLINK_USEC 100000L /* micros */
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source)
 {
@@ -150,8 +125,6 @@ void handle_display(unsigned long ms)
   {
     // display.draw_text("GPS %d\nSATS %d/%d", cache.gsa.fix, cache.gsa.nSat, cache.gsv.nSat);
     display.draw_text("%.1fmB\n%d%% %.1fC", cache.get_pressure(conf) / 100.0f, (int)cache.get_humidity(conf), cache.get_temperature(conf));
-    N2KStats n2k_stats = n2k.get_bus().getStats();
-    static N2KStats prev = n2k_stats;
   }
 }
 
@@ -160,7 +133,7 @@ void handle_leds(unsigned long ms)
   static unsigned long t0 = 0;
   if (check_elapsed(ms, t0, 1000000))
   {
-    leds.switchLed(LED_GPS, cache.fix > 1);
+    leds.switchLed(LED_GPS, cache.gps.fix > 1);
   }
 }
 
@@ -176,105 +149,60 @@ void report_stats(unsigned long ms)
   {
     gps.dumpStats();
     tacho.dumpStats();
-    n2k_bus.getStats().dump();
-    n2k_bus.getStats().reset();
+    n2k.getStats().dump();
     dump_process_stats();
 
     app_stats.cycles = 0;
   }
 }
 
-template <typename T>
-bool handle_agent_enable(T &agent, bool enable, unsigned short *retry, const char *desc = "")
-{
-  if (!agent.is_enabled())
-  {
-    if (retry == NULL || (*retry) < MAX_RETRY)
-    {
-      agent.enable();
-      if (agent.is_enabled())
-      {
-        if (retry)
-          (*retry) = 0;
-      }
-      else
-      {
-        if (retry)
-        {
-          (*retry)++;
-          if ((*retry) >= MAX_RETRY)
-            Log::tracex(APP_LOG_TAG, "Exceeded enable retry", "Module {%s}", desc);
-        }
-      }
-    }
-  }
-  return agent.is_enabled();
-}
-
-template <typename T>
-void handle_agent_loop(T &agent, bool enable, unsigned short *retry, unsigned long micros, const char *desc = "")
-{
-  if (enable)
-  {
-    if (handle_agent_enable(agent, enable, retry, desc))
-    {
-      agent.loop(micros);
-    }
-  }
-  else
-  {
-    agent.disable();
-    if (retry)
-    {
-      (*retry) = 0;
-    }
-  }
-}
-
-void loop()
+void _loop()
 {
   app_stats.cycles++;
   unsigned long t = micros();
   if (started)
   {
-    n2k_bus.loop(t);
-    handle_agent_loop(leds, true, &app_stats.retry_leds, t, "Leds");
-    handle_agent_loop(display, true, &app_stats.retry_display, t, "Display");
-    handle_agent_loop(gps, conf.get_services().use_gps, &app_stats.retry_gps, t, "GPS");
-    handle_agent_loop(bme, conf.get_services().use_bme, &app_stats.retry_bme, t, "BMP");
-    handle_agent_loop(dht, conf.get_services().use_dht, &app_stats.retry_dht, t, "DHT");
-    handle_agent_loop(bmv712, conf.get_services().use_vedirect, &app_stats.retry_bmv712, t, "BMV712");
-    handle_agent_loop(tacho, conf.get_services().use_tacho, &app_stats.retry_tacho, t, "TACHO");
-    handle_agent_loop(envMessanger, true, &app_stats.retry_env_messager, t, "ENV");
-    handle_agent_loop(bleConf, true, NULL, t, "BLE");
+    n2k.loop(t, context);
+    handle_agent_loop(leds, context, true, &app_stats.retry_leds, t, "Leds");
+    handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display");
+    handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS");
+    handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BMP");
+    handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT");
+    handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712");
+    handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO");
+    handle_agent_loop(envMessanger, context, true, &app_stats.retry_env_messager, t, "ENV");
+    handle_agent_loop(bleConf, context, true, NULL, t, "BLE");
     handle_display(t);
     handle_leds(t);
     report_stats(t);
   }
 }
 
-void setup()
-{
-  uint32_t f = getCpuFrequencyMhz();
+void _setup()
+{  
+  Serial.begin(115200);
   bool res_cpu_freq = setCpuFrequencyMhz(80);
   uint32_t f1 = getCpuFrequencyMhz();
-  N2K::set_sent_message_callback(on_message_sent);
-  Serial.begin(115200);
+  Log::enable();
+
   msleep(500);
-  auto ver = __cplusplus;
+
+  unsigned long ver = __cplusplus;
   Log::tracex(APP_LOG_TAG, "CPU", "Freq {%d} C++ {%l}", f1, ver);
   conf.init();
-  n2k_bus.set_desired_source(conf.get_n2k_source());
-  n2k_bus.setup();
+
+  N2K::set_sent_message_callback(on_message_sent);  
+  n2k.set_desired_source(conf.get_n2k_source());
+  n2k.setup(context);
   msleep(500);
-  display.setup();
-  leds.setup();
-  gps.setup();
-  dht.setup();
-  bme.setup();
-  bleConf.setup();
-  bmv712.setup();
-  tacho.setup();
+  display.setup(context);
+  leds.setup(context);
+  gps.setup(context);
+  dht.setup(context);
+  bme.setup(context);
+  bleConf.setup(context);
+  bmv712.setup(context);
+  tacho.setup(context);
   msleep(500);
   started = true;
 
@@ -283,55 +211,24 @@ void setup()
 
 void on_command(char command, const char *command_value)
 {
-  switch (command)
-  {
-  case 'N':
-  {
-    Log::tracex(CMD_LOG_TAG, "Command set device name", "N {%s}", command_value);
-    bleConf.set_device_name(command_value);
-  }
-  break;
-  case 'C':
-  {
-    Log::tracex(CMD_LOG_TAG, "Command set services", "C {%s}", command_value);
-    N2KServices s;
-    s.from_string(command_value);
-    conf.save_services(s);
-  }
-  break;
-  case 'H':
-  {
-    Log::tracex(CMD_LOG_TAG, "Command set hours", "H {%s}", command_value);
-    uint64_t engine_time_secs = atol(command_value);
-    if (engine_time_secs > 0)
-    {
-      uint64_t new_t = (uint64_t)1000 * engine_time_secs;
-      Log::tracex(CMD_LOG_TAG, "Command set hours", "ms {%lu-%03d}", (uint32_t)(new_t / 1000), (uint16_t)(new_t % 1000));
-      tacho.set_engine_time(new_t, true);
-    }
-  }
-  break;
-  case 'T':
-  {
-    Log::tracex(CMD_LOG_TAG, "Command tachometer calibration", "T {%s}", command_value);
-    int rpm = atoi(command_value);
-    if (rpm > 0)
-    {
-      tacho.calibrate(rpm);
-    }
-  }
-  break;
-  case 't':
-  {
-    Log::tracex(CMD_LOG_TAG, "Command tachometer adjustment", "t {%s}", command_value);
-    int adj = atoi(command_value);
-    if (adj > 0)
-    {
-      tacho.set_adjustment(adj / 10000.0, true);
-    }
-  }
-  break;
-  default:
-    Log::tracex(CMD_LOG_TAG, "Unknown command", " CMD {%c} Value {%s}", command, command_value);
-  }
+  CommandHandler::on_command(command, command_value, bleConf, conf, cache);
 }
+
+#ifndef PIO_UNIT_TESTING
+void setup()
+{
+  _setup();
+}
+
+void loop()
+{
+  _loop();
+}
+#endif
+
+#else
+#ifndef PIO_UNIT_TESTING
+int main(int argc, const char** argv)
+{}
+#endif
+#endif

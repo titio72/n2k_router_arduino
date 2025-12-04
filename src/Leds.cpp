@@ -1,8 +1,9 @@
 #include "Leds.h"
 #include <Log.h>
-
+#include <Utils.h>
+#ifndef DISABLE_LEDS
 #include <Arduino.h>
-
+#endif
 #define RGB_ON_ERROR 0,16,0
 #define RGB_ON 16,0,0
 #define RGB_OFF 0,0,0
@@ -17,8 +18,11 @@
 #define LED_RGB 0
 #endif
 
+//#define DISABLE_LEDS
+
 Leds::Leds() : init(false), enabled(false)
 {
+    #ifndef DISABLE_LEDS
     memset(blink_time, 0, NUM_LEDS * sizeof(unsigned long));
     memset(blink_period, 0, NUM_LEDS * sizeof(unsigned long));
     memset(led_state, LOW, NUM_LEDS * sizeof(uint8_t));
@@ -29,14 +33,16 @@ Leds::Leds() : init(false), enabled(false)
     rgb[LED_PWR] = LED_RGB;
     rgb[LED_GPS] = LED_RGB_GPS;
     rgb[LED_N2K] = LED_RGB_N2K;
+    #endif
 }
 
 Leds::~Leds()
 {
 }
 
-void Leds::setup()
+void Leds::setup(Context &ctx)
 {
+    #ifndef DISABLE_LEDS
     if (!init)
     {
         init = true;
@@ -62,10 +68,12 @@ void Leds::setup()
             }
         }
     }
+    #endif
 }
 
 void Leds::set_on(int led, bool on, bool error)
 {
+    #ifndef DISABLE_LEDS
     int pin = pins[led];
     if (pin!=-1)
     {
@@ -89,10 +97,12 @@ void Leds::set_on(int led, bool on, bool error)
             digitalWrite(pin, on?HIGH:LOW);
         }
     }
+    #endif
 }
 
 void Leds::on(LEDS led, bool error)
 {
+    #ifndef DISABLE_LEDS
     led_state[led] = HIGH;
     blink_time[led] = 0;
     blink_period[led] = 0;
@@ -100,10 +110,12 @@ void Leds::on(LEDS led, bool error)
     {
         set_on(led, true, error);
     }
+    #endif
 }
 
 void Leds::off(LEDS led)
 {
+    #ifndef DISABLE_LEDS
     led_state[led] = LOW;
     blink_time[led] = 0;
     blink_period[led] = 0;
@@ -112,11 +124,13 @@ void Leds::off(LEDS led)
     {
         set_on(led, false);
     }
+    #endif
 }
 
 
 void Leds::blink(LEDS led, unsigned long now_micros, unsigned long period_on, bool error)
 {
+    #ifndef DISABLE_LEDS
     if (enabled && blink_period[led]==0 && blink_time[led]==0 && pins[led]!=-1)
     {
         led_state[led] = HIGH;
@@ -125,10 +139,12 @@ void Leds::blink(LEDS led, unsigned long now_micros, unsigned long period_on, bo
         blink_period[led] = period_on;
         blink_error[led] = error;
     }
+    #endif
 }
 
-void Leds::loop(unsigned long micros)
+void Leds::loop(unsigned long micros, Context &ctx)
 {
+    #ifndef DISABLE_LEDS
     if (enabled)
     {
         for (int led = 0; led<3; led++)
@@ -142,10 +158,12 @@ void Leds::loop(unsigned long micros)
             }
         }
     }
+    #endif
 }
 
 void Leds::enable()
 {
+    #ifndef DISABLE_LEDS
     if (!enabled)
     {
         enabled = true;
@@ -155,10 +173,12 @@ void Leds::enable()
         }
         Log::tracex("LED", "Enable", "Success {%d}", enabled);
     }
+    #endif
 }
 
 void Leds::disable()
 {
+    #ifndef DISABLE_LEDS
     if (enabled)
     {
         enabled = false;
@@ -170,6 +190,7 @@ void Leds::disable()
         }
         Log::tracex("LED", "Disable", "Success {%d}", !enabled);
     }
+    #endif
 }
 
 bool Leds::is_enabled()

@@ -3,119 +3,18 @@
 #include "Utils.h"
 #include "Conf.h"
 #include <Log.h>
-#include "DHTesp.h"
 
-const int32_t INVALID_32 = 0xFFFFFF7F;
-const uint32_t INVALID_U32 = 0xFFFFFFFF;
-const int16_t INVALID_16 = 0xFF7F;
-const uint16_t INVALID_U16 = 0xFFFF;
+static const int32_t INVALID_32 = 0xFFFFFF7F;
+static const uint32_t INVALID_U32 = 0xFFFFFFFF;
+static const int16_t INVALID_16 = 0xFF7F;
+static const uint16_t INVALID_U16 = 0xFFFF;
 
-#pragma region BLEBuffer
-// BLEBuffer is a simple buffer to store data to be sent over BLE
-// It is used to pack data into a single buffer to be sent over BLE
-// It is not thread safe, so it should be used in a single thread
-class BLEBuffer
-{
-public:
-  BLEBuffer() : offset(0)
-  {
-  }
-
-  int offset;
-  uint8_t buffer[64];
-
-  uint8_t *get_buffer()
-  {
-    return buffer;
-  }
-
-  int get_offset()
-  {
-    return offset;
-  }
-
-  BLEBuffer &reset()
-  {
-    offset = 0;
-    return *this;
-  }
-
-  BLEBuffer &operator<<(uint32_t data32)
-  {
-    add4Int(data32);
-    return *this;
-  }
-
-  BLEBuffer &operator<<(int32_t data32)
-  {
-    add4Int(data32);
-    return *this;
-  }
-
-  BLEBuffer &add4Int(int32_t data32)
-  {
-    buffer[offset + 0] = data32;
-    buffer[offset + 1] = data32 >> 8;
-    buffer[offset + 2] = data32 >> 16;
-    buffer[offset + 3] = data32 >> 24;
-    offset += 4;
-    return *this;
-  }
-
-  BLEBuffer &operator<<(uint16_t data16)
-  {
-    add2Int(data16);
-    return *this;
-  }
-
-  BLEBuffer &operator<<(int16_t data16)
-  {
-    add2Int(data16);
-    return *this;
-  }
-
-  BLEBuffer &add2Int(int16_t data16)
-  {
-    buffer[offset + 0] = data16;
-    buffer[offset + 1] = data16 >> 8;
-    offset += 2;
-    return *this;
-  }
-
-  BLEBuffer &operator<<(uint8_t data8)
-  {
-    add1Int(data8);
-    return *this;
-  }
-
-  BLEBuffer &operator<<(int8_t data8)
-  {
-    add1Int(data8);
-    return *this;
-  }
-
-  BLEBuffer &add1Int(int8_t data8)
-  {
-    buffer[offset + 0] = data8;
-    offset += 1;
-    return *this;
-  }
-};
-#pragma endregion
-
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CONF_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define DATA_UUID "55da66c7-801f-498d-b652-c57cb3f1b590"
-#define COMMAND_UUID "68ad1094-0989-4e22-9f21-4df7ef390803"
-
-#define MAX_DATA 7
-
-#define BLE_LOG_TAG "BLE"
+static const char* BLE_LOG_TAG = "BLE";
 
 #define BLE_UPDATE_PERIOD 1000000
 
-BLEConf::BLEConf(const Context& _ctx, command_callback cback)
-    : enabled(false), ctx(_ctx), ble(SERVICE_UUID, nullptr), last_sent(0), c_back(cback)
+BLEConf::BLEConf(command_callback cback)
+    : enabled(false), ble(BLE_SERVICE_UUID, nullptr), last_sent(0), c_back(cback)
 {
 }
 
@@ -128,9 +27,9 @@ void BLEConf::on_write(int handle, const char *value)
   Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
   if (handle == 0)
   {
-    N2KServices c = ctx.conf.get_services();
-    c.from_string(value);
-    ctx.conf.save_services(c);
+    const char command = 'S';
+    if (c_back)
+      c_back(command, value);
   }
   else if (handle == 1)
   {
@@ -141,19 +40,28 @@ void BLEConf::on_write(int handle, const char *value)
   }
 }
 
-void BLEConf::setup()
+void copy_from_conf(Configuration &conf, char* device_name, size_t l)
+{
+  strncpy(device_name, conf.get_device_name(), l);
+  device_name[l - 1] = '\0';
+}
+
+void BLEConf::setup(Context &ctx)
 {
   Log::tracex(BLE_LOG_TAG, "Setup", "Start BLE");
-  ble.set_device_name(ctx.conf.get_device_name());
-  N2KServices &c = ctx.conf.get_services();
-  ble.add_field("data", DATA_UUID);
-  ble.add_setting("conf", CONF_UUID);
-  ble.add_setting("command", COMMAND_UUID);
+  copy_from_conf(ctx.conf, device_name, sizeof(device_name));
+  ble.set_device_name(device_name);
+  const N2KServices &c = ctx.conf.get_services();
+  ble.add_field("data", BLE_DATA_UUID);
+  ble.add_setting("conf", BLE_CONF_UUID);
+  ble.add_setting("command", BLE_COMMAND_UUID);
   ble.set_write_callback(this);
   ble.setup();
-  ble.set_setting_value(0, c.to_string());
+  char cstr[c.size() + 1];
+  c.to_string(cstr, sizeof(cstr));
+  ble.set_setting_value(0, cstr);
   ble.begin();
-  Log::tracex(BLE_LOG_TAG, "Setup", "Conf {%s}", c.to_string());
+  Log::tracex(BLE_LOG_TAG, "Setup", "Conf {%s}", cstr);
 }
 
 template <typename T>
@@ -164,39 +72,41 @@ static inline T to_int(double value, double factor, T invalid_value)
   return (T)(value * factor);
 }
 
-void BLEConf::loop(unsigned long ms)
+void BLEConf::loop(unsigned long ms, Context &ctx)
 {
   if (enabled && check_elapsed(ms, last_sent, BLE_UPDATE_PERIOD))
   {
-    N2KStats s(ctx.n2k.get_bus().getStats());
+    if (strcmp(device_name, ctx.conf.get_device_name())) ble.set_device_name(device_name);
 
-    double p = ctx.cache.get_pressure(ctx.conf);
-    double h = ctx.cache.get_humidity(ctx.conf);
-    double t = ctx.cache.get_temperature(ctx.conf);
+    N2KStats s(ctx.n2k.getStats());
 
-    const int8_t _gpsFix = ctx.cache.gsa.fix;
+    double p = ctx.data_cache.get_pressure(ctx.conf);
+    double h = ctx.data_cache.get_humidity(ctx.conf);
+    double t = ctx.data_cache.get_temperature(ctx.conf);
+
+    const int8_t _gpsFix = ctx.data_cache.gps.fix;
     const uint32_t _atmo =  to_int(p, 10.0, INVALID_U32);
     const int16_t _temp = to_int(t, 10.0, INVALID_16);
     const int16_t _hum = to_int(h, 100.0, INVALID_16);
-    const int32_t _lat = to_int(ctx.cache.rmc.lat, 1000000.0, INVALID_32);
-    const int32_t _lon = to_int(ctx.cache.rmc.lon, 1000000.0, INVALID_32);
-    const int16_t _sog = to_int(ctx.cache.rmc.sog, 100.0, INVALID_16);
-    const int16_t _cog = to_int(ctx.cache.rmc.cog, 10.0, INVALID_16);
-    const int16_t _current = to_int(ctx.cache.battery_svc.current, 100.0, INVALID_16);
-    const int16_t _voltage = to_int(ctx.cache.battery_svc.voltage, 100.0, INVALID_16);
-    const int16_t _soc = to_int(ctx.cache.battery_svc.soc, 100.0, INVALID_16);
+    const int32_t _lat = to_int(ctx.data_cache.gps.latitude_signed, 1000000.0, INVALID_32);
+    const int32_t _lon = to_int(ctx.data_cache.gps.longitude_signed, 1000000.0, INVALID_32);
+    const int16_t _sog = to_int(ctx.data_cache.gps.sog, 100.0, INVALID_16);
+    const int16_t _cog = to_int(ctx.data_cache.gps.cog, 10.0, INVALID_16);
+    const int16_t _current = to_int(ctx.data_cache.battery_svc.current, 100.0, INVALID_16);
+    const int16_t _voltage = to_int(ctx.data_cache.battery_svc.voltage, 100.0, INVALID_16);
+    const int16_t _soc = to_int(ctx.data_cache.battery_svc.soc, 100.0, INVALID_16);
     const uint32_t _rpmAdj = to_int(ctx.conf.get_rpm_adjustment(), 10000.0, INVALID_U32);
-    const int32_t _timestamp = ctx.cache.rmc.unix_time;
-    const uint16_t _rpm = ctx.cache.engine.rpm;
+    const int32_t _timestamp = ctx.data_cache.gps.gps_unix_time;
+    const uint16_t _rpm = ctx.data_cache.engine.rpm;
     const int32_t _mem = get_free_mem();
     const int8_t _canbus = s.canbus;
     const int32_t _canbus_s = s.sent;
     const int32_t _canbus_e = s.fail;
-    const uint32_t _engine_time = static_cast<uint32_t>(ctx.cache.engine.engine_time / 1000L); // send engine time in seconds
+    const uint32_t _engine_time = static_cast<uint32_t>(ctx.data_cache.engine.engine_time / 1000L); // send engine time in seconds
     const uint8_t _services = ctx.conf.get_services().serialize();
     const uint8_t _n2k_source = ctx.conf.get_n2k_source();
 
-    static BLEBuffer b;
+    static ByteBuffer b(128);
     b.reset() << _gpsFix  // 1 1
         << _atmo          // 4 5
         << _temp          // 2 7
@@ -219,7 +129,7 @@ void BLEConf::loop(unsigned long ms)
         << _soc           // 2 55
         << _n2k_source;   // 1 56
 
-    ble.set_field_value(0, b.get_buffer(), b.get_offset());
+    ble.set_field_value(0, b.data(), b.length());
   }
 }
 
@@ -236,10 +146,4 @@ void BLEConf::enable()
 void BLEConf::disable()
 {
   enabled = false;
-}
-
-void BLEConf::set_device_name(const char *name)
-{
-  ble.set_device_name(name);
-  ctx.conf.save_device_name(name);
 }

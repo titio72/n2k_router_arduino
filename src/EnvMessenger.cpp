@@ -1,19 +1,19 @@
-#include "EnvMessanger.h"
+#include "EnvMessenger.h"
 #include "N2K_router.h"
 #include "Conf.h"
 #include "Data.h"
 
 #define PERIOD_MICROS_ENV 2000000
 
-EnvMessanger::EnvMessanger(Context& c): enabled(false), ctx(c), t0(0)
+EnvMessenger::EnvMessenger(): enabled(false), t0(0)
 {}
 
-EnvMessanger::~EnvMessanger() {}
+EnvMessenger::~EnvMessenger() {}
 
-void EnvMessanger::enable() { enabled = true; }
-void EnvMessanger::disable() { enabled = false; }
-bool EnvMessanger::is_enabled() { return enabled; }
-void EnvMessanger::setup() {}
+void EnvMessenger::enable() { enabled = true; }
+void EnvMessenger::disable() { enabled = false; }
+bool EnvMessenger::is_enabled() { return enabled; }
+void EnvMessenger::setup(Context& ctx) {}
 
 
 inline double to_n2k(double value)
@@ -24,14 +24,14 @@ inline double to_n2k(double value)
     return value;
 }
 
-void EnvMessanger::loop(unsigned long ms)
+void EnvMessenger::loop(unsigned long ms, Context &ctx)
 {
   if (enabled && check_elapsed(ms, t0, PERIOD_MICROS_ENV))
   {
-    double p = ctx.cache.get_pressure(ctx.conf);
-    double h = ctx.cache.get_humidity(ctx.conf);
-    double t = ctx.cache.get_temperature(ctx.conf);
-    double t_el = ctx.cache.get_temperature_el(ctx.conf);
+    double p = ctx.data_cache.get_pressure(ctx.conf);
+    double h = ctx.data_cache.get_humidity(ctx.conf);
+    double t = ctx.data_cache.get_temperature(ctx.conf);
+    double t_el = ctx.data_cache.get_temperature_el(ctx.conf);
 
     if (!isnan(p)) ctx.n2k.sendPressure(p);
     if (!isnan(t)) ctx.n2k.sendCabinTemp(t);

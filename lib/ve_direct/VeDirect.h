@@ -154,21 +154,21 @@ public:
 
     void load_VEDirect_key_value(const char *line, unsigned long time);
 
-    int get_number_value(int &value, const VEDirectValueDefinition& def) { return get_number_value(value, def.veIndex); }
-    int get_number_value(double &value, double precision, const VEDirectValueDefinition& def) { return get_number_value(value, precision, def.veIndex); }
-    int get_boolean_value(bool &value, const VEDirectValueDefinition& def) { return get_boolean_value(value, def.veIndex); }
-    int get_string_value(char *value, const VEDirectValueDefinition& def) { return get_string_value(value, def.veIndex); }
-    unsigned long get_last_timestamp(const VEDirectValueDefinition& def) { return get_last_timestamp(def.veIndex); }
+    bool get_number_value(int &value, const VEDirectValueDefinition& def) const { return get_number_value(value, def.veIndex); }
+    bool get_number_value(double &value, double precision, const VEDirectValueDefinition& def) const { return get_number_value(value, precision, def.veIndex); }
+    bool get_boolean_value(bool &value, const VEDirectValueDefinition& def) const { return get_boolean_value(value, def.veIndex); }
+    bool get_string_value(char *value, const VEDirectValueDefinition& def) const { return get_string_value(value, def.veIndex); }
+    unsigned long get_last_timestamp(const VEDirectValueDefinition& def) const { return get_last_timestamp(def.veIndex); }
 
-    int get_number_value(int &value, unsigned int index);
-    int get_number_value(double &value, double precision, unsigned int index);
-    int get_boolean_value(bool &value, unsigned int index);
-    int get_string_value(char *value, unsigned int index);
-    unsigned long get_last_timestamp(unsigned int index);
+    bool get_number_value(int &value, unsigned int index) const;
+    bool get_number_value(double &value, double precision, unsigned int index) const;
+    bool get_boolean_value(bool &value, unsigned int index) const;
+    bool get_string_value(char *value, unsigned int index) const;
+    unsigned long get_last_timestamp(unsigned int index) const;
 
     void reset();
 
-    bool is_valid();
+    bool is_valid() const;
 
     void print();
 
@@ -177,17 +177,18 @@ public:
 
     void set_listener(VEDirectListener* listener);
 
+    int get_checksum() { return checksum; }
+
 private:
 
     unsigned int n_fields;
     VEDirectField** values;
-    //int *i_values;
-    //char** s_values;
-    //unsigned long *last_time;
     int valid;
-    //const VEDirectValueDefinition *fields;
     int checksum;
     VEDirectListener *listener;
 };
+
+bool load_key_value(const char *line, char *key, int key_size, char *value, int value_size);
+int update_checksum(int checksum, const char *line);
 
 #endif

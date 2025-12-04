@@ -5,14 +5,21 @@
 #include <string.h>
 #include <cstdio>
 #include <unistd.h>
-#ifndef ESP32_ARCH
+#ifdef NATIVE
 #include <sys/sysinfo.h>
+#else
+#include <Arduino.h>
 #endif
+
+double lpf(double value, double previous_value, double alpha)
+{
+    return previous_value * (1 - alpha) + value * alpha;
+}
 
 unsigned long check_elapsed(ulong time, ulong &last_time, ulong period)
 {
   ulong dT = time - last_time;
-  if (dT>=period || dT<0)
+  if (dT>=period || dT<0 || last_time==0)
   {
     last_time = time;
     return dT;
@@ -38,7 +45,7 @@ bool startswith(const char* str_to_find, const char* str)
 
 ulong _millis(void)
 {
-  #ifndef ESP32_ARCH
+  #ifdef NATIVE
   long            ms; // Milliseconds
   time_t          s;  // Seconds
   struct timespec spec;
@@ -60,7 +67,7 @@ ulong _millis(void)
 
 int msleep(long msec)
 {
-  #ifndef ESP32_ARCH
+    #ifdef NATIVE
     struct timespec ts;
     int res;
 
@@ -86,7 +93,7 @@ int msleep(long msec)
 
 unsigned long get_free_mem()
 {
-    #ifdef ESP32_ARCH
+    #ifndef NATIVE
     return ESP.getFreeHeap();
     #else
     struct sysinfo info;
@@ -127,7 +134,6 @@ int indexOf(const char* haystack, const char* needle)
     return -1;
   }
 }
-
 
 char * replace(char const * const original, char const * const pattern, char const * const replacement, bool first) {
   size_t const replen = strlen(replacement);

@@ -1,59 +1,44 @@
 #ifndef _CONF_H
 #define _CONF_H
 
-static const int UART_SPEEDS = 6;
-static unsigned int UART_SPEED[] = {4800, 9600, 19200, 38400, 57600, 115200};
+#include "Constants.h"
+#include <stdint.h>
 
-static unsigned char UART_SPEED_4800   = 0;
-static unsigned char UART_SPEED_9600   = 1;
-static unsigned char UART_SPEED_19200  = 2;
-static unsigned char UART_SPEED_38400  = 3;
-static unsigned char UART_SPEED_57600  = 4;
-static unsigned char UART_SPEED_115200 = 5;
-
-#define DEFAULT_USE_GPS 0
-#define DEFAULT_USE_BMP 0
-#define DEFAULT_USE_BME 0
-#define DEFAULT_USE_DHT 0
-#define DEFAULT_SOG_2_STW 0
-#define DEFAULT_USE_TIME 0
-#define DEFAULT_USE_TACHO 0
-#define DEFAULT_USE_VE_DIRECT 0
-#define DEFAULT_RPM_ADJUSTMENT 1.00
-#define DEFAULT_GPS_SPEED UART_SPEED_57600
-#define DEFAULT_N2K_SOURCE 22
-#define DEFAULT_DEVICE_NAME "ABN2K"
-
-
-#define GPS_ID 0
-#define DHT_ID 1
-#define BME_ID 2
-#define SYT_ID 3
-#define RPM_ID 4
-#define STW_ID 5
-#define VED_ID 6
-
-#define MAX_CONF 6
+#define CONF_VERSION 0x05
 
 class N2KServices
 {
 public:
+  N2KServices();
+
   void deserialize(uint8_t v);
-  uint8_t serialize();
+  uint8_t serialize() const;
 
   bool from_string(const char* string);
-  const char* to_string();
+  bool to_string(char* dest, size_t len) const;
 
   N2KServices& operator =(const N2KServices &svc);
 
-  bool use_gps = DEFAULT_USE_GPS;
-  bool use_bme = DEFAULT_USE_BME;
-  bool use_dht = DEFAULT_USE_DHT;
-  bool send_time = DEFAULT_USE_TIME;
-  bool sog_2_stw = DEFAULT_SOG_2_STW;
-  bool use_tacho = DEFAULT_USE_TACHO;
-  bool use_vedirect = DEFAULT_USE_VE_DIRECT;
-  char buffer[MAX_CONF+1];
+  bool is_use_gps() const;
+  bool is_use_bme() const;
+  bool is_use_dht() const;
+  bool is_send_time() const;
+  bool is_sog_2_stw() const;
+  bool is_use_tacho() const;
+  bool is_use_vedirect() const;
+
+  void set_use_gps(bool v);
+  void set_use_bme(bool v);
+  void set_use_dht(bool v);
+  void set_send_time(bool v);
+  void set_sog_2_stw(bool v);
+  void set_use_tacho(bool v);
+  void set_use_vedirect(bool v);
+
+  uint8_t size() const;
+
+private:
+    uint8_t conf;
 };
 
 enum MeteoSource
@@ -63,50 +48,128 @@ enum MeteoSource
   METEO_NONE = 2
 };
 
-class Configuration {
+struct Conf
+{
+    uint8_t conf_version = CONF_VERSION;
+    
+    uint8_t n2k_source = DEFAULT_N2K_SOURCE;
+    int32_t rpm_adjustment = 1000;                          // x1000
+    uint16_t battery_capacity_Ah = DEFAULT_BATTERY_CAPACITY; // in Ah
+    char device_name[16];                                    // null-terminated
+    N2KServices services;
+
+    Conf()
+    {
+        device_name[0] = '\0';
+    }
+};
+
+const int CONFIG_RES_ALREADY_INITIALIZED = -1;
+const int CONFIG_RES_EEPROM_FAIL = -2;
+const int CONFIG_RES_VERSION_MISMATCH = -3;
+const int CONFIG_RES_OK = 0;
+
+class Configuration
+{
+public:
+  virtual int is_initialized() const = 0;
+
+
+  virtual double get_rpm_adjustment() const = 0;
+  virtual const char* get_device_name() const = 0;
+  virtual unsigned char get_n2k_source() const = 0;
+  virtual unsigned char get_uart_speed() const = 0;
+  virtual const N2KServices& get_services() const = 0;
+  virtual uint16_t get_batter_capacity() const = 0;
+  virtual MeteoSource get_pressure_source() const = 0;
+  virtual MeteoSource get_temperature_source() const = 0;
+  virtual MeteoSource get_temperature_el_source() const = 0;
+  virtual MeteoSource get_humidity_source() const = 0;
+};
+
+class EngineHours
+{
+public:
+  virtual uint64_t get_engine_hours() const = 0;
+  virtual bool save_engine_hours(uint64_t h) = 0;
+};
+
+class ConfigurationRW: public Configuration, public EngineHours {
 
 public:
-  Configuration();
-  ~Configuration();
+  ConfigurationRW();
+  virtual ~ConfigurationRW();
 
-  void init();
+  int init();
 
-  uint64_t get_engine_hours();
-  void save_engine_hours(uint64_t h);
+  int is_initialized() const { return initialized; }
 
-  double get_rpm_adjustment();
-  void save_rpm_adjustment(double d);
+  virtual uint64_t get_engine_hours() const;
+  virtual bool save_engine_hours(uint64_t h);
 
-  const char* get_device_name();
-  void save_device_name(const char* name);
+  virtual double get_rpm_adjustment() const;
+  uint32_t get_raw_rpm_adjustment() const { return conf.rpm_adjustment; }
+  bool save_rpm_adjustment(double d);
 
-  unsigned char get_n2k_source();
-  void save_n2k_source(unsigned char src);
+  virtual const char* get_device_name() const;
+  bool save_device_name(const char* name);
 
-  unsigned char get_uart_speed();
-  void save_uart_speed(unsigned char speed);
+  virtual unsigned char get_n2k_source() const;
+  bool save_n2k_source(unsigned char src);
 
-  N2KServices& get_services();
-  void save_services(N2KServices& s);
+  virtual unsigned char get_uart_speed() const;
+  bool save_uart_speed(unsigned char speed);
 
-  uint32_t get_batter_capacity();
-  void save_batter_capacity(uint32_t c);
+  virtual const N2KServices& get_services() const;
+  bool save_services(N2KServices& s);
 
-  MeteoSource get_pressure_source();
-  MeteoSource get_temperature_source();
-  MeteoSource get_temperature_el_source();
-  MeteoSource get_humidity_source();
+  virtual uint16_t get_batter_capacity() const;
+  bool save_batter_capacity(uint16_t c);
 
+  virtual MeteoSource get_pressure_source() const;
+  virtual MeteoSource get_temperature_source() const;
+  virtual MeteoSource get_temperature_el_source() const;
+  virtual MeteoSource get_humidity_source() const;
 
 private:
 
-  char cache_device_name[16];
-  N2KServices cache_services;
-  double cache_rpm_adj;
-  uint32_t cache_batt_cap;
+  Conf conf;
   bool initialized;
-  unsigned char n2k_source;
+
+  bool save();
 };
 
+class MockConfiguration: public Configuration
+{
+public:
+  int init() { return initialized; }
+
+  int is_initialized() const { return initialized; }
+
+
+  virtual double get_rpm_adjustment() const { return rpm_adjustment; }
+  virtual const char* get_device_name() const { return ble_name; }
+  virtual unsigned char get_n2k_source() const { return n2k_src; }
+  virtual unsigned char get_uart_speed() const { return 2; }
+  virtual const N2KServices& get_services() const { return services; }
+  virtual uint16_t get_batter_capacity() const { return battery_capacity; }
+  virtual MeteoSource get_pressure_source() const { return pressure_source; }
+  virtual MeteoSource get_temperature_source() const { return temperature_source; }
+  virtual MeteoSource get_temperature_el_source() const { return temperature_el_source; }
+  virtual MeteoSource get_humidity_source() const { return humidity_source; }
+
+  bool initialized = true;
+
+  double rpm_adjustment = 1.0;
+  const char* ble_name = "TEST";
+  uint8_t n2k_src = 11;
+  N2KServices services;
+  uint16_t battery_capacity = 280;
+
+  MeteoSource pressure_source = MeteoSource::METEO_BME;
+  MeteoSource temperature_source = MeteoSource::METEO_BME;
+  MeteoSource humidity_source = MeteoSource::METEO_BME;
+  MeteoSource temperature_el_source = MeteoSource::METEO_NONE;
+};
 
 #endif

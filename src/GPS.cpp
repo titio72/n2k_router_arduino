@@ -1,3 +1,4 @@
+#ifdef ENABLE_NMEA_GPS
 #include "GPS.h"
 #include "NMEA.h"
 #include "Utils.h"
@@ -22,7 +23,7 @@ bool GPS::set_system_time(int sid, RMC &rmc, bool &time_set_flag)
   {
     time_t _gps_time_t = rmc.unix_time;
     short _gps_ms = rmc.unix_time_ms;
-    if (ctx.conf.get_services().send_time)
+    if (ctx.conf.get_services().is_send_time())
     {
       ctx.n2k.sendSystemTime(rmc, sid);
     }
@@ -44,8 +45,8 @@ void GPS::send_gsv(ulong ms)
   if ((ms - last_sent) >= 1000000)
   {
     last_sent = ms;
-    ctx.n2k.sendGNNSStatus(ctx.cache.gsa, sid);
-    ctx.n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, ctx.cache.gsa);
+    ctx.n2k.sendGNNSStatus(ctx.data_cache.gps.gsa, sid);
+    ctx.n2k.sendSatellites(nmea.get_satellites(), nmea.get_n_satellites(), sid, ctx.data_cache.gps.gsa);
   }
 }
 
@@ -57,18 +58,18 @@ void GPS::on_line_read(const char *sentence)
   //Log::trace("[GPS] Process Sentence {%s}\n", sentence);
   if (NMEAUtils::is_sentence(sentence, "RMC"))
   {
-    if (NMEAUtils::parseRMC(sentence, ctx.cache.rmc) == 0)
+    if (NMEAUtils::parseRMC(sentence, ctx.data_cache.gps.rmc) == 0)
     {
-      set_system_time(sid, ctx.cache.rmc, gps_time_set);
-      if (ctx.cache.rmc.valid)
+      set_system_time(sid, ctx.data_cache.gps.rmc, gps_time_set);
+      if (ctx.data_cache.gps.rmc.valid)
       {
-        ctx.n2k.sendCOGSOG(ctx.cache.rmc, sid);
-        ctx.n2k.sendPosition(ctx.cache.rmc);
+        ctx.n2k.sendCOGSOG(ctx.data_cache.gps.rmc, sid);
+        ctx.n2k.sendPosition(ctx.data_cache.gps.rmc);
         static ulong t0 = millis();
         ulong t = millis();
         if ((t - t0) > 900)
         {
-          ctx.n2k.sendGNSSPosition(ctx.cache.gsa, ctx.cache.rmc, sid);
+          ctx.n2k.sendGNSSPosition(ctx.data_cache.gps.gsa, ctx.data_cache.gps.rmc, sid);
           t0 = t;
         }
         stats.valid_rmc++;
@@ -81,12 +82,12 @@ void GPS::on_line_read(const char *sentence)
   }
   else if (NMEAUtils::is_sentence(sentence, "GSA"))
   {
-    if (nmea.parseGSA(sentence, ctx.cache.gsa) == 0)
+    if (nmea.parseGSA(sentence, ctx.data_cache.gps.gsa) == 0)
     {
-      if (ctx.cache.gsa.valid)
+      if (ctx.data_cache.gps.gsa.valid)
       {
         stats.valid_gsa++;
-        stats.gps_fix = ctx.cache.gsa.fix;
+        stats.gps_fix = ctx.data_cache.gps.gsa.fix;
       }
       else
       {
@@ -97,7 +98,7 @@ void GPS::on_line_read(const char *sentence)
   }
   else if (NMEAUtils::is_sentence(sentence, "GSV"))
   {
-    if (nmea.parseGSV(sentence, ctx.cache.gsv) == 0)
+    if (nmea.parseGSV(sentence, ctx.data_cache.gps.gsv) == 0)
     {
       stats.valid_gsv++;
     }
@@ -108,7 +109,7 @@ void GPS::on_line_read(const char *sentence)
   }
 }
 
-void GPS::loop(unsigned long ms)
+void GPS::loop(unsigned long ms, Context &ctx)
 {
     if (enabled)
     {
@@ -118,7 +119,7 @@ void GPS::loop(unsigned long ms)
     }
 }
 
-void GPS::setup()
+void GPS::setup(Context &ctx)
 {
   p.set_speed(UART_SPEED[ ctx.conf.get_uart_speed()]);
   p.set_handler(this);
@@ -142,17 +143,17 @@ void GPS::disable()
   if (enabled)
   {
 
-    RMC& rmc = ctx.cache.rmc;
+    RMC& rmc = ctx.data_cache.gps.rmc;
     rmc.unix_time = 0;
     rmc.valid = 0xFFFF;
     rmc.cog = NAN;
     rmc.sog = NAN;
     rmc.lat = NAN;
     rmc.lon = NAN;
-    ctx.cache.latitude = NAN;
-    ctx.cache.latitude_NS = 'N';
-    ctx.cache.longitude = NAN;
-    ctx.cache.longitude_EW = 'E';
+    ctx.data_cache.gps.latitude = NAN;
+    ctx.data_cache.gps.latitude_NS = 'N';
+    ctx.data_cache.gps.longitude = NAN;
+    ctx.data_cache.gps.longitude_EW = 'E';
 
     enabled = false;
     p.close();
@@ -164,9 +165,9 @@ void GPS::dumpStats()
   if (enabled)
   {
     Log::tracex("GPS", "Stats", "Time {%s} Pos {%.4f %.4f} SOG {%.2f} COG {%.2f} Sats {%d/%d} hDOP {%.2f} pDOP {%.2f} Fix {%d}",
-      time_to_ISO(ctx.cache.rmc.unix_time, ctx.cache.rmc.unix_time_ms),
-      ctx.cache.rmc.lat, ctx.cache.rmc.lon, ctx.cache.rmc.sog, ctx.cache.rmc.cog,
-      ctx.cache.gsv.nSat, ctx.cache.gsa.nSat, ctx.cache.gsa.hdop, ctx.cache.gsa.pdop, ctx.cache.gsa.fix);
+      time_to_ISO(ctx.data_cache.gps.rmc.unix_time, ctx.data_cache.gps.rmc.unix_time_ms),
+      ctx.data_cache.gps.rmc.lat, ctx.data_cache.gps.rmc.lon, ctx.data_cache.gps.rmc.sog, ctx.data_cache.gps.rmc.cog,
+      ctx.data_cache.gps.gsv.nSat, ctx.data_cache.gps.gsa.nSat, ctx.data_cache.gps.gsa.hdop, ctx.data_cache.gps.gsa.pdop, ctx.data_cache.gps.gsa.fix);
     stats.dump();
     stats.reset();
   }
@@ -190,3 +191,4 @@ void GPS_stats::reset()
   invalid_rmc = 0;
   gps_fix = 0;
 }
+#endif

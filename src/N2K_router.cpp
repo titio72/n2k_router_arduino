@@ -8,7 +8,8 @@
 #include <time.h>
 #include <math.h>
 
-N2K_router::N2K_router(N2K &_n2k): n2k(_n2k)
+N2K_router::N2K_router(n2k_source_change_handler sh)
+    : n2k(*N2K::get_instance(nullptr, sh))
 {
     n2k.add_pgn(126992); // System Time
     n2k.add_pgn(129025); // Position
@@ -21,6 +22,33 @@ N2K_router::N2K_router(N2K &_n2k): n2k(_n2k)
     n2k.add_pgn(130314); // Actual Pressure
     n2k.add_pgn(127488); // Engine RPM
     n2k.add_pgn(127489); // Engine hours
+}
+
+void N2K_router::setup(Context &ctx)
+{
+    n2k_device_info info;
+    info.ModelSerialCode = "0.1.0";
+    info.ProductCode = 100;
+    info.ModelID = "AB_GPS_METEO";
+    info.SwCode = "AB 0.1.0";
+    info.ModelVersion = "0001";
+
+    info.UniqueNumber = 1;     // Unique number. Use e.g. Serial number.
+    info.DeviceFunction = 145; // Device function=Analog to NMEA 2000 Gateway. See codes on http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
+    info.DeviceClass = 60;     // Device class=Inter/Intranetwork Device. See codes on  http://www.nmea.org/Assets/20120726%20nmea%202000%20class%20&%20function%20codes%20v%202.00.pdf
+    info.ManufacturerCode = 2046;   // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf   
+
+    n2k.setup(info);
+}
+
+void N2K_router::loop(unsigned long time, Context &ctx)
+{
+    n2k.loop(time);
+}
+
+void N2K_router::set_desired_source(unsigned char src)
+{
+    n2k.set_desired_source(src);
 }
 
 bool N2K_router::sendMessage(int dest, ulong pgn, int priority, int len, unsigned char *payload)
@@ -313,7 +341,7 @@ bool N2K_router::sendEngineHours(uint8_t instance, double seconds)
     return n2k.send_msg(m);
 }
 
-N2K& N2K_router::get_bus()
+N2KStats N2K_router::getStats()
 {
-    return n2k;
+    return n2k.getStats();
 }

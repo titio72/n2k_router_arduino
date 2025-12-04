@@ -1,7 +1,7 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#include "Utils.h"
+#include "Agents.hpp"
 
 class Adafruit_SSD1306;
 

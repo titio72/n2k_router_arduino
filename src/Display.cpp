@@ -1,9 +1,8 @@
 #include "Display.h"
 #include <Log.h>
 
-#include <Arduino.h>
-
 #if (DO_DISPLAY == 1)
+#include <Arduino.h>
 #include <Adafruit_SSD1306.h>
 #include "TwoWireProvider.h"
 #endif
@@ -26,7 +25,7 @@ EVODisplay::~EVODisplay()
 #endif
 }
 
-void EVODisplay::setup()
+void EVODisplay::setup(Context &ctx)
 {
     if (!init)
     {
@@ -63,7 +62,7 @@ void EVODisplay::draw_text(const char *text, ...)
 #endif
 }
 
-void EVODisplay::loop(unsigned long micros)
+void EVODisplay::loop(unsigned long micros, Context &ctx)
 {
 }
 

@@ -21,7 +21,11 @@ public:
 	static void tracex(const char* module, const char* action);
 
 	static void setdebug();
-};
 
+	static void enable();
+	static void disable();
+
+	static bool is_enabled();
+};
 
 #endif /* LOG_H_ */

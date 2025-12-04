@@ -2,15 +2,11 @@
 #define _BTINTERFACE_H
 
 #include <vector>
-#include <BLEUUID.h>
-#include <Arduino.h>
+#include <string>
+#include <stdint.h>
 
-class BLEServer;
-class BLEService;
-class BLECharacteristic;
-class BLECharacteristicCallbacks;
-class BLEServerCallbacks;
 class Configuration;
+class InternalBLEState;
 
 class ABBLEWriteCallback {
 public:
@@ -19,24 +15,18 @@ public:
 
 class ABBLESetting {
 public:
-    ABBLESetting(const char* n, const char* id): uuid(id)
-    {
-        strcpy(name, n);
-    }
+    ABBLESetting(const char* n, const char* id): name(n), c_uuid(id) {}
 
-    char name[16];
-    BLEUUID uuid;
+    std::string name;
+    std::string c_uuid;
 };
 
 class ABBLEField {
 public:
-    ABBLEField(const char* n, const char* id): uuid(id)
-    {
-        strcpy(name, n);
-    }
+    ABBLEField(const char* n, const char* id): name(n), c_uuid(id) {}
 
-    char name[16];
-    BLEUUID uuid;
+    std::string name;
+    std::string c_uuid;
 };
 
 class BTInterface {
@@ -47,11 +37,12 @@ class BTInterface {
         void begin();
         void loop(unsigned long ms);
 
-        void add_setting(const char* name, const char* uuid);
-        void add_field(const char* name, const char* uuid);
+        int add_setting(const char* name, const char* uuid);
+        int add_field(const char* name, const char* uuid);
 
         void set_setting_value(int handle, const char* value);
         void set_setting_value(int handle, int value);
+        void set_field_value(int handle, uint16_t value);
         void set_field_value(int handle, const char* value);
         void set_field_value(int handle, void* value, int len);
 
@@ -60,20 +51,14 @@ class BTInterface {
         void set_device_name(const char* name);
 
     private:
-        char device_name[16];
-        BLEUUID serviceUUID;
-        BLEServer *pServer;
-        BLEService *pService;
-        BLECharacteristicCallbacks* listener;
-        BLEServerCallbacks* serverCBack;
+        InternalBLEState* state;
 
         ABBLEWriteCallback* callback;
 
         std::vector<ABBLEField> fields;
         std::vector<ABBLESetting> settings;
-        std::vector<BLECharacteristic*> characteristicsSettings;
-        std::vector<BLECharacteristic*> characteristicsFields;
 
+        bool init;
 };
 
 #endif

@@ -1,10 +1,10 @@
 #ifndef _GPS_H
 #define _GPS_H
-
+#ifdef ENABLE_NMEA_GPS
 #include "Utils.h"
 #include "Data.h"
 #include "Ports.h"
-#include "Context.h"
+#include "Agents.hpp"
 
 class GPS_stats
 {
@@ -44,7 +44,7 @@ private:
     GPS_stats stats;
 };
 
-
+#endif
 
 
 #endif

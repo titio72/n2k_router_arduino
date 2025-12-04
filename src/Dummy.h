@@ -2,6 +2,7 @@
 #define _Dummy_H
 
 #include <Utils.h>
+#include "Agents.hpp"
 
 class Dummy
 {

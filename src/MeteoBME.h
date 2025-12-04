@@ -1,27 +1,39 @@
 #ifndef _MeteoBME_H
 #define _MeteoBME_H
 
-#include "Utils.h"
-#include "Context.h"
+#include "Agents.hpp"
 
-class Adafruit_BME280;
+class BME280Internal
+{
+public:
+    virtual bool start() = 0;
+    virtual void stop() = 0;
+    
+    virtual float readPressure() = 0;
+    virtual float readTemperature() = 0;
+    virtual float readHumidity() = 0;
+
+};
 
 class MeteoBME
 {
 public:
-    MeteoBME(Context ct, int address, MeteoData& data);
+    MeteoBME(int address, uint8_t meteo_index = 0, BME280Internal* impl = nullptr);
     ~MeteoBME();
 
     AB_AGENT
 
 private:
+    BME280Internal *bme;
     bool enabled;
-    Context ctx;
-    MeteoData& data;
-    Adafruit_BME280 *bme;
     unsigned long last_read;
     int address;
-    void read(unsigned long ms);
+    uint8_t meteo_index;
+
+#ifdef PIO_UNIT_TESTING
+public:
+#endif
+    void read(unsigned long ms, MeteoData& data);
 };
 
 #endif

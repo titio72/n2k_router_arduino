@@ -2,8 +2,9 @@
 #define _MeteoDHT_H
 
 #include "Utils.h"
-#include "Context.h"
-#include <DHTesp.h>
+#include "Agents.hpp"
+
+class DHTesp;
 
 class MeteoDHT
 {
@@ -14,21 +15,20 @@ public:
         DHT22 = 2
     } DHT_MODEL;
 
-    MeteoDHT(Context ctx, int pin, DHT_MODEL model, MeteoData& data);
+    MeteoDHT(int pin, DHT_MODEL model, uint8_t meteo_index);
     ~MeteoDHT();
 
     AB_AGENT
 
 private:
     bool enabled;
-    Context ctx;
-    MeteoData& data;
-    DHTesp dht;
+    DHTesp* dht;
     unsigned long last_read_time;
     int pin;
     DHT_MODEL model;
+    uint8_t meteo_index;
 
-    void read_temp_hum(unsigned long ms);
+    void read_temp_hum(unsigned long ms, MeteoData &data);
 };
 
 

@@ -2,7 +2,7 @@
 #define _BLEConf_H
 
 #include "Utils.h"
-#include "Context.h"
+#include "Agents.hpp"
 #include <BTInterface.h>
 
 typedef void (*command_callback)(char command, const char* command_value);
@@ -10,21 +10,19 @@ typedef void (*command_callback)(char command, const char* command_value);
 class BLEConf: public ABBLEWriteCallback
 {
 public:
-    BLEConf(const Context& ctx, command_callback callback);
+    BLEConf(command_callback callback);
     ~BLEConf();
 
     AB_AGENT
 
     void on_write(int handle, const char* value);
 
-    void set_device_name(const char* name);
-
 private:
     bool enabled;
-    const Context& ctx;
     BTInterface ble;
     ulong last_sent;
     command_callback c_back;
+    char device_name[16] = {0};
 };
 
 #endif

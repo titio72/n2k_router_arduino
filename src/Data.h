@@ -1,7 +1,9 @@
 #ifndef DATA_H
 #define DATA_H
 
-#include <Arduino.h>
+#include <math.h>
+#include <cstring>
+#include <stdint.h>
 
 #define MAX_USED_SATS_SIZE 24
 #define MAX_SATS_SIZE 255
@@ -35,14 +37,6 @@ struct RMC {
     double lat = NAN;
     double lon = NAN;
 
-    /*uint16_t y = 0;
-    uint8_t M = 0;
-    uint8_t d = 0;
-    uint8_t h = 0;
-    uint8_t m = 0;
-    uint8_t s = 0;
-    uint16_t ms = 0;*/
-
     double cog = NAN;
     double sog = NAN;
 
@@ -68,6 +62,8 @@ struct BatteryData
   double voltage = NAN;
   double current = NAN;
   double soc = NAN;
+  double temperature = NAN;
+  double ttg = NAN;
 };
 
 struct EngineData
@@ -76,16 +72,12 @@ struct EngineData
   uint64_t engine_time = 0;
 };
 
-class Data
+class GPSData
 {
 public:
-  RMC rmc;
-  GSA gsa;
-  GSV gsv;
+  uint16_t serial = 0;
 
-  MeteoData meteo_0;
-  MeteoData meteo_1;
-
+  unsigned char fix = 0; // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
   double latitude_signed = NAN; // Signed latitude for NMEA
   double longitude_signed = NAN; // Signed longitude for NMEA
   double cog = NAN; // Course over ground
@@ -94,14 +86,72 @@ public:
   double pdop = NAN; // Position Dilution of Precision
   double vdop = NAN; // Vertical Dilution of Precision
   double tdop = NAN; // Time Dilution of Precision
-  unsigned char fix = 0; // GNSS fix type (0=no fix, 1=dead reckoning, 2=2D, 3=3D, 4=GNSS, 5=Time fix)
-  double latitude = NAN;  char latitude_NS = 'N';
-  double longitude = NAN; char longitude_EW = 'E';
+
+  short nSat = 0;
+  short nUsedSats = 0;
+  sat satellites[MAX_SATS_SIZE];
+  short sats[MAX_USED_SATS_SIZE];
+
   uint32_t gps_unix_time = 0; // in seconds since epoch
-  uint32_t gps_unix_time_ms = 0; // the milliseconds part of the time (0-999)
+  uint16_t gps_unix_time_ms = 0; // the milliseconds part of the time (0-999)
+  
+  char get_longitude_cardinal()
+  {
+    return longitude_signed > 0.0 ? 'E' : 'W';
+  }
+
+  char get_latitude_cardinal()
+  {
+    return latitude_signed > 0.0 ? 'N' : 'S';
+  }
+
+  GSV get_GSV()
+  {
+    GSV gsv;
+    gsv.nSat = nSat;
+    memcpy(gsv.satellites, satellites, sizeof(satellites));
+    return gsv;
+  }
+
+  GSA get_GSA()
+  {
+    GSA gsa;
+    gsa.valid = fix > 0;
+    gsa.nSat = nSat;
+    gsa.fix = fix;
+    memcpy(gsa.sats, sats, sizeof(sats));
+    gsa.hdop = hdop;
+    gsa.vdop = vdop;
+    gsa.tdop = tdop;
+    gsa.pdop = pdop;
+    return gsa;
+  }
+
+  RMC get_RMC()
+  {
+    RMC rmc;
+    rmc.cog = cog;
+    rmc.sog = sog;
+    rmc.fix = fix;
+    rmc.lat = latitude_signed;
+    rmc.lon = longitude_signed;
+    rmc.unix_time = gps_unix_time;
+    rmc.unix_time_ms = gps_unix_time_ms;
+    rmc.valid = fix > 0;
+    return rmc;
+  }
+};
+
+class Data
+{
+public:
+  GPSData gps;
 
   BatteryData battery_svc;
   BatteryData battery_eng;
+
+  MeteoData meteo_0;
+  MeteoData meteo_1;
 
   EngineData engine;
 

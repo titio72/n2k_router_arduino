@@ -2,19 +2,18 @@
 #define _ENV_MSG_H
 
 #include <Utils.h>
-#include "Context.h"
+#include "Agents.hpp"
 
-class EnvMessanger
+class EnvMessenger
 {
 public:
-    EnvMessanger(Context& ctx);
-    ~EnvMessanger();
+    EnvMessenger();
+    ~EnvMessenger();
 
     AB_AGENT
 
 private:
     bool enabled;
-    Context& ctx;
     unsigned long t0;
 };
 

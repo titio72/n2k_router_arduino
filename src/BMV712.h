@@ -4,38 +4,39 @@
 #include <Ports.h>
 #include <VeDirect.h>
 #include <time.h>
-#include "Context.h"
+#include "Agents.hpp"
+#include <Utils.h>
+
+#define VEDIRECT_BAUD_RATE 19200
 
 class BMV712: public PortListener, VEDirectListener
 {
 public:
-    BMV712(Context& ctx, Port& port, BatteryData& data_0, BatteryData& data_1);
+    BMV712(Port& port);
     ~BMV712();
 
-    void loop(unsigned long t);
-    void setup();
-    bool is_enabled();
-    void enable();
-    void disable();
+    AB_AGENT
 
-    double getVoltage();
+    const VEDirectObject &getLastValidValue() const { return bmv_vedirect; }
 
 private:
     void on_line_read(const char *line);
     void on_partial_x(const char *line, int len);
     void on_complete(VEDirectObject &ve);
-
-    Context& ctx;
     Port& p;
-    BatteryData& data_0;
-    BatteryData& data_1;
+    BatteryData data_svc;
+    BatteryData data_eng;
+    bool read;
+
     bool enabled;
     time_t delta_time;
-    VEDirectObject bmv;
+    VEDirectObject bmv_vedirect;
 
     unsigned long last_read_time;
 
     int checksum;
+
+    N2KSid n2ksid;
 };
 
 #endif
