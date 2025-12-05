@@ -8,3 +8,6 @@ _autosave*
 *.zip
 
 n2k_router_arduino.code-workspace
+
+# CodeQL analysis artifacts
+_codeql_*
