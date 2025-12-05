@@ -33,7 +33,7 @@ static unsigned char UART_SPEED_115200 = 5;
 #define STW_ID 5
 #define VED_ID 6
 
-#define MAX_CONF 6
+#define MAX_CONF 7
 
 class N2KServices
 {
@@ -53,7 +53,7 @@ public:
   bool sog_2_stw = DEFAULT_SOG_2_STW;
   bool use_tacho = DEFAULT_USE_TACHO;
   bool use_vedirect = DEFAULT_USE_VE_DIRECT;
-  char buffer[MAX_CONF+1];
+  char buffer[MAX_CONF+1];  // Buffer to store string representation (7 services + null terminator)
 };
 
 enum MeteoSource
@@ -89,8 +89,8 @@ public:
   N2KServices& get_services();
   void save_services(N2KServices& s);
 
-  uint32_t get_batter_capacity();
-  void save_batter_capacity(uint32_t c);
+  uint32_t get_battery_capacity();
+  void save_battery_capacity(uint32_t c);
 
   MeteoSource get_pressure_source();
   MeteoSource get_temperature_source();
