@@ -27,10 +27,11 @@
 #define CONF_BATTERY_CAPACITY_START_BYTE 32
 
 #define DEFAULT_BATTERY_CAPACITY 280
+#define UNINITIALIZED_CACHE 0xFFFFFFFF
 
 #define CONF_LOG_TAG "CONF"
 
-Configuration::Configuration(): initialized(false), cache_rpm_adj(1.0), cache_batt_cap(0xFFFFFFFF), n2k_source(NO_CONF), cache_services()
+Configuration::Configuration(): initialized(false), cache_rpm_adj(1.0), cache_batt_cap(UNINITIALIZED_CACHE), n2k_source(NO_CONF), cache_services()
 {
     strcpy(cache_device_name, DEFAULT_DEVICE_NAME);
 }
@@ -239,10 +240,10 @@ void Configuration::save_device_name(const char *name)
 
 uint32_t Configuration::get_battery_capacity()
 {
-    if (cache_batt_cap == 0xFFFFFFFF)
+    if (cache_batt_cap == UNINITIALIZED_CACHE)
     {
         uint32_t c = EEPROM.readUInt(CONF_BATTERY_CAPACITY_START_BYTE);
-        if (c == 0xFFFFFFFF || c == 0)
+        if (c == UNINITIALIZED_CACHE || c == 0)
         {
             cache_batt_cap = DEFAULT_BATTERY_CAPACITY;
             Log::tracex(CONF_LOG_TAG, "Read", "battery capacity unset, using default {%d}", DEFAULT_BATTERY_CAPACITY);
