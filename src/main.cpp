@@ -283,12 +283,35 @@ void setup()
 
 void on_command(char command, const char *command_value)
 {
+  // Validate input - command_value should not be null
+  if (command_value == nullptr)
+  {
+    Log::tracex(CMD_LOG_TAG, "Command error", "NULL value for command {%c}", command);
+    return;
+  }
+
+  // Validate string length to prevent buffer overflows
+  size_t value_len = strlen(command_value);
+  if (value_len > 128)  // Reasonable maximum length
+  {
+    Log::tracex(CMD_LOG_TAG, "Command error", "Value too long ({%d} chars) for command {%c}", value_len, command);
+    return;
+  }
+
   switch (command)
   {
   case 'N':
   {
     Log::tracex(CMD_LOG_TAG, "Command set device name", "N {%s}", command_value);
-    bleConf.set_device_name(command_value);
+    // Validate device name length
+    if (value_len > 0 && value_len < 16)
+    {
+      bleConf.set_device_name(command_value);
+    }
+    else
+    {
+      Log::tracex(CMD_LOG_TAG, "Command error", "Invalid device name length {%d}", value_len);
+    }
   }
   break;
   case 'C':
@@ -303,11 +326,16 @@ void on_command(char command, const char *command_value)
   {
     Log::tracex(CMD_LOG_TAG, "Command set hours", "H {%s}", command_value);
     uint64_t engine_time_secs = atol(command_value);
-    if (engine_time_secs > 0)
+    // Add reasonable bounds checking for engine hours (max 100,000 hours = ~11 years)
+    if (engine_time_secs > 0 && engine_time_secs < 360000000)  // 100k hours in seconds
     {
       uint64_t new_t = (uint64_t)1000 * engine_time_secs;
       Log::tracex(CMD_LOG_TAG, "Command set hours", "ms {%lu-%03d}", (uint32_t)(new_t / 1000), (uint16_t)(new_t % 1000));
       tacho.set_engine_time(new_t, true);
+    }
+    else
+    {
+      Log::tracex(CMD_LOG_TAG, "Command error", "Invalid engine time {%lu}", engine_time_secs);
     }
   }
   break;
@@ -315,9 +343,14 @@ void on_command(char command, const char *command_value)
   {
     Log::tracex(CMD_LOG_TAG, "Command tachometer calibration", "T {%s}", command_value);
     int rpm = atoi(command_value);
-    if (rpm > 0)
+    // Validate RPM range (typical engines: 0-10000 RPM)
+    if (rpm > 0 && rpm < 15000)
     {
       tacho.calibrate(rpm);
+    }
+    else
+    {
+      Log::tracex(CMD_LOG_TAG, "Command error", "Invalid RPM value {%d}", rpm);
     }
   }
   break;
@@ -325,9 +358,14 @@ void on_command(char command, const char *command_value)
   {
     Log::tracex(CMD_LOG_TAG, "Command tachometer adjustment", "t {%s}", command_value);
     int adj = atoi(command_value);
-    if (adj > 0)
+    // Validate adjustment range (reasonable values: 1-50000)
+    if (adj > 0 && adj < 100000)
     {
       tacho.set_adjustment(adj / 10000.0, true);
+    }
+    else
+    {
+      Log::tracex(CMD_LOG_TAG, "Command error", "Invalid adjustment value {%d}", adj);
     }
   }
   break;

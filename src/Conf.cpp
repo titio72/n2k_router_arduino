@@ -233,22 +233,30 @@ void Configuration::save_device_name(const char *name)
     }
     else
     {
-        Log::tracex(CONF_LOG_TAG, "Write error", "invald device name {%s}", name);
+        Log::tracex(CONF_LOG_TAG, "Write error", "invalid device name {%s}", name);
     }
 }
 
-uint32_t Configuration::get_batter_capacity()
+uint32_t Configuration::get_battery_capacity()
 {
-    if (!initialized)
+    if (cache_batt_cap == 0xFFFFFFFF)
     {
         uint32_t c = EEPROM.readUInt(CONF_BATTERY_CAPACITY_START_BYTE);
-        cache_batt_cap = c;
-        Log::tracex(CONF_LOG_TAG, "Read", "battery capacity {%d}", c);
+        if (c == 0xFFFFFFFF || c == 0)
+        {
+            cache_batt_cap = DEFAULT_BATTERY_CAPACITY;
+            Log::tracex(CONF_LOG_TAG, "Read", "battery capacity unset, using default {%d}", DEFAULT_BATTERY_CAPACITY);
+        }
+        else
+        {
+            cache_batt_cap = c;
+            Log::tracex(CONF_LOG_TAG, "Read", "battery capacity {%d}", c);
+        }
     }
-    return DEFAULT_BATTERY_CAPACITY;
+    return cache_batt_cap;
 }
 
-void Configuration::save_batter_capacity(uint32_t c)
+void Configuration::save_battery_capacity(uint32_t c)
 {
     cache_batt_cap = c;
     bool r = EEPROM.writeUInt(CONF_BATTERY_CAPACITY_START_BYTE, c);

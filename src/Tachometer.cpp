@@ -35,9 +35,15 @@ std::vector<Tachometer*> _tach = {};
 
 void add_tacho(Tachometer* tachometer)
 {
-    for (int i = 0; i<_tach.size(); i++)
+    if (tachometer == nullptr)
     {
-        if (_tach[i]==NULL)
+        return;  // Don't add null pointers
+    }
+    
+    size_t tach_count = _tach.size();
+    for (size_t i = 0; i < tach_count; i++)
+    {
+        if (_tach[i] == nullptr)
         {
             _tach[i] = tachometer;
             return;
@@ -48,9 +54,18 @@ void add_tacho(Tachometer* tachometer)
 
 void remove_tacho(Tachometer* tachometer)
 {
-    for (int i = 0; i<_tach.size(); i++)
+    if (tachometer == nullptr)
     {
-        if (_tach[i]==tachometer) _tach[i] = NULL;
+        return;  // Nothing to remove
+    }
+    
+    size_t tach_count = _tach.size();
+    for (size_t i = 0; i < tach_count; i++)
+    {
+        if (_tach[i] == tachometer)
+        {
+            _tach[i] = nullptr;
+        }
     }
 }
 
@@ -67,9 +82,14 @@ void IRAM_ATTR on_timer()
     }
     #endif
     //-----------------------------------------------------
-    for (int i = 0; i<_tach.size(); i++)
+    // Add bounds checking for safety in interrupt handler
+    size_t tach_count = _tach.size();
+    for (size_t i = 0; i < tach_count; i++)
     {
-        if (_tach[i]) _tach[i]->read_signal();
+        if (_tach[i] != nullptr)
+        {
+            _tach[i]->read_signal();
+        }
     }
 }
 
