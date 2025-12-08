@@ -83,6 +83,7 @@ Checksum
 
  */
 
+#pragma region Utilities
 static const char *EMPTY_STRING = "";
 
 bool start_with_unsafe(const char *test_str, const char* string)
@@ -153,7 +154,9 @@ int read_vedirect_onoff(bool &v, const char *tag, const char *line)
     }
     return 0;
 }
+#pragma endregion
 
+#pragma region VEDirectField implementations
 VEDirectField::VEDirectField(const VEDirectValueDefinition& d): def(d), value_set(false), last_time(0)
 {}
 
@@ -249,12 +252,16 @@ bool VEDirectFieldString::parse(const char* v)
     set_value(v);
     return true;
 }
+#pragma endregion
 
+#pragma
 VEDirectObject::VEDirectObject() : valid(0), n_fields(0), checksum(0), listener(nullptr), values(nullptr)
 {}
 
 void VEDirectObject::init(const VEDirectValueDefinition *definition, unsigned int n)
 {
+    if (values) return; // already initialized
+
     n_fields = n;
     values = new VEDirectField*[n_fields];
     for (int i = 0; i<n_fields; i++)
@@ -499,3 +506,4 @@ void VEDirectObject::on_partial(const char *line, int len)
         reset();
     }
 }
+#pragma endregion

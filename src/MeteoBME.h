@@ -24,6 +24,7 @@ public:
     AB_AGENT
 
 private:
+    bool internalStateOwned;
     BME280Internal *bme;
     bool enabled;
     unsigned long last_read;

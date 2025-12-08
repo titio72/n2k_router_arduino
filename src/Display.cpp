@@ -30,7 +30,7 @@ void EVODisplay::setup(Context &ctx)
     if (!init)
     {
 #if (DO_DISPLAY == 1)
-        display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, TwoWireProvider::get_two_wire(), OLED_RESET);
+        if (display==nullptr) display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, TwoWireProvider::get_two_wire(), OLED_RESET);
         init = display->begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
         if (init)
             display->clearDisplay();

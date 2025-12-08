@@ -4,7 +4,13 @@
 #include "Utils.h"
 #include "Agents.hpp"
 
-class DHTesp;
+class DHTInternal
+{
+public:
+    virtual bool setup() = 0;
+    virtual void getTempAndHumidity(double &temp, double &humidity) = 0;
+    virtual unsigned long getMinimumSamplingPeriod() = 0;
+};
 
 class MeteoDHT
 {
@@ -15,14 +21,15 @@ public:
         DHT22 = 2
     } DHT_MODEL;
 
-    MeteoDHT(int pin, DHT_MODEL model, uint8_t meteo_index);
+    MeteoDHT(int pin, DHT_MODEL model, uint8_t meteo_index, DHTInternal *impl = nullptr);
     ~MeteoDHT();
 
     AB_AGENT
 
 private:
     bool enabled;
-    DHTesp* dht;
+    DHTInternal* dht;
+    bool own;
     unsigned long last_read_time;
     int pin;
     DHT_MODEL model;

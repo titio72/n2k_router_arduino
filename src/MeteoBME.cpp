@@ -11,55 +11,62 @@
 #include <Arduino.h>
 #include "TwoWireProvider.h"
 #include <Adafruit_BME280.h>
-class MYBME: public BME280Internal
+class MYBME : public BME280Internal
 {
 public:
-    MYBME(int address): addr(address) {}
+  MYBME(int address) : addr(address) {}
 
-    virtual bool start()
+  virtual bool start()
+  {
+    bool ok = b.begin(addr, TwoWireProvider::get_two_wire()); // set back to 0x76!!!!!!
+    if (ok)
     {
-      bool ok = b.begin(addr, TwoWireProvider::get_two_wire()); // set back to 0x76!!!!!!
-      if (ok)
-      {
-        b.setSampling(
-            Adafruit_BME280::MODE_NORMAL,
-            Adafruit_BME280::SAMPLING_X4,
-            Adafruit_BME280::SAMPLING_X4,
-            Adafruit_BME280::SAMPLING_X4,
-            Adafruit_BME280::FILTER_X2,
-            Adafruit_BME280::STANDBY_MS_500);
-      }
-      return ok;
+      b.setSampling(
+          Adafruit_BME280::MODE_NORMAL,
+          Adafruit_BME280::SAMPLING_X4,
+          Adafruit_BME280::SAMPLING_X4,
+          Adafruit_BME280::SAMPLING_X4,
+          Adafruit_BME280::FILTER_X2,
+          Adafruit_BME280::STANDBY_MS_500);
     }
-    
-    virtual void stop()
-    {
+    return ok;
+  }
 
-    }
-    
-    virtual float readPressure()
-    {
-      return b.readPressure();
-    }
+  virtual void stop()
+  {
+  }
 
-    virtual float readTemperature()
-    {
-      return b.readTemperature();
-    }
+  virtual float readPressure()
+  {
+    return b.readPressure();
+  }
 
-    virtual float readHumidity()
-    {
-      return b.readHumidity();
-    }
+  virtual float readTemperature()
+  {
+    return b.readTemperature();
+  }
+
+  virtual float readHumidity()
+  {
+    return b.readHumidity();
+  }
 
 private:
-    int addr;
-    Adafruit_BME280 b;
+  int addr;
+  Adafruit_BME280 b;
 };
 #endif
 
-MeteoBME::MeteoBME(int _address, uint8_t ix, BME280Internal *impl) : enabled(false), last_read(0), bme(impl), address(_address), meteo_index(ix)
+MeteoBME::MeteoBME(int _address, uint8_t ix, BME280Internal *impl)
+    : enabled(false), last_read(0), bme(impl), address(_address), meteo_index(ix), internalStateOwned(false)
 {
+  #ifndef NATIVE
+  if (bme==nullptr)
+  {
+    bme = new MYBME(address);
+    internalStateOwned = true;
+  }
+  #endif
 }
 
 MeteoBME::~MeteoBME()
@@ -111,9 +118,6 @@ void MeteoBME::read(unsigned long ms, MeteoData &data)
 void MeteoBME::setup(Context &ctx)
 {
   Log::tracex(BME_LOG_TAG, "Setup");
-  #ifndef NATIVE
-  if (bme==nullptr) bme = new MYBME(address);
-  #endif
 }
 
 void MeteoBME::loop(unsigned long ms, Context &ctx)

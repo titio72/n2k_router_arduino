@@ -18,7 +18,7 @@ BMV712::~BMV712()
 {
 }
 
-#define N2K_NAN -1e9
+static const double N2K_NAN = -1e9;
 
 void reset_cache(BatteryData *data)
 {

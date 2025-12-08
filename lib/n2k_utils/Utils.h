@@ -19,19 +19,49 @@ class N2KSid
 class ByteBuffer
 {
 public:
+  ByteBuffer(const ByteBuffer& b)
+  {
+    buf_size = b.buf_size;
+    buffer = new uint8_t[buf_size];
+    offset = b.offset;
+    memcpy(buffer, b.buffer, offset);
+  }
+
   ByteBuffer(size_t size) : buf_size(size), offset(0) {
       buffer = new uint8_t[size];
   }
 
+  ByteBuffer(void* data, size_t size) : buf_size(size), offset(size) {
+      buffer = new uint8_t[size];
+      memcpy(buffer, data, size);
+  }
+
   ~ByteBuffer()
   {
-      delete[] buffer;
+      delete buffer;
   }
+
+  ByteBuffer& operator= (const ByteBuffer& b)
+  {
+      if (this != &b) {
+          delete buffer;
+          buf_size = b.buf_size;
+          buffer = new uint8_t[buf_size];
+          offset = b.offset;
+          memcpy(buffer, b.buffer, offset);
+      }
+      return *this;
+  }
+
+    ByteBuffer &operator<<(char* t)
+    {
+        return (*this) << (const char*)t;
+    }
 
     ByteBuffer &operator<< (const char* t)
     {
         size_t t_size = strlen(t);
-        if (t_size<255 && offset + t_size <= buf_size) {
+        if (t_size<255 && (offset + t_size) < buf_size) {
             *this << (uint8_t)t_size;
             memcpy(buffer + offset, t, t_size);
             offset += t_size;
@@ -44,7 +74,7 @@ public:
     {
         size_t t_size = sizeof(T);
         if (offset + t_size <= buf_size) {
-            *((T*)(buffer + offset)) = t;
+            memcpy(buffer + offset, &t, t_size);
             offset += t_size;
         }
         return *this;
@@ -59,6 +89,7 @@ public:
     void get_data(uint8_t* dest, size_t len) const
     {
         if (len > offset) len = offset;
+        if (offset == 0) return;
         memcpy(dest, buffer, len);
     }
 
@@ -66,11 +97,19 @@ public:
     size_t size() const { return buf_size; }
     size_t length() const { return offset; }
 
+    bool operator==(const ByteBuffer& other) const
+    {
+        if (offset != other.offset) return false;
+        return (memcmp(buffer, other.buffer, offset) == 0);
+    }
+
 private:
     uint8_t *buffer;
     size_t buf_size;
     size_t offset;
 };
+
+typedef ByteBuffer* ByteBufferPtr;
 
 bool startswith(const char* str_to_find, const char* str);
 int getDaysSince1970(int y, int m, int d);

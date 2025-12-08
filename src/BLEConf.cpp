@@ -4,17 +4,13 @@
 #include "Conf.h"
 #include <Log.h>
 
-static const int32_t INVALID_32 = 0xFFFFFF7F;
-static const uint32_t INVALID_U32 = 0xFFFFFFFF;
-static const int16_t INVALID_16 = 0xFF7F;
-static const uint16_t INVALID_U16 = 0xFFFF;
-
 static const char* BLE_LOG_TAG = "BLE";
 
 #define BLE_UPDATE_PERIOD 1000000
 
-BLEConf::BLEConf(command_callback cback)
-    : enabled(false), ble(BLE_SERVICE_UUID, nullptr), last_sent(0), c_back(cback)
+BLEConf::BLEConf(command_callback cback, InternalBLEState* internalState)
+    : enabled(false), ble(BLE_SERVICE_UUID, BLE_DEFAULT_SERVICE_NAME, internalState), last_sent(0), 
+    c_back(cback), ble_settings_handle(-1), ble_conf_handle(-1), initialized(false), services_buffer(128)
 {
 }
 
@@ -22,16 +18,23 @@ BLEConf::~BLEConf()
 {
 }
 
+const char* BLEConf::get_device_name()
+{
+  return ble.get_device_name();
+}
+
 void BLEConf::on_write(int handle, const char *value)
 {
+  if (!initialized) return;
+
   Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
-  if (handle == 0)
+  if (handle == ble_conf_handle)
   {
     const char command = 'S';
     if (c_back)
       c_back(command, value);
   }
-  else if (handle == 1)
+  else if (handle == ble_settings_handle)
   {
     const char command = value[0];
     const char *command_value = (value + sizeof(char));
@@ -42,19 +45,21 @@ void BLEConf::on_write(int handle, const char *value)
 
 void copy_from_conf(Configuration &conf, char* device_name, size_t l)
 {
-  strncpy(device_name, conf.get_device_name(), l);
+  strncpy(device_name, conf.get_device_name(), l - 1);
   device_name[l - 1] = '\0';
 }
 
 void BLEConf::setup(Context &ctx)
 {
+  if (initialized) return;
+
+  initialized = true;
   Log::tracex(BLE_LOG_TAG, "Setup", "Start BLE");
-  copy_from_conf(ctx.conf, device_name, sizeof(device_name));
-  ble.set_device_name(device_name);
+  ble.set_device_name(ctx.conf.get_device_name());
   const N2KServices &c = ctx.conf.get_services();
   ble.add_field("data", BLE_DATA_UUID);
-  ble.add_setting("conf", BLE_CONF_UUID);
-  ble.add_setting("command", BLE_COMMAND_UUID);
+  ble_conf_handle = ble.add_setting("conf", BLE_CONF_UUID);
+  ble_settings_handle = ble.add_setting("command", BLE_COMMAND_UUID);
   ble.set_write_callback(this);
   ble.setup();
   char cstr[c.size() + 1];
@@ -72,13 +77,9 @@ static inline T to_int(double value, double factor, T invalid_value)
   return (T)(value * factor);
 }
 
-void BLEConf::loop(unsigned long ms, Context &ctx)
+void fill_buffer(ByteBuffer& buffer, Context &ctx)
 {
-  if (enabled && check_elapsed(ms, last_sent, BLE_UPDATE_PERIOD))
-  {
-    if (strcmp(device_name, ctx.conf.get_device_name())) ble.set_device_name(device_name);
-
-    N2KStats s(ctx.n2k.getStats());
+  N2KStats s(ctx.n2k.getStats());
 
     double p = ctx.data_cache.get_pressure(ctx.conf);
     double h = ctx.data_cache.get_humidity(ctx.conf);
@@ -106,8 +107,8 @@ void BLEConf::loop(unsigned long ms, Context &ctx)
     const uint8_t _services = ctx.conf.get_services().serialize();
     const uint8_t _n2k_source = ctx.conf.get_n2k_source();
 
-    static ByteBuffer b(128);
-    b.reset() << _gpsFix  // 1 1
+    buffer.reset() 
+        << _gpsFix        // 1 1
         << _atmo          // 4 5
         << _temp          // 2 7
         << _hum           // 2 9
@@ -128,8 +129,15 @@ void BLEConf::loop(unsigned long ms, Context &ctx)
         << _voltage       // 2 53
         << _soc           // 2 55
         << _n2k_source;   // 1 56
+}
 
-    ble.set_field_value(0, b.data(), b.length());
+void BLEConf::loop(unsigned long ms, Context &ctx)
+{
+  if (enabled && check_elapsed(ms, last_sent, BLE_UPDATE_PERIOD))
+  {
+    if (strcmp(ble.get_device_name(), ctx.conf.get_device_name())) ble.set_device_name(ctx.conf.get_device_name());
+    fill_buffer(services_buffer, ctx);
+    ble.set_field_value(0, services_buffer.data(), services_buffer.length());
   }
 }
 
@@ -140,7 +148,8 @@ bool BLEConf::is_enabled()
 
 void BLEConf::enable()
 {
-  enabled = true;
+  if (initialized)
+    enabled = true;
 }
 
 void BLEConf::disable()

@@ -1,11 +1,18 @@
 #include <unity.h>
-#include <Arduino.h>
 #include <math.h>
 #include "Tachometer.h"
 #include "Data.h"
 #include "Conf.h"
 #include "Context.h"
 #include "N2K_router.h"
+
+#ifndef LOW
+#define LOW 0
+#endif
+#ifndef HIGH
+#define HIGH 1
+#endif  
+
 
 class MockEngineHours: public EngineHours
 {
@@ -457,7 +464,7 @@ void test_tachometer_loop_respects_period_timing(void)
     tacho.setup(context);
     tacho.enable();
 
-    unsigned long micros = 0;
+    unsigned long micros = 10000000;
 
     for (int i = 0; i < 100; i++)
     {
@@ -807,3 +814,9 @@ void setup()
 
 void loop()
 {}
+
+int main()
+{
+    setup();
+    return 0;
+}

@@ -60,15 +60,21 @@ static unsigned char UART_SPEED_115200 = 5;
 #define DEFAULT_RPM_ADJUSTMENT 1.00
 #define DEFAULT_GPS_SPEED UART_SPEED_57600
 #define DEFAULT_N2K_SOURCE 22
-#define DEFAULT_BLE_DEVICE_NAME "ABN2K"
 
 #define DEFAULT_BATTERY_CAPACITY 280
 
 #define APP_LOG_TAG "APP"
 
+#define BLE_DEFAULT_SERVICE_NAME "N2KRouter"
 #define BLE_SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define BLE_CONF_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define BLE_DATA_UUID "55da66c7-801f-498d-b652-c57cb3f1b590"
 #define BLE_COMMAND_UUID "68ad1094-0989-4e22-9f21-4df7ef390803"
+
+//ble values
+static const int32_t INVALID_32 = 0xFFFFFF7F;
+static const uint32_t INVALID_U32 = 0xFFFFFFFF;
+static const int16_t INVALID_16 = 0xFF7F;
+static const uint16_t INVALID_U16 = 0xFFFF;
 
 #endif /* _CONTANTS_H_ */

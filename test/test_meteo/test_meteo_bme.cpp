@@ -90,11 +90,11 @@ public:
     }
 };
 
-void setUp(void)
+void setUpMeteoBME(void)
 {
 }
 
-void tearDown(void)
+void tearDownMeteoBME(void)
 {
     // Cleanup after each test
 }
@@ -642,7 +642,7 @@ void test_meteo_bme_read_different_addresses(void)
 #pragma endregion
 
 // Test runner
-void setup()
+void run_meteo_bme_tests()
 {
     UNITY_BEGIN();
 
@@ -694,12 +694,4 @@ void setup()
     RUN_TEST(test_meteo_bme_read_different_addresses);
 
     UNITY_END();
-}
-
-void loop() {}
-
-int main()
-{
-    setup();
-    return 0;
 }

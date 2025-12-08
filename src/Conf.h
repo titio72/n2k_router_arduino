@@ -3,6 +3,7 @@
 
 #include "Constants.h"
 #include <stdint.h>
+#include <string>
 
 #define CONF_VERSION 0x05
 
@@ -148,7 +149,7 @@ public:
 
 
   virtual double get_rpm_adjustment() const { return rpm_adjustment; }
-  virtual const char* get_device_name() const { return ble_name; }
+  virtual const char* get_device_name() const { return ble_name.c_str(); }
   virtual unsigned char get_n2k_source() const { return n2k_src; }
   virtual unsigned char get_uart_speed() const { return 2; }
   virtual const N2KServices& get_services() const { return services; }
@@ -161,7 +162,7 @@ public:
   bool initialized = true;
 
   double rpm_adjustment = 1.0;
-  const char* ble_name = "TEST";
+  std::string ble_name = "TEST";
   uint8_t n2k_src = 11;
   N2KServices services;
   uint16_t battery_capacity = 280;
