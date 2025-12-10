@@ -17,8 +17,6 @@
 #include "GPSX.h"
 #elif GPS_TYPE == 2
 #include "GPSX.h"
-#elif GPS_TYPE == 3
-#include "GPS.h"
 #endif
 #include "Dummy.h"
 #if DO_TACHOMETER == 1
@@ -54,15 +52,11 @@ Context context(n2k, conf, cache);
 //      0 -> Dummy
 //			1 -> I2C (u-blox lib is required)
 //			2 -> UART (u-blox lib is required)
-//			3 -> UART (NMEA parser)
 #if GPS_TYPE == 1
 GPSX gps;
 #elif GPS_TYPE == 2
 HardwareSerial gpsSerial(Serial1);
 GPSX gps(context, &gpsSerial, GPS_RX_PIN, GPS_TX_PIN);
-#elif GPS_TYPE == 3
-ArduinoPort<HardwareSerial> gpsPort("GPS", Serial1, UART_SPEED[UART_SPEED_9600], GPS_RX_PIN, GPS_TX_PIN, false);
-GPS gps(context, gpsPort);
 #else
 Dummy gps;
 #endif
@@ -211,7 +205,7 @@ void _setup()
 
 void on_command(char command, const char *command_value)
 {
-  CommandHandler::on_command(command, command_value, bleConf, conf, cache);
+  CommandHandler::on_command(command, command_value, conf, cache);
 }
 
 #ifndef PIO_UNIT_TESTING

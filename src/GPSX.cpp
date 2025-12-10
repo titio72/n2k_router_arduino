@@ -8,18 +8,17 @@
 #include "Conf.h"
 #include "Data.h"
 
-#define GPS_LOG_TAG "GPS"
-
 // enable/disable sending sats 130577
 #define SEND_SATS 0
 
-#define READ_PERIOD 50000           // microseconds
-#define HIG_LOW_FREQ_RATIO 4        // manage a low freq event every 4 high freq events
-#define NAVIGATION_DATA_FREQUENCY 4 // Hz
+const unsigned long READ_PERIOD = 50000; // microseconds
+const int HIG_LOW_FREQ_RATIO = 4;        // manage a low freq event every 4 high freq events
+const int NAVIGATION_DATA_FREQUENCY = 4; // Hz
 
-#define GPS_SERIAL_SPEED 57600 // Default speed for GPS serial port
+const int GPS_SERIAL_SPEED = 57600; // Default speed for GPS serial port
 
-#pragma region GPS_UTILS
+const char* GPS_LOG_TAG = "GPS";
+
 const char *SATS_TYPES[] = {
     "GPS     ", "SBAS    ", "Galileo ",
     "BeiDou  ", "IMES    ", "QZSS    ", "GLONASS "};
@@ -92,10 +91,8 @@ bool GPSX::loadPVT()
     {
         uint32_t micros = 0;
         uint32_t time = myGNSS.getUnixEpoch(micros);
-        //Serial.printf("[GPS] Time %d.%03d\n", time, micros / 1000);
         data.gps_unix_time = time;
         data.gps_unix_time_ms = micros / 1000; // convert to milliseconds
-
     }
     else
     {
@@ -133,8 +130,8 @@ bool GPSX::loadPVT()
 }
 
 GPSX::GPSX(HardwareSerial *serial, int rx, int tx) : enabled(false), last_read_time(0), delta_time(0),
-                                                                   gps_time_set(false), count_sent(0), myGNSS(), cache_ok(false),
-                                                                   serial_port(serial), rx_pin(rx), tx_pin(tx)
+                                                     gps_time_set(false), count_sent(0), myGNSS(), cache_ok(false),
+                                                     serial_port(serial), rx_pin(rx), tx_pin(tx)
 
 {
 }
@@ -165,9 +162,7 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
         unsigned char sid = _sid.getNew();
         if (loadFix() && loadSats())
         {
-            RMC rmc = data.get_RMC();
-            GSA gsa = data.get_GSA();
-            ctx.n2k.sendGNSSPosition(gsa, rmc, sid);
+            ctx.n2k.sendGNSSPosition(data, sid);
         }
         if (ctx.conf.get_services().is_sog_2_stw())
         {
@@ -178,7 +173,7 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
             ctx.n2k.sendSystemTime(data.gps_unix_time, sid, data.gps_unix_time_ms);
         }
 #if (SEND_SATS == 1)
-        ctx.n2k.sendSatellites(data.satellites, data.nSat, sid, data.get_GSA());
+        ctx.n2k.sendSatellites(data, sid);
 #endif
         set_system_time(sid, ctx);
     }
@@ -207,7 +202,7 @@ void GPSX::loop(unsigned long micros, Context &ctx)
             ctx.data_cache.gps = data;
         }
     }
-    else if (ctx.data_cache.gps.serial!=data.serial)
+    else if (ctx.data_cache.gps.serial != data.serial)
     {
         ctx.data_cache.gps = data;
     }

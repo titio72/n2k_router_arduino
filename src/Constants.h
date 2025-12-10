@@ -77,4 +77,7 @@ static const uint32_t INVALID_U32 = 0xFFFFFFFF;
 static const int16_t INVALID_16 = 0xFF7F;
 static const uint16_t INVALID_U16 = 0xFFFF;
 
+// EnvMessenger period
+#define PERIOD_MICROS_ENV 2000000
+
 #endif /* _CONTANTS_H_ */

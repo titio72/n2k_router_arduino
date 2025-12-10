@@ -162,8 +162,12 @@ char * replace(char const * const original, char const * const pattern, char con
     // copy the original string,
     // replacing all the instances of the pattern
     char * retptr = returned;
-    for (oriptr = original; (patloc = strstr(oriptr, pattern)); oriptr = patloc + patlen)
+
+    oriptr = original;
+    for (int i = 0; i < patcnt; i++)
     {
+      patloc = strstr(oriptr, pattern);
+      
       size_t const skplen = patloc - oriptr;
       // copy the section until the occurence of the pattern
       strncpy(retptr, oriptr, skplen);
@@ -171,6 +175,9 @@ char * replace(char const * const original, char const * const pattern, char con
       // copy the replacement
       strncpy(retptr, replacement, replen);
       retptr += replen;
+
+      // adjust pointer in original string  
+      oriptr = patloc + patlen;
     }
     // copy the rest of the string.
     strcpy(retptr, oriptr);

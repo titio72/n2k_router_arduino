@@ -3,7 +3,6 @@
 #include <Log.h>
 #include "Conf.h"
 #include "Context.h"
-#include "BLEConf.h"
 #include "Tachometer.h"
 
 static const char* CMD_LOG_TAG = "CMD";
@@ -11,7 +10,7 @@ static const char* CMD_LOG_TAG = "CMD";
 class CommandHandler
 {
 public:
-    static void on_command(char command, const char *command_value, BLEConf &bleConf, ConfigurationRW &conf, Data &data)
+    static void on_command(char command, const char *command_value, ConfigurationRWAbstract &conf, Data &data)
     {
         switch (command)
         {
@@ -40,7 +39,7 @@ public:
         case 'H':
         {
             Log::tracex(CMD_LOG_TAG, "Command set hours", "H {%s}", command_value);
-            uint64_t engine_time_secs = atol(command_value);
+            int64_t engine_time_secs = atol(command_value);
             if (engine_time_secs > 0)
             {
                 uint64_t new_t = (uint64_t)1000 * engine_time_secs;

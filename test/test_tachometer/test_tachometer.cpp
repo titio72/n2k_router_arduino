@@ -353,7 +353,7 @@ void test_tachometer_loop_with_signal_calculates_rpm(void)
     EngineHours *eng = new MockEngineHours();
     Tachometer tacho(25, eng, 1, 1.0, 1.0, 0);  // 1 pole
     MOCK_CONTEXT
-    mockConf.services.set_use_tacho(true);
+    mockConf.saved_services.set_use_tacho(true);
 
     tacho.setup(context);
     tacho.enable();
@@ -383,7 +383,7 @@ void test_tachometer_loop_with_rpm_adjustment(void)
     EngineHours *eng = new MockEngineHours();
     Tachometer tacho(25, eng, 1, 1.0, 0.5, 0);  // 0.5 adjustment
     MOCK_CONTEXT
-    mockConf.rpm_adjustment = 0.5;
+    mockConf.saved_rpm_adjustment = 0.5;
 
     tacho.setup(context);
     tacho.enable();

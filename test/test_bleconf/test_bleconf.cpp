@@ -171,7 +171,7 @@ void test_constructor_with_null_callback() {
 
 void test_setup_initializes_device_name() {
     MOCK_CONTEXT
-    mockConf.ble_name = "TestDevice";
+    mockConf.saved_device_name = "TestDevice";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -181,7 +181,7 @@ void test_setup_initializes_device_name() {
 
 void test_setup_copies_device_name_truncated_to_buffer_size() {
     MOCK_CONTEXT
-    mockConf.ble_name = "VeryLongDeviceNameThatExceeds16Chars";
+    mockConf.saved_device_name = "VeryLongDeviceNameThatExceeds16Chars";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -192,7 +192,7 @@ void test_setup_copies_device_name_truncated_to_buffer_size() {
 
 void test_setup_with_empty_device_name() {
     MOCK_CONTEXT
-    mockConf.ble_name = "";
+    mockConf.saved_device_name = "";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -416,7 +416,7 @@ void test_on_write_handle_1_without_callback() {
 // ==================== Tests: Loop - Periodic Updates ====================
 void test_loop_not_called_when_disabled() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -427,7 +427,7 @@ void test_loop_not_called_when_disabled() {
 
 void test_loop_initially_sends_at_first_update() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -438,9 +438,9 @@ void test_loop_initially_sends_at_first_update() {
 
 void test_loop_respects_update_period() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
-    mockConf.n2k_src = 22;
-    mockConf.rpm_adjustment = 1.0;
+    mockConf.saved_device_name = "Device";
+    mockConf.saved_n2k_src = 22;
+    mockConf.saved_rpm_adjustment = 1.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -453,7 +453,7 @@ void test_loop_respects_update_period() {
 
 void test_loop_with_nan_values() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -464,7 +464,7 @@ void test_loop_with_nan_values() {
 
 void test_loop_with_valid_temperature_data() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     mockConf.temperature_source = METEO_BME;
     data.meteo_0.temperature = 22.5;
     
@@ -477,7 +477,7 @@ void test_loop_with_valid_temperature_data() {
 
 void test_loop_with_valid_gps_data() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.fix = 3;
     data.gps.latitude_signed = 48.8566;
     data.gps.longitude_signed = 2.3522;
@@ -493,7 +493,7 @@ void test_loop_with_valid_gps_data() {
 
 void test_loop_with_battery_data() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.battery_svc.voltage = 13.5;
     data.battery_svc.current = 50.0;
     data.battery_svc.soc = 85.0;
@@ -507,7 +507,7 @@ void test_loop_with_battery_data() {
 
 void test_loop_with_engine_data() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.engine.rpm = 2500;
     data.engine.engine_time = 3600000000ULL;
     
@@ -520,9 +520,9 @@ void test_loop_with_engine_data() {
 
 void test_loop_with_complete_data() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
-    mockConf.n2k_src = 22;
-    mockConf.rpm_adjustment = 1.0;
+    mockConf.saved_device_name = "Device";
+    mockConf.saved_n2k_src = 22;
+    mockConf.saved_rpm_adjustment = 1.0;
     mockConf.temperature_source = METEO_BME;
     mockConf.humidity_source = METEO_BME;
     mockConf.pressure_source = METEO_BME;
@@ -554,26 +554,26 @@ void test_loop_with_complete_data() {
 
 void test_loop_updates_device_name_if_changed() {
     MOCK_CONTEXT
-    mockConf.ble_name = "InitialName";
+    mockConf.saved_device_name = "InitialName";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     TEST_ASSERT_EQUAL_STRING("InitialName", ble.get_device_name());
     
-    mockConf.ble_name = "UpdatedName";
+    mockConf.saved_device_name = "UpdatedName";
     ble.enable();
     ble.loop(0, context);
 }
 
 void test_multiple_setup_calls() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device1";
+    mockConf.saved_device_name = "Device1";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     TEST_ASSERT_EQUAL_STRING("Device1", ble.get_device_name());
     
-    mockConf.ble_name = "Device2";
+    mockConf.saved_device_name = "Device2";
     ble.setup(context);
     // must not change - once setup, name is fixed. Setup does nothing on subsequent calls.
     TEST_ASSERT_EQUAL_STRING("Device1", ble.get_device_name());
@@ -608,7 +608,7 @@ void test_on_write_with_max_length_value() {
 
 void test_loop_with_zero_milliseconds() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -619,7 +619,7 @@ void test_loop_with_zero_milliseconds() {
 
 void test_loop_with_large_milliseconds() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -640,7 +640,7 @@ void test_ble_implements_agent_interface() {
 
 void test_setup_and_loop_sequence() {
     MOCK_CONTEXT
-    mockConf.ble_name = "TestDevice";
+    mockConf.saved_device_name = "TestDevice";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     
@@ -660,7 +660,7 @@ void test_setup_and_loop_sequence() {
 
 void test_ble_startup_lifecycle() {
     MOCK_CONTEXT
-    mockConf.ble_name = "MyDevice";
+    mockConf.saved_device_name = "MyDevice";
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     
@@ -706,7 +706,7 @@ void test_services_buffer_empty_after_construction() {
 
 void test_services_buffer_fills_with_gps_data() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.fix = 3;
     data.gps.latitude_signed = 48.8566;
     data.gps.longitude_signed = 2.3522;
@@ -727,7 +727,7 @@ void test_services_buffer_fills_with_gps_data() {
 
 void test_services_buffer_contains_gps_fix_value() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.fix = 3;  // 3D fix
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -745,7 +745,7 @@ void test_services_buffer_contains_gps_fix_value() {
 
 void test_services_buffer_contains_temperature() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     mockConf.temperature_source = METEO_BME;
     data.meteo_0.temperature = 22.5;
     
@@ -766,7 +766,7 @@ void test_services_buffer_contains_temperature() {
 
 void test_services_buffer_contains_humidity() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     mockConf.humidity_source = METEO_BME;
     data.meteo_0.humidity = 65.0;
     
@@ -787,7 +787,7 @@ void test_services_buffer_contains_humidity() {
 
 void test_services_buffer_contains_latitude() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.latitude_signed = 48.8566;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -807,7 +807,7 @@ void test_services_buffer_contains_latitude() {
 
 void test_services_buffer_contains_longitude() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.longitude_signed = 2.3522;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -827,7 +827,7 @@ void test_services_buffer_contains_longitude() {
 
 void test_services_buffer_contains_rpm() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.engine.rpm = 2500;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -846,7 +846,7 @@ void test_services_buffer_contains_rpm() {
 
 void test_services_buffer_contains_engine_time() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.engine.engine_time = 3600000ULL;  // 1 hour in milliseconds = 3600 seconds
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -865,7 +865,7 @@ void test_services_buffer_contains_engine_time() {
 
 void test_services_buffer_contains_voltage() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.battery_svc.voltage = 13.5;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -885,7 +885,7 @@ void test_services_buffer_contains_voltage() {
 
 void test_services_buffer_contains_current() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.battery_svc.current = 50.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -905,7 +905,7 @@ void test_services_buffer_contains_current() {
 
 void test_services_buffer_contains_soc() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.battery_svc.soc = 85.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -925,9 +925,9 @@ void test_services_buffer_contains_soc() {
 
 void test_services_buffer_total_length_is_56_bytes() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
-    mockConf.n2k_src = 22;
-    mockConf.rpm_adjustment = 1.0;
+    mockConf.saved_device_name = "Device";
+    mockConf.saved_n2k_src = 22;
+    mockConf.saved_rpm_adjustment = 1.0;
     mockConf.temperature_source = METEO_BME;
     mockConf.humidity_source = METEO_BME;
     mockConf.pressure_source = METEO_BME;
@@ -965,9 +965,9 @@ void test_services_buffer_total_length_is_56_bytes() {
 
 void test_data_characteristic_value() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
-    mockConf.n2k_src = 22;
-    mockConf.rpm_adjustment = 1.0;
+    mockConf.saved_device_name = "Device";
+    mockConf.saved_n2k_src = 22;
+    mockConf.saved_rpm_adjustment = 1.0;
     mockConf.temperature_source = METEO_BME;
     mockConf.humidity_source = METEO_BME;
     mockConf.pressure_source = METEO_BME;
@@ -1007,7 +1007,7 @@ void test_data_characteristic_value() {
 
 void test_services_buffer_resets_on_loop_call() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.fix = 3;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1031,7 +1031,7 @@ void test_services_buffer_resets_on_loop_call() {
 
 void test_services_buffer_nan_values_become_invalid_sentinel() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     // All values are NAN by default in data
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1065,7 +1065,7 @@ void test_services_buffer_copy_is_independent() {
 
 void test_services_buffer_contains_sog() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.sog = 7.5;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1085,7 +1085,7 @@ void test_services_buffer_contains_sog() {
 
 void test_services_buffer_contains_cog() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
+    mockConf.saved_device_name = "Device";
     data.gps.cog = 45.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1105,8 +1105,8 @@ void test_services_buffer_contains_cog() {
 
 void test_services_buffer_contains_n2k_source() {
     MOCK_CONTEXT
-    mockConf.ble_name = "Device";
-    mockConf.n2k_src = 22;
+    mockConf.saved_device_name = "Device";
+    mockConf.saved_n2k_src = 22;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);

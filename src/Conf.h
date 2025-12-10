@@ -95,7 +95,18 @@ public:
   virtual bool save_engine_hours(uint64_t h) = 0;
 };
 
-class ConfigurationRW: public Configuration, public EngineHours {
+class ConfigurationRWAbstract: public Configuration, public EngineHours
+{
+public:
+  virtual bool save_rpm_adjustment(double d) = 0;
+  virtual bool save_device_name(const char* name) = 0;
+  virtual bool save_n2k_source(unsigned char src) = 0;
+  virtual bool save_uart_speed(unsigned char speed) = 0;
+  virtual bool save_services(N2KServices& s) = 0;
+  virtual bool save_batter_capacity(uint16_t c) = 0;
+};
+
+class ConfigurationRW: public ConfigurationRWAbstract {
 
 public:
   ConfigurationRW();
@@ -140,37 +151,66 @@ private:
   bool save();
 };
 
-class MockConfiguration: public Configuration
+class MockConfiguration: public ConfigurationRWAbstract
 {
 public:
   int init() { return initialized; }
 
   int is_initialized() const { return initialized; }
 
+  virtual uint64_t get_engine_hours() const { return saved_engine_hours; }
+  virtual bool save_engine_hours(uint64_t h) { save_engine_hours_calls++; saved_engine_hours = h; return true; }
 
-  virtual double get_rpm_adjustment() const { return rpm_adjustment; }
-  virtual const char* get_device_name() const { return ble_name.c_str(); }
-  virtual unsigned char get_n2k_source() const { return n2k_src; }
+  virtual double get_rpm_adjustment() const { return saved_rpm_adjustment; }
+  virtual const char* get_device_name() const { return saved_device_name.c_str(); }
+  virtual unsigned char get_n2k_source() const { return saved_n2k_src; }
   virtual unsigned char get_uart_speed() const { return 2; }
-  virtual const N2KServices& get_services() const { return services; }
-  virtual uint16_t get_batter_capacity() const { return battery_capacity; }
+  virtual const N2KServices& get_services() const { return saved_services; }
+  virtual uint16_t get_batter_capacity() const { return saved_battery_capacity; }
   virtual MeteoSource get_pressure_source() const { return pressure_source; }
   virtual MeteoSource get_temperature_source() const { return temperature_source; }
   virtual MeteoSource get_temperature_el_source() const { return temperature_el_source; }
   virtual MeteoSource get_humidity_source() const { return humidity_source; }
 
+  virtual bool save_rpm_adjustment(double d) { save_rpm_adjustment_calls++; saved_rpm_adjustment = d; return true; }
+  virtual bool save_device_name(const char* name) { save_device_name_calls++; saved_device_name = name; return true; }
+  virtual bool save_n2k_source(unsigned char src) { save_n2k_source_calls++; saved_n2k_src = src; return true; }
+  virtual bool save_uart_speed(unsigned char speed) { save_uart_speed_calls++; return true; }
+  virtual bool save_services(N2KServices& s) { save_services_calls++; saved_services = s; return true; }
+  virtual bool save_batter_capacity(uint16_t c) { save_battery_capacity_calls++; saved_battery_capacity = c; return true; }  
+
   bool initialized = true;
 
-  double rpm_adjustment = 1.0;
-  std::string ble_name = "TEST";
-  uint8_t n2k_src = 11;
-  N2KServices services;
-  uint16_t battery_capacity = 280;
+  double saved_rpm_adjustment = 1.0;
+  std::string saved_device_name = "TEST";
+  uint8_t saved_n2k_src = 11;
+  N2KServices saved_services;
+  uint16_t saved_battery_capacity = 280;
+  uint64_t saved_engine_hours = 0;
 
   MeteoSource pressure_source = MeteoSource::METEO_BME;
   MeteoSource temperature_source = MeteoSource::METEO_BME;
   MeteoSource humidity_source = MeteoSource::METEO_BME;
-  MeteoSource temperature_el_source = MeteoSource::METEO_NONE;
+  MeteoSource temperature_el_source = MeteoSource::METEO_DHT;
+
+  int save_rpm_adjustment_calls = 0;
+  int save_device_name_calls = 0;
+  int save_services_calls = 0;
+  int save_engine_hours_calls = 0;
+  int save_n2k_source_calls = 0;
+  int save_uart_speed_calls = 0;
+  int save_battery_capacity_calls = 0;
+
+  void reset_call_counts()
+  {
+    save_rpm_adjustment_calls = 0;
+    save_device_name_calls = 0;
+    save_services_calls = 0;
+    save_engine_hours_calls = 0;
+    save_n2k_source_calls = 0;
+    save_uart_speed_calls = 0;
+    save_battery_capacity_calls = 0;
+  }
 };
 
 #endif

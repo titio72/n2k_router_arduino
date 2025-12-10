@@ -3,7 +3,9 @@
 #include "Conf.h"
 #include "Data.h"
 
+#ifndef PERIOD_MICROS_ENV
 #define PERIOD_MICROS_ENV 2000000
+#endif
 
 EnvMessenger::EnvMessenger(): enabled(false), t0(0)
 {}
@@ -39,7 +41,5 @@ void EnvMessenger::loop(unsigned long ms, Context &ctx)
     if (!isnan(t_el)) ctx.n2k.sendElectronicTemperature(t_el);
 
     if (!(isnan(p) && isnan(t) && isnan(h))) ctx.n2k.sendEnvironmentXRaymarine(to_n2k(p), to_n2k(h), to_n2k(t));
-
-    t0 = ms;
   }
 }
