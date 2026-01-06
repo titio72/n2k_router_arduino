@@ -6,7 +6,12 @@
 #include <stdint.h>
 
 #define MAX_USED_SATS_SIZE 24
-#define MAX_SATS_SIZE 255
+#define MAX_SATS_SIZE 256
+
+const uint8_t STW_ERROR_OK = 0;
+const uint8_t STW_ERROR_NO_SIGNAL = 1;
+const uint8_t TEMP_ERROR_OK = 0;
+const uint8_t TEMP_ERROR_NO_SIGNAL = 1;
 
 class Configuration;
 
@@ -17,6 +22,15 @@ struct sat
   int az;
   int db;
   int used;
+};
+
+struct WaterData
+{
+  double speed = NAN;
+  double frequency = NAN;
+  double temperature = NAN;
+  uint8_t speed_error = STW_ERROR_NO_SIGNAL;
+  uint8_t temperature_error = TEMP_ERROR_NO_SIGNAL;
 };
 
 struct MeteoData
@@ -37,7 +51,9 @@ struct BatteryData
 
 struct EngineData
 {
+  /** Revolutions per minute */
   uint16_t rpm = 0;
+  /** Engine time in milliseconds */
   uint64_t engine_time = 0;
 };
 
@@ -56,13 +72,13 @@ public:
   double vdop = NAN;             // Vertical Dilution of Precision
   double tdop = NAN;             // Time Dilution of Precision
 
+  uint32_t gps_unix_time = 0;    // in seconds since epoch
+  uint16_t gps_unix_time_ms = 0; // the milliseconds part of the time (0-999)
+
   short nSat = 0;
   short nUsedSats = 0;
   sat satellites[MAX_SATS_SIZE];
   short sats[MAX_USED_SATS_SIZE];
-
-  uint32_t gps_unix_time = 0;    // in seconds since epoch
-  uint16_t gps_unix_time_ms = 0; // the milliseconds part of the time (0-999)
 
   char get_longitude_cardinal() const
   {
@@ -92,6 +108,8 @@ public:
   MeteoData meteo_1;
 
   EngineData engine;
+
+  WaterData water_data;
 
   double get_pressure(Configuration &conf);
   double get_humidity(Configuration &conf);

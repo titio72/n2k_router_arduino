@@ -8,6 +8,37 @@
 #include "BLEConf.h"
 #include <map>
 
+class MockConfX: public MockConfiguration
+{
+public:
+    MockConfX()
+        : MockConfiguration()
+    {
+    }
+
+    MeteoSource pressure_source = METEO_BME;
+    MeteoSource temperature_source = METEO_BME;
+    MeteoSource temperature_el_source = METEO_BME;
+    MeteoSource humidity_source = METEO_BME;
+
+    virtual MeteoSource get_pressure_source() const override
+    {
+        return pressure_source;
+    }
+    virtual MeteoSource get_temperature_source() const override
+    {
+        return temperature_source;
+    }
+    virtual MeteoSource get_temperature_el_source() const override
+    {
+        return temperature_el_source;
+    }
+    virtual MeteoSource get_humidity_source() const override
+    {
+        return humidity_source;
+    }
+};
+
 class MockInternalBLEStateImpl: public InternalBLEState
 {
 public:
@@ -115,6 +146,15 @@ public:
 
     void end()
     {}
+
+    // Simulate a write from a BLE client (i.e. the app sending a command)
+    void onWrite(int handle, const char* value)
+    {
+        if (clientWriteCallback)
+        {
+            clientWriteCallback->on_write(handle, value);
+        }
+    }
 };
 
 MockInternalBLEStateImpl *mockBLEInternalImpl = nullptr;
@@ -146,6 +186,14 @@ void mock_command_callback(char command, const char* command_value) {
     callback_tracker.call_count++;
 }
 
+// ==================== Test Setup Macro ====================
+
+#define MOCK_CONTEXT_X \
+    MockConfX mockConf; \
+    Data data; \
+    NullN2KSender n2kSender; \
+    Context context(n2kSender, mockConf, data);
+
 // ==================== Test Fixtures ====================
 void setUp() {
     if (mockBLEInternalImpl) delete mockBLEInternalImpl;
@@ -170,8 +218,8 @@ void test_constructor_with_null_callback() {
 }
 
 void test_setup_initializes_device_name() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "TestDevice";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("TestDevice");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -180,8 +228,8 @@ void test_setup_initializes_device_name() {
 }
 
 void test_setup_copies_device_name_truncated_to_buffer_size() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "VeryLongDeviceNameThatExceeds16Chars";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("VeryLongDeviceNameThatExceeds16Chars");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -191,8 +239,8 @@ void test_setup_copies_device_name_truncated_to_buffer_size() {
 }
 
 void test_setup_with_empty_device_name() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -208,7 +256,7 @@ void test_enable_without_setup() {
 }
 
 void test_enable_sets_enabled_flag() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     ble.enable();
@@ -216,7 +264,7 @@ void test_enable_sets_enabled_flag() {
 }
 
 void test_disable_clears_enabled_flag() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     ble.enable();
@@ -227,7 +275,7 @@ void test_disable_clears_enabled_flag() {
 }
 
 void test_is_enabled_returns_state() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
@@ -237,7 +285,7 @@ void test_is_enabled_returns_state() {
 }
 
 void test_multiple_enable_calls() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
@@ -248,7 +296,7 @@ void test_multiple_enable_calls() {
 }
 
 void test_multiple_disable_calls() {
-    MOCK_CONTEXT    
+    MOCK_CONTEXT_X    
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     ble.enable();
@@ -260,7 +308,7 @@ void test_multiple_disable_calls() {
 }
 
 void test_enable_disable_toggle() {
-    MOCK_CONTEXT    
+    MOCK_CONTEXT_X    
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
 
@@ -274,11 +322,11 @@ void test_enable_disable_toggle() {
 
 // ==================== Tests: on_write Handle 0 (Settings) ====================
 void test_on_write_handle_0_triggers_callback_with_S_command() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
-    ble.on_write(0, "test_value");
+    mockBLEInternalImpl->onWrite(0, "test_value");
     
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     TEST_ASSERT_EQUAL_CHAR('S', callback_tracker.last_command);
@@ -286,23 +334,23 @@ void test_on_write_handle_0_triggers_callback_with_S_command() {
 }
 
 void test_on_write_handle_0_with_empty_value() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
-    ble.on_write(0, "");
+    mockBLEInternalImpl->onWrite(0, "");
     
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     TEST_ASSERT_EQUAL_CHAR('S', callback_tracker.last_command);
 }
 
 void test_on_write_handle_0_with_long_value() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
     const char* long_value = "this_is_a_very_long_configuration_string_with_multiple_parameters";
-    ble.on_write(0, long_value);
+    mockBLEInternalImpl->onWrite(0, long_value);
     
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     TEST_ASSERT_EQUAL_CHAR('S', callback_tracker.last_command);
@@ -310,26 +358,26 @@ void test_on_write_handle_0_with_long_value() {
 }
 
 void test_on_write_handle_0_multiple_calls() {
-    MOCK_CONTEXT    
+    MOCK_CONTEXT_X    
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
-    ble.on_write(0, "config1");
+    mockBLEInternalImpl->onWrite(0, "config1");
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     
-    ble.on_write(0, "config2");
+    mockBLEInternalImpl->onWrite(0, "config2");
     TEST_ASSERT_EQUAL_INT(2, callback_tracker.call_count);
     TEST_ASSERT_EQUAL_STRING("config2", callback_tracker.last_command_value);
 }
 
 // ==================== Tests: on_write Handle 1 (Commands) ====================
 void test_on_write_handle_1_parses_command_and_value() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
     const char* cmd_data = "Xtest_data";
-    ble.on_write(1, cmd_data);
+    mockBLEInternalImpl->onWrite(1, cmd_data);
     
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     TEST_ASSERT_EQUAL_CHAR('X', callback_tracker.last_command);
@@ -337,47 +385,47 @@ void test_on_write_handle_1_parses_command_and_value() {
 }
 
 void test_on_write_handle_1_single_char_command() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
     const char* cmd_data = "Avalue";
-    ble.on_write(1, cmd_data);
+    mockBLEInternalImpl->onWrite(1, cmd_data);
     
     TEST_ASSERT_EQUAL_CHAR('A', callback_tracker.last_command);
     TEST_ASSERT_EQUAL_STRING("value", callback_tracker.last_command_value);
 }
 
 void test_on_write_handle_1_with_empty_value() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
     const char* cmd_data = "Z";
-    ble.on_write(1, cmd_data);
+    mockBLEInternalImpl->onWrite(1, cmd_data);
     
     TEST_ASSERT_EQUAL_CHAR('Z', callback_tracker.last_command);
 }
 
 void test_on_write_handle_1_multiple_commands() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
-    ble.on_write(1, "Afirst");
+    mockBLEInternalImpl->onWrite(1, "Afirst");
     TEST_ASSERT_EQUAL_CHAR('A', callback_tracker.last_command);
     
-    ble.on_write(1, "Bsecond");
+    mockBLEInternalImpl->onWrite(1, "Bsecond");
     TEST_ASSERT_EQUAL_CHAR('B', callback_tracker.last_command);
     
-    ble.on_write(1, "Cthird");
+    mockBLEInternalImpl->onWrite(1, "Cthird");
     TEST_ASSERT_EQUAL_CHAR('C', callback_tracker.last_command);
     
     TEST_ASSERT_EQUAL_INT(3, callback_tracker.call_count);
 }
 
 void test_on_write_handle_1_various_command_chars() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
@@ -386,7 +434,7 @@ void test_on_write_handle_1_various_command_chars() {
         char cmd_data[3] = {commands[i], 'x', 0};
         callback_tracker.reset();
         
-        ble.on_write(1, cmd_data);
+        mockBLEInternalImpl->onWrite(1, cmd_data);
         TEST_ASSERT_EQUAL_CHAR(commands[i], callback_tracker.last_command);
         TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     }
@@ -394,29 +442,29 @@ void test_on_write_handle_1_various_command_chars() {
 
 // ==================== Tests: on_write without Callback ====================
 void test_on_write_handle_0_without_callback() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(nullptr, mockBLEInternalImpl);  // No callback
     ble.setup(context);
     
     // Should not crash
-    ble.on_write(0, "test_value");
+    mockBLEInternalImpl->onWrite(0, "test_value");
     TEST_ASSERT_EQUAL_INT(0, callback_tracker.call_count);
 }
 
 void test_on_write_handle_1_without_callback() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(nullptr, mockBLEInternalImpl);  // No callback
     ble.setup(context);
     
     // Should not crash
-    ble.on_write(1, "Xtest");
+    mockBLEInternalImpl->onWrite(1, "Xtest");
     TEST_ASSERT_EQUAL_INT(0, callback_tracker.call_count);
 }
 
 // ==================== Tests: Loop - Periodic Updates ====================
 void test_loop_not_called_when_disabled() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -426,8 +474,8 @@ void test_loop_not_called_when_disabled() {
 }
 
 void test_loop_initially_sends_at_first_update() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -437,10 +485,10 @@ void test_loop_initially_sends_at_first_update() {
 }
 
 void test_loop_respects_update_period() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
-    mockConf.saved_n2k_src = 22;
-    mockConf.saved_rpm_adjustment = 1.0;
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    mockConf.save_n2k_source(22);
+    mockConf.save_rpm_adjustment(1.0);
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -452,8 +500,8 @@ void test_loop_respects_update_period() {
 }
 
 void test_loop_with_nan_values() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -463,8 +511,8 @@ void test_loop_with_nan_values() {
 }
 
 void test_loop_with_valid_temperature_data() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     mockConf.temperature_source = METEO_BME;
     data.meteo_0.temperature = 22.5;
     
@@ -476,8 +524,8 @@ void test_loop_with_valid_temperature_data() {
 }
 
 void test_loop_with_valid_gps_data() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.fix = 3;
     data.gps.latitude_signed = 48.8566;
     data.gps.longitude_signed = 2.3522;
@@ -492,8 +540,8 @@ void test_loop_with_valid_gps_data() {
 }
 
 void test_loop_with_battery_data() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.battery_svc.voltage = 13.5;
     data.battery_svc.current = 50.0;
     data.battery_svc.soc = 85.0;
@@ -506,8 +554,8 @@ void test_loop_with_battery_data() {
 }
 
 void test_loop_with_engine_data() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.engine.rpm = 2500;
     data.engine.engine_time = 3600000000ULL;
     
@@ -519,10 +567,10 @@ void test_loop_with_engine_data() {
 }
 
 void test_loop_with_complete_data() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
-    mockConf.saved_n2k_src = 22;
-    mockConf.saved_rpm_adjustment = 1.0;
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    mockConf.save_n2k_source(22);
+    mockConf.save_rpm_adjustment(1.0);
     mockConf.temperature_source = METEO_BME;
     mockConf.humidity_source = METEO_BME;
     mockConf.pressure_source = METEO_BME;
@@ -553,39 +601,39 @@ void test_loop_with_complete_data() {
 }
 
 void test_loop_updates_device_name_if_changed() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "InitialName";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("InitialName");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     TEST_ASSERT_EQUAL_STRING("InitialName", ble.get_device_name());
     
-    mockConf.saved_device_name = "UpdatedName";
+    mockConf.save_device_name("UpdatedName");
     ble.enable();
     ble.loop(0, context);
 }
 
 void test_multiple_setup_calls() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device1";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device1");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     TEST_ASSERT_EQUAL_STRING("Device1", ble.get_device_name());
     
-    mockConf.saved_device_name = "Device2";
+    mockConf.save_device_name("Device2");
     ble.setup(context);
     // must not change - once setup, name is fixed. Setup does nothing on subsequent calls.
     TEST_ASSERT_EQUAL_STRING("Device1", ble.get_device_name());
 }
 
 void test_on_write_with_special_characters() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
     const char* special = "!@#$%^&*()_+-=[]{}|;:',.<>?/";
-    ble.on_write(0, special);
+    mockBLEInternalImpl->onWrite(0, special);
     
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
     TEST_ASSERT_EQUAL_CHAR('S', callback_tracker.last_command);
@@ -593,7 +641,7 @@ void test_on_write_with_special_characters() {
 }
 
 void test_on_write_with_max_length_value() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
@@ -601,14 +649,14 @@ void test_on_write_with_max_length_value() {
     memset(max_value, 'A', sizeof(max_value) - 1);
     max_value[sizeof(max_value) - 1] = 0;
     
-    ble.on_write(0, max_value);
+    mockBLEInternalImpl->onWrite(0, max_value);
     
     TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
 }
 
 void test_loop_with_zero_milliseconds() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -618,8 +666,8 @@ void test_loop_with_zero_milliseconds() {
 }
 
 void test_loop_with_large_milliseconds() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -639,8 +687,8 @@ void test_ble_implements_agent_interface() {
 }
 
 void test_setup_and_loop_sequence() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "TestDevice";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("TestDevice");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     
@@ -659,8 +707,8 @@ void test_setup_and_loop_sequence() {
 }
 
 void test_ble_startup_lifecycle() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "MyDevice";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("MyDevice");
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     
@@ -674,16 +722,16 @@ void test_ble_startup_lifecycle() {
 }
 
 void test_ble_callback_integration() {
-    MOCK_CONTEXT
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
-    ble.on_write(0, "gps:enabled,bme:disabled");
+    mockBLEInternalImpl->onWrite(0, "gps:enabled,bme:disabled");
     TEST_ASSERT_EQUAL_CHAR('S', callback_tracker.last_command);
     TEST_ASSERT_EQUAL_STRING("gps:enabled,bme:disabled", callback_tracker.last_command_value);
     
     callback_tracker.reset();
-    ble.on_write(1, "R000");
+    mockBLEInternalImpl->onWrite(1, "R000");
     TEST_ASSERT_EQUAL_CHAR('R', callback_tracker.last_command);
     TEST_ASSERT_EQUAL_STRING("000", callback_tracker.last_command_value);
 }
@@ -705,8 +753,8 @@ void test_services_buffer_empty_after_construction() {
 }
 
 void test_services_buffer_fills_with_gps_data() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.fix = 3;
     data.gps.latitude_signed = 48.8566;
     data.gps.longitude_signed = 2.3522;
@@ -726,8 +774,8 @@ void test_services_buffer_fills_with_gps_data() {
 }
 
 void test_services_buffer_contains_gps_fix_value() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.fix = 3;  // 3D fix
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -739,13 +787,13 @@ void test_services_buffer_contains_gps_fix_value() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // First byte should be GPS fix (int8_t)
-    TEST_ASSERT_EQUAL_INT(3, (int8_t)buf_data[0]);
+    // GPS fix is at BUFFER_OFFSET_GPS_FIX
+    TEST_ASSERT_EQUAL_INT(3, (int8_t)buf_data[BUFFER_OFFSET_GPS_FIX]);
 }
 
 void test_services_buffer_contains_temperature() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     mockConf.temperature_source = METEO_BME;
     data.meteo_0.temperature = 22.5;
     
@@ -758,15 +806,15 @@ void test_services_buffer_contains_temperature() {
     ByteBuffer &buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Temperature is at offset 5 (after fix(1) + atmo(4))
+    // Temperature is at BUFFER_OFFSET_TEMP
     // Stored as int16_t with factor 10.0, so 22.5 * 10 = 225
-    int16_t temp_val = *((int16_t*)(buf_data + 5));
+    int16_t temp_val = *((int16_t*)(buf_data + BUFFER_OFFSET_TEMP));
     TEST_ASSERT_EQUAL_INT(225, temp_val);
 }
 
 void test_services_buffer_contains_humidity() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     mockConf.humidity_source = METEO_BME;
     data.meteo_0.humidity = 65.0;
     
@@ -779,15 +827,15 @@ void test_services_buffer_contains_humidity() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Humidity is at offset 7 (after fix(1) + atmo(4) + temp(2))
+    // Humidity is at BUFFER_OFFSET_HUM
     // Stored with factor 100.0, so 65.0 * 100 = 6500
-    int16_t hum_val = *((int16_t*)(buf_data + 7));
+    int16_t hum_val = *((int16_t*)(buf_data + BUFFER_OFFSET_HUM));
     TEST_ASSERT_EQUAL_INT(6500, hum_val);
 }
 
 void test_services_buffer_contains_latitude() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.latitude_signed = 48.8566;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -799,15 +847,15 @@ void test_services_buffer_contains_latitude() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Latitude is at offset 9 (after fix(1) + atmo(4) + temp(2) + hum(2))
+    // Latitude is at BUFFER_OFFSET_LAT
     // Stored as int32_t with factor 1000000.0
-    int32_t lat_val = *((int32_t*)(buf_data + 9));
+    int32_t lat_val = *((int32_t*)(buf_data + BUFFER_OFFSET_LAT));
     TEST_ASSERT_EQUAL_INT(48856600, lat_val);
 }
 
 void test_services_buffer_contains_longitude() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.longitude_signed = 2.3522;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -819,15 +867,15 @@ void test_services_buffer_contains_longitude() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Longitude is at offset 13 (after fix(1) + atmo(4) + temp(2) + hum(2) + lat(4))
+    // Longitude is at BUFFER_OFFSET_LON
     // Stored as int32_t with factor 1000000.0
-    int32_t lon_val = *((int32_t*)(buf_data + 13));
+    int32_t lon_val = *((int32_t*)(buf_data + BUFFER_OFFSET_LON));
     TEST_ASSERT_EQUAL_INT(2352200, lon_val);
 }
 
 void test_services_buffer_contains_rpm() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.engine.rpm = 2500;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -839,14 +887,14 @@ void test_services_buffer_contains_rpm() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // RPM is at offset 34-35
-    uint16_t rpm_val = *((uint16_t*)(buf_data + 34));
+    // RPM is at BUFFER_OFFSET_RPM
+    uint16_t rpm_val = *((uint16_t*)(buf_data + BUFFER_OFFSET_RPM));
     TEST_ASSERT_EQUAL_INT(2500, rpm_val);
 }
 
 void test_services_buffer_contains_engine_time() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.engine.engine_time = 3600000ULL;  // 1 hour in milliseconds = 3600 seconds
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -858,14 +906,14 @@ void test_services_buffer_contains_engine_time() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Engine time is at offset 36 (sent as seconds)
-    uint32_t engine_time_val = *((uint32_t*)(buf_data + 36));
+    // Engine time is at BUFFER_OFFSET_ENGINE_TIME (sent as seconds)
+    uint32_t engine_time_val = *((uint32_t*)(buf_data + BUFFER_OFFSET_ENGINE_TIME));
     TEST_ASSERT_EQUAL_INT(3600, engine_time_val);
 }
 
 void test_services_buffer_contains_voltage() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.battery_svc.voltage = 13.5;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -877,15 +925,15 @@ void test_services_buffer_contains_voltage() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Voltage is at offset 51 (after all previous fields)
+    // Voltage is at BUFFER_OFFSET_VOLTAGE
     // Stored with factor 100.0, so 13.5 * 100 = 1350
-    int16_t voltage_val = *((int16_t*)(buf_data + 51));
+    int16_t voltage_val = *((int16_t*)(buf_data + BUFFER_OFFSET_VOLTAGE));
     TEST_ASSERT_EQUAL_INT(1350, voltage_val);
 }
 
 void test_services_buffer_contains_current() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.battery_svc.current = 50.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -897,15 +945,15 @@ void test_services_buffer_contains_current() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Current is at offset 49
+    // Current is at BUFFER_OFFSET_CURRENT
     // Stored with factor 100.0, so 50.0 * 100 = 5000
-    int16_t current_val = *((int16_t*)(buf_data + 49));
+    int16_t current_val = *((int16_t*)(buf_data + BUFFER_OFFSET_CURRENT));
     TEST_ASSERT_EQUAL_INT(5000, current_val);
 }
 
 void test_services_buffer_contains_soc() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.battery_svc.soc = 85.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -917,17 +965,17 @@ void test_services_buffer_contains_soc() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // SOC is at offset 53
+    // SOC is at BUFFER_OFFSET_SOC
     // Stored with factor 100.0, so 85.0 * 100 = 8500
-    int16_t soc_val = *((int16_t*)(buf_data + 53));
+    int16_t soc_val = *((int16_t*)(buf_data + BUFFER_OFFSET_SOC));
     TEST_ASSERT_EQUAL_INT(8500, soc_val);
 }
 
-void test_services_buffer_total_length_is_56_bytes() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
-    mockConf.saved_n2k_src = 22;
-    mockConf.saved_rpm_adjustment = 1.0;
+void test_services_buffer_total_length_is_58_bytes() {
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    mockConf.save_n2k_source(22);
+    mockConf.save_rpm_adjustment(1.0);
     mockConf.temperature_source = METEO_BME;
     mockConf.humidity_source = METEO_BME;
     mockConf.pressure_source = METEO_BME;
@@ -957,17 +1005,17 @@ void test_services_buffer_total_length_is_56_bytes() {
     ble.loop(10000000, context);
     
     ByteBuffer buf = ble.get_services_buffer();
-    // Total should be 56 bytes: fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) + 
+    // Total should be 58 bytes: version(1) + fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) + 
     // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) + 
-    // engine_time(4) + timestamp(4) + services(1) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1)
-    TEST_ASSERT_EQUAL_INT(56, buf.length());
+    // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1)
+    TEST_ASSERT_EQUAL_INT(58, buf.length());
 }
 
 void test_data_characteristic_value() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
-    mockConf.saved_n2k_src = 22;
-    mockConf.saved_rpm_adjustment = 1.0;
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    mockConf.save_n2k_source(22);
+    mockConf.save_rpm_adjustment(1.0);
     mockConf.temperature_source = METEO_BME;
     mockConf.humidity_source = METEO_BME;
     mockConf.pressure_source = METEO_BME;
@@ -998,16 +1046,16 @@ void test_data_characteristic_value() {
     
     ByteBuffer buf = ble.get_services_buffer();
     ByteBuffer char_value = ble.get_field_value_buffer(0);
-    // Total should be 56 bytes: fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) + 
+    // Total should be 58 bytes: version(1) + fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) + 
     // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) + 
-    // engine_time(4) + timestamp(4) + services(1) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1)
-    TEST_ASSERT_EQUAL_INT(56, char_value.length());
+    // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1)
+    TEST_ASSERT_EQUAL_INT(58, char_value.length());
     TEST_ASSERT_TRUE(buf==char_value);
 }
 
 void test_services_buffer_resets_on_loop_call() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.fix = 3;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1030,8 +1078,8 @@ void test_services_buffer_resets_on_loop_call() {
 }
 
 void test_services_buffer_nan_values_become_invalid_sentinel() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     // All values are NAN by default in data
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1043,12 +1091,12 @@ void test_services_buffer_nan_values_become_invalid_sentinel() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // Temperature (offset 5) should be INVALID_16 (0xFF7F) when NAN
-    int16_t temp_val = *((int16_t*)(buf_data + 5));
+    // Temperature (BUFFER_OFFSET_TEMP) should be INVALID_16 (0xFF7F) when NAN
+    int16_t temp_val = *((int16_t*)(buf_data + BUFFER_OFFSET_TEMP));
     TEST_ASSERT_EQUAL_INT(INVALID_16, temp_val);
     
-    // Humidity (offset 7) should be INVALID_16
-    int16_t hum_val = *((int16_t*)(buf_data + 7));
+    // Humidity (BUFFER_OFFSET_HUM) should be INVALID_16
+    int16_t hum_val = *((int16_t*)(buf_data + BUFFER_OFFSET_HUM));
     TEST_ASSERT_EQUAL_INT(INVALID_16, hum_val);
 }
 
@@ -1064,8 +1112,8 @@ void test_services_buffer_copy_is_independent() {
 }
 
 void test_services_buffer_contains_sog() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.sog = 7.5;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1077,15 +1125,15 @@ void test_services_buffer_contains_sog() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // SOG is at offset 30
+    // SOG is at BUFFER_OFFSET_SOG
     // Stored with factor 100.0, so 7.5 * 100 = 750
-    int16_t sog_val = *((int16_t*)(buf_data + 30));
+    int16_t sog_val = *((int16_t*)(buf_data + BUFFER_OFFSET_SOG));
     TEST_ASSERT_EQUAL_INT(750, sog_val);
 }
 
 void test_services_buffer_contains_cog() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
     data.gps.cog = 45.0;
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
@@ -1097,16 +1145,16 @@ void test_services_buffer_contains_cog() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // COG is at offset 32
+    // COG is at BUFFER_OFFSET_COG
     // Stored with factor 10.0, so 45.0 * 10 = 450
-    int16_t cog_val = *((int16_t*)(buf_data + 32));
+    int16_t cog_val = *((int16_t*)(buf_data + BUFFER_OFFSET_COG));
     TEST_ASSERT_EQUAL_INT(450, cog_val);
 }
 
 void test_services_buffer_contains_n2k_source() {
-    MOCK_CONTEXT
-    mockConf.saved_device_name = "Device";
-    mockConf.saved_n2k_src = 22;
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    mockConf.save_n2k_source(22);
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
@@ -1117,8 +1165,8 @@ void test_services_buffer_contains_n2k_source() {
     ByteBuffer buf = ble.get_services_buffer();
     uint8_t* buf_data = buf.data();
     
-    // N2K source is at offset 55 (last byte)
-    TEST_ASSERT_EQUAL_INT(22, buf_data[55]);
+    // N2K source is at BUFFER_OFFSET_N2K_SOURCE
+    TEST_ASSERT_EQUAL_INT(22, buf_data[BUFFER_OFFSET_N2K_SOURCE]);
 }
 
 int main(int argc, char** argv) {
@@ -1186,7 +1234,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_services_buffer_contains_voltage);
     RUN_TEST(test_services_buffer_contains_current);
     RUN_TEST(test_services_buffer_contains_soc);
-    RUN_TEST(test_services_buffer_total_length_is_56_bytes);
+    RUN_TEST(test_services_buffer_total_length_is_58_bytes);
     RUN_TEST(test_services_buffer_resets_on_loop_call);
     RUN_TEST(test_services_buffer_nan_values_become_invalid_sentinel);
     RUN_TEST(test_services_buffer_copy_is_independent);

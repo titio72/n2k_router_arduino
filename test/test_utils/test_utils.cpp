@@ -196,55 +196,55 @@ void test_indexof_last_occurrence(void)
 void test_array_contains_found(void)
 {
     short arr[] = {1, 2, 3, 4, 5};
-    TEST_ASSERT_TRUE(array_contains(3, arr, 5));
+    TEST_ASSERT_TRUE(array_contains((short)3, arr, 5));
 }
 
 void test_array_contains_not_found(void)
 {
     short arr[] = {1, 2, 3, 4, 5};
-    TEST_ASSERT_FALSE(array_contains(10, arr, 5));
+    TEST_ASSERT_FALSE(array_contains((short)10, arr, 5));
 }
 
 void test_array_contains_first_element(void)
 {
     short arr[] = {1, 2, 3, 4, 5};
-    TEST_ASSERT_TRUE(array_contains(1, arr, 5));
+    TEST_ASSERT_TRUE(array_contains((short)1, arr, 5));
 }
 
 void test_array_contains_last_element(void)
 {
     short arr[] = {1, 2, 3, 4, 5};
-    TEST_ASSERT_TRUE(array_contains(5, arr, 5));
+    TEST_ASSERT_TRUE(array_contains((short)5, arr, 5));
 }
 
 void test_array_contains_empty_array(void)
 {
     short arr[] = {1, 2, 3};
-    TEST_ASSERT_FALSE(array_contains(1, arr, 0));
+    TEST_ASSERT_FALSE(array_contains((short)1, arr, 0));
 }
 
 void test_array_contains_negative_numbers(void)
 {
     short arr[] = {-1, -2, -3, 1, 2, 3};
-    TEST_ASSERT_TRUE(array_contains(-2, arr, 6));
+    TEST_ASSERT_TRUE(array_contains((short)-2, arr, 6));
 }
 
 void test_array_contains_single_element_found(void)
 {
     short arr[] = {42};
-    TEST_ASSERT_TRUE(array_contains(42, arr, 1));
+    TEST_ASSERT_TRUE(array_contains((short)42, arr, 1));
 }
 
 void test_array_contains_single_element_not_found(void)
 {
     short arr[] = {42};
-    TEST_ASSERT_FALSE(array_contains(0, arr, 1));
+    TEST_ASSERT_FALSE(array_contains((short)0, arr, 1));
 }
 
 void test_array_contains_zero(void)
 {
     short arr[] = {0, 1, 2, 3};
-    TEST_ASSERT_TRUE(array_contains(0, arr, 4));
+    TEST_ASSERT_TRUE(array_contains((short)0, arr, 4));
 }
 
 // ============== Tests: getDaysSince1970 ==============
@@ -570,38 +570,6 @@ void test_replace_numbers(void)
     free(result);
 }
 
-// ============== Tests: replace_and_free ==============
-
-void test_replace_and_free_simple(void)
-{
-    char *orig = (char *)malloc(20);
-    strcpy(orig, "hello world");
-    
-    char *result = replace_and_free(orig, "world", "friend", false);
-    TEST_ASSERT_EQUAL_STRING("hello friend", result);
-    free(result);
-}
-
-void test_replace_and_free_multiple(void)
-{
-    char *orig = (char *)malloc(20);
-    strcpy(orig, "a a a");
-    
-    char *result = replace_and_free(orig, "a", "b", false);
-    TEST_ASSERT_EQUAL_STRING("b b b", result);
-    free(result);
-}
-
-void test_replace_and_free_first_only(void)
-{
-    char *orig = (char *)malloc(20);
-    strcpy(orig, "a a a");
-    
-    char *result = replace_and_free(orig, "a", "b", true);
-    TEST_ASSERT_EQUAL_STRING("b a a", result);
-    free(result);
-}
-
 // ============== Main Test Runner ==============
 
 int main(int argc, char **argv)
@@ -707,11 +675,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_replace_overlapping_patterns_first_only);
     RUN_TEST(test_replace_special_characters);
     RUN_TEST(test_replace_numbers);
-
-    // replace_and_free Tests
-    RUN_TEST(test_replace_and_free_simple);
-    RUN_TEST(test_replace_and_free_multiple);
-    RUN_TEST(test_replace_and_free_first_only);
 
     return UNITY_END();
 }

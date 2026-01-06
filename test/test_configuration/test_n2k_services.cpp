@@ -34,7 +34,7 @@ void test_n2k_services_constructor_default_values(void)
 void test_n2k_services_size_returns_correct_value(void)
 {
     N2KServices svc;
-    TEST_ASSERT_EQUAL_INT(7, svc.size()); // MAX_CONF = 7
+    TEST_ASSERT_EQUAL_INT(10, svc.size()); // MAX_CONF = 7
 }
 
 #pragma endregion
@@ -346,12 +346,15 @@ void test_n2k_services_to_string_all_enabled(void)
     svc.set_use_tacho(true);
     svc.set_sog_2_stw(true);
     svc.set_use_vedirect(true);
+    svc.set_keep_n2k_src(true);
+    svc.set_use_tmp(true);
+    svc.set_stw_paddle(true);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_STRING("1111111", buffer);
+    TEST_ASSERT_EQUAL_STRING("1111111111", buffer);
 }
 
 void test_n2k_services_to_string_all_disabled(void)
@@ -364,12 +367,15 @@ void test_n2k_services_to_string_all_disabled(void)
     svc.set_use_tacho(false);
     svc.set_sog_2_stw(false);
     svc.set_use_vedirect(false);
+    svc.set_keep_n2k_src(false);
+    svc.set_use_tmp(false);
+    svc.set_stw_paddle(false);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_STRING("0000000", buffer);
+    TEST_ASSERT_EQUAL_STRING("0000000000", buffer);
 }
 
 void test_n2k_services_to_string_mixed(void)
@@ -382,12 +388,19 @@ void test_n2k_services_to_string_mixed(void)
     svc.set_use_tacho(true);
     svc.set_sog_2_stw(false);
     svc.set_use_vedirect(true);
+    svc.set_keep_n2k_src(false);
+    svc.set_use_tmp(true);
+    svc.set_stw_paddle(false);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
 
+    N2KServices svc1;
+    svc1.from_string(buffer);
+
+    TEST_ASSERT_TRUE(svc1==svc);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_STRING("1100101", buffer);
+    TEST_ASSERT_EQUAL_STRING("1100101010", buffer);
 }
 
 void test_n2k_services_to_string_buffer_too_small(void)
@@ -411,7 +424,7 @@ void test_n2k_services_to_string_null_terminated(void)
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_CHAR('\0', buffer[7]); // Should be null terminated at position 7
+    TEST_ASSERT_EQUAL_CHAR('\0', buffer[10]); // Should be null terminated at position 7
 }
 
 void test_n2k_services_from_string_all_enabled(void)

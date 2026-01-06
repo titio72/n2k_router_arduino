@@ -72,11 +72,10 @@ void BMV712::on_line_read(const char *line)
 
 void BMV712::loop(unsigned long micros, Context &ctx)
 {
-  //Serial.printf("Loop %ul\n", micros);
   if (last_read_time == 0 || check_elapsed(micros, last_read_time, 10000000L))
   {
-    Log::tracex(VE_LOG_PREFIX, "Reset cache", "No activity detected for 10 seconds");
     // no activity for 10 seconds, reset values
+    Log::tracex(VE_LOG_PREFIX, "Reset cache", "No activity detected for 10 seconds");
     reset_cache(&data_eng);
     reset_cache(&data_svc);
     bmv_vedirect.reset();
@@ -85,10 +84,7 @@ void BMV712::loop(unsigned long micros, Context &ctx)
   
   if (enabled)
   {
-    //Serial.printf("Listen %ul\n", micros);
-  
-    p.listen(250); // read for a maximum of X milliseconds before returning to the main loop
-    
+    p.listen(250); // read for a maximum of X milliseconds before returning to the main loop  
     if (read)
     {
       last_read_time = micros;
@@ -98,7 +94,7 @@ void BMV712::loop(unsigned long micros, Context &ctx)
       if (!isnan(data_eng.voltage))
         ctx.n2k.sendBattery(sid, data_eng.voltage, N2kDoubleNA, N2kDoubleNA, INSTANCE_E);
       if (!isnan(data_svc.soc))
-        ctx.n2k.sendBatteryStatus(sid, data_eng.soc * 100.0, CAPACITY, data_eng.ttg, INSTANCE);
+        ctx.n2k.sendBatteryStatus(sid, data_svc.soc * 100.0, CAPACITY, data_svc.ttg, INSTANCE);
       ctx.data_cache.battery_svc = data_svc;
       ctx.data_cache.battery_eng = data_eng;
     }

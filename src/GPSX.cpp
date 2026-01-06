@@ -53,7 +53,7 @@ bool GPSX::loadSats()
         satellites[i].db = d->blocks[i].cno;
         satellites[i].used = d->blocks[i].flags.bits.svUsed;
 
-        if (satellites[i].used)
+        if (satellites[i].used && usedSats < MAX_USED_SATS_SIZE)
         {
             data.sats[usedSats] = satellites[i].sat_id;
             usedSats++;
@@ -65,15 +65,6 @@ bool GPSX::loadSats()
     data.nUsedSats = usedSats;
     data.nSat = d->header.numSvs;
     // Log::trace("[GPS] Loaded {%d/%d} sats\n", gsv.nSat, gsa.nSat);
-    return true;
-}
-
-bool GPSX::loadFix()
-{
-    data.hdop = myGNSS.getHorizontalDOP() / 100.0;
-    data.vdop = myGNSS.getVerticalDOP() / 100.0;
-    data.tdop = myGNSS.getTimeDOP() / 100.0;
-    data.pdop = myGNSS.getPDOP() / 100.0;
     return true;
 }
 
@@ -106,7 +97,6 @@ bool GPSX::loadPVT()
         data.vdop = myGNSS.getVerticalDOP() / 100.0;
         data.tdop = myGNSS.getTimeDOP() / 100.0;
         data.pdop = myGNSS.getPDOP() / 100.0;
-        data.gps_unix_time = myGNSS.getUnixEpoch();
         data.latitude_signed = myGNSS.getLatitude() / 10000000.0f;
         data.longitude_signed = myGNSS.getLongitude() / 10000000.0f;
         data.cog = myGNSS.getHeading() / 100000.0f;                         // headVeh is deg*1e-05
@@ -129,8 +119,8 @@ bool GPSX::loadPVT()
     return true;
 }
 
-GPSX::GPSX(HardwareSerial *serial, int rx, int tx) : enabled(false), last_read_time(0), delta_time(0),
-                                                     gps_time_set(false), count_sent(0), myGNSS(), cache_ok(false),
+GPSX::GPSX(HardwareSerial *serial, int rx, int tx) : enabled(false), last_read_time(0),
+                                                     count_sent(0), myGNSS(), cache_ok(false),
                                                      serial_port(serial), rx_pin(rx), tx_pin(tx)
 
 {
@@ -140,27 +130,13 @@ GPSX::~GPSX()
 {
 }
 
-bool GPSX::set_system_time(unsigned char sid, Context &ctx)
-{
-    if (data.gps_unix_time > 0)
-    {
-        if (!gps_time_set)
-        {
-            delta_time = data.gps_unix_time - time(0);
-            Log::tracex(GPS_LOG_TAG, "Set time", "UTC {%s}", time_to_ISO(data.gps_unix_time, data.gps_unix_time_ms));
-            gps_time_set = true;
-        }
-    }
-    return false;
-}
-
 void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
 {
     if (cache_ok && count_sent == 0)
     {
         static N2KSid _sid;
         unsigned char sid = _sid.getNew();
-        if (loadFix() && loadSats())
+        //if (/*loadFix() && */loadSats())
         {
             ctx.n2k.sendGNSSPosition(data, sid);
         }
@@ -175,7 +151,7 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
 #if (SEND_SATS == 1)
         ctx.n2k.sendSatellites(data, sid);
 #endif
-        set_system_time(sid, ctx);
+        //set_system_time(sid, ctx);
     }
 }
 
@@ -197,9 +173,9 @@ void GPSX::loop(unsigned long micros, Context &ctx)
         if (loadPVT())
         {
             data.serial++;
+            ctx.data_cache.gps = data;
             manageHighFrequency(micros, ctx);
             manageLowFrequency(micros, ctx);
-            ctx.data_cache.gps = data;
         }
     }
     else if (ctx.data_cache.gps.serial != data.serial)
@@ -210,6 +186,7 @@ void GPSX::loop(unsigned long micros, Context &ctx)
 
 void GPSX::setup(Context &ctx)
 {
+    Log::tracex(GPS_LOG_TAG, "Setup", "Initializing GPS module");
 }
 
 bool GPSX::is_enabled()

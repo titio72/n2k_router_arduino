@@ -497,6 +497,430 @@ void test_bytebuffer_zero_size() {
     TEST_ASSERT_EQUAL_INT(0, buf.length());
 }
 
+//--------------------------------------------------------------------------------------
+
+// ============== Constructor with auto_expand parameter ==============
+
+void test_bytebuffer_constructor_auto_expand_default_disabled(void)
+{
+    ByteBuffer buf(64);
+    // Default should be false (auto_expand disabled)
+    // Can't directly check auto_expand, so test behavior
+    buf << (uint8_t)1;
+    TEST_ASSERT_EQUAL_INT(1, buf.length());
+}
+
+void test_bytebuffer_constructor_auto_expand_explicitly_disabled(void)
+{
+    ByteBuffer buf(64, false);
+    buf << (uint8_t)1;
+    TEST_ASSERT_EQUAL_INT(1, buf.length());
+}
+
+void test_bytebuffer_constructor_auto_expand_enabled(void)
+{
+    ByteBuffer buf(64, true);
+    buf << (uint8_t)1;
+    TEST_ASSERT_EQUAL_INT(1, buf.length());
+}
+
+void test_bytebuffer_constructor_with_data_auto_expand_disabled(void)
+{
+    uint8_t data[] = {1, 2, 3, 4};
+    ByteBuffer buf(data, 4, false);
+    TEST_ASSERT_EQUAL_INT(4, buf.size());
+    TEST_ASSERT_EQUAL_INT(4, buf.length());
+}
+
+void test_bytebuffer_constructor_with_data_auto_expand_enabled(void)
+{
+    uint8_t data[] = {1, 2, 3, 4};
+    ByteBuffer buf(data, 4, true);
+    TEST_ASSERT_EQUAL_INT(4, buf.size());
+    TEST_ASSERT_EQUAL_INT(4, buf.length());
+}
+
+// ============== Copy Constructor preserves auto_expand ==============
+
+void test_bytebuffer_copy_constructor_preserves_auto_expand_disabled(void)
+{
+    ByteBuffer buf1(64, false);
+    buf1 << (uint8_t)42;
+    
+    ByteBuffer buf2(buf1);
+    // buf2 should have auto_expand = false (copied from buf1)
+    buf2 << (uint8_t)1;
+    TEST_ASSERT_EQUAL_INT(2, buf2.length());
+}
+
+void test_bytebuffer_copy_constructor_preserves_auto_expand_enabled(void)
+{
+    ByteBuffer buf1(64, true);
+    buf1 << (uint8_t)42;
+    
+    ByteBuffer buf2(buf1);
+    // buf2 should have auto_expand = true (copied from buf1)
+    buf2 << (uint8_t)1;
+    TEST_ASSERT_EQUAL_INT(2, buf2.length());
+}
+
+// ============== Assignment operator preserves auto_expand ==============
+
+void test_bytebuffer_assignment_operator_preserves_auto_expand(void)
+{
+    ByteBuffer buf1(64, true);
+    buf1 << (uint8_t)42;
+    
+    ByteBuffer buf2(32, false);
+    buf2 = buf1;
+    // buf2 should now have auto_expand = true
+    buf2 << (uint8_t)1;
+    TEST_ASSERT_EQUAL_INT(2, buf2.length());
+}
+
+// ============== Resize without auto_expand ==============
+
+void test_bytebuffer_resize_without_auto_expand_success_shrink(void)
+{
+    ByteBuffer buf(64, false);
+    bool result = buf.resize(32);
+    TEST_ASSERT_TRUE(result);
+}
+
+void test_bytebuffer_resize_without_auto_expand_failure_expand(void)
+{
+    ByteBuffer buf(64, false);
+    bool result = buf.resize(128);
+    // Should fail because auto_expand is false
+    TEST_ASSERT_FALSE(result);
+    // Size should remain unchanged
+    TEST_ASSERT_EQUAL_INT(64, buf.size());
+}
+
+void test_bytebuffer_resize_without_auto_expand_same_size(void)
+{
+    ByteBuffer buf(64, false);
+    bool result = buf.resize(64);
+    // Resizing to same size should succeed
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_EQUAL_INT(64, buf.size());
+}
+
+// ============== Resize with auto_expand ==============
+
+void test_bytebuffer_resize_with_auto_expand_success_expand(void)
+{
+    ByteBuffer buf(64, true);
+    bool result = buf.resize(128);
+    // Should succeed because auto_expand is true
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_EQUAL_INT(128, buf.size());
+}
+
+void test_bytebuffer_resize_with_auto_expand_multiple_expansions(void)
+{
+    ByteBuffer buf(64, true);
+    TEST_ASSERT_TRUE(buf.resize(128));
+    TEST_ASSERT_EQUAL_INT(128, buf.size());
+    
+    TEST_ASSERT_TRUE(buf.resize(256));
+    TEST_ASSERT_EQUAL_INT(256, buf.size());
+    
+    TEST_ASSERT_TRUE(buf.resize(512));
+    TEST_ASSERT_EQUAL_INT(512, buf.size());
+}
+
+void test_bytebuffer_resize_with_auto_expand_preserves_data(void)
+{
+    ByteBuffer buf(64, true);
+    buf << (uint8_t)1 << (uint8_t)2 << (uint8_t)3;
+    
+    uint8_t data_before[3];
+    buf.get_data(data_before, 3);
+    
+    buf.resize(128);
+    
+    uint8_t data_after[3];
+    buf.get_data(data_after, 3);
+    
+    TEST_ASSERT_EQUAL_INT(data_before[0], data_after[0]);
+    TEST_ASSERT_EQUAL_INT(data_before[1], data_after[1]);
+    TEST_ASSERT_EQUAL_INT(data_before[2], data_after[2]);
+    TEST_ASSERT_EQUAL_INT(3, buf.length());
+}
+
+// ============== Operator<< with auto_expand disabled ==============
+
+void test_bytebuffer_operator_append_uint8_no_expand_within_bounds(void)
+{
+    ByteBuffer buf(64, false);
+    buf << (uint8_t)42;
+    TEST_ASSERT_EQUAL_INT(1, buf.length());
+}
+
+void test_bytebuffer_operator_append_multiple_uint8_no_expand_within_bounds(void)
+{
+    ByteBuffer buf(64, false);
+    for (int i = 0; i < 64; i++)
+    {
+        buf << (uint8_t)i;
+    }
+    TEST_ASSERT_EQUAL_INT(64, buf.length());
+}
+
+void test_bytebuffer_operator_append_uint32_no_expand_within_bounds(void)
+{
+    ByteBuffer buf(64, false);
+    buf << (uint32_t)0xDEADBEEF;
+    TEST_ASSERT_EQUAL_INT(4, buf.length());
+}
+
+// ============== Operator<< with auto_expand enabled ==============
+
+void test_bytebuffer_operator_append_uint8_with_expand(void)
+{
+    ByteBuffer buf(4, true);
+    buf << (uint8_t)1 << (uint8_t)2 << (uint8_t)3 << (uint8_t)4;
+    TEST_ASSERT_EQUAL_INT(4, buf.length());
+    
+    // This should trigger auto-expand
+    buf << (uint8_t)5;
+    TEST_ASSERT_EQUAL_INT(5, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(4, buf.size());
+}
+
+void test_bytebuffer_operator_append_uint16_with_expand(void)
+{
+    ByteBuffer buf(4, true);
+    buf << (uint8_t)1 << (uint16_t)2;
+    
+    // Adding uint16 (2 bytes) to 2 bytes should trigger expand
+    buf << (uint16_t)0xABCD;
+    TEST_ASSERT_EQUAL_INT(5, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(4, buf.size());
+}
+
+void test_bytebuffer_operator_append_uint32_with_expand(void)
+{
+    ByteBuffer buf(2, true);
+    buf << (uint8_t)1;
+    
+    // Adding uint32 (4 bytes) to 1 byte should trigger expand
+    buf << (uint32_t)0xDEADBEEF;
+    TEST_ASSERT_EQUAL_INT(5, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(2, buf.size());
+}
+
+void test_bytebuffer_operator_append_string_with_expand(void)
+{
+    ByteBuffer buf(10, true);
+    buf << "Hello";  // 1 (length) + 5 = 6 bytes
+    TEST_ASSERT_EQUAL_INT(6, buf.length());
+    
+    // Adding another string should trigger expand
+    buf << "World";  // 1 (length) + 5 = 6 bytes, total 12
+    TEST_ASSERT_EQUAL_INT(12, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(10, buf.size());
+}
+
+void test_bytebuffer_operator_append_large_string_with_expand(void)
+{
+    ByteBuffer buf(4, true);
+    const char *large_string = "This is a large string that exceeds buffer size";
+    
+    buf << large_string;
+    size_t expected_length = strlen(large_string) + 1;  // +1 for length byte
+    TEST_ASSERT_EQUAL_INT(expected_length, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(4, buf.size());
+}
+
+// ============== Mixed operations with auto_expand ==============
+
+void test_bytebuffer_mixed_types_with_expand(void)
+{
+    ByteBuffer buf(8, true);
+    buf << (uint8_t)255;
+    buf << (uint16_t)0xABCD;
+    buf << (uint32_t)0xDEADBEEF;
+    TEST_ASSERT_EQUAL_INT(7, buf.length());  // 1 + 2 + 4
+    TEST_ASSERT_EQUAL_INT(8, buf.size()); // did not need to expand yet
+}
+
+void test_bytebuffer_expand_then_fill(void)
+{
+    ByteBuffer buf(8, true);
+    buf << (uint8_t)1 << (uint8_t)2 << (uint8_t)3 << (uint8_t)4
+        << (uint8_t)5 << (uint8_t)6 << (uint8_t)7 << (uint8_t)8
+        << (uint8_t)9 << (uint8_t)10;
+    
+    TEST_ASSERT_EQUAL_INT(10, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(8, buf.size());
+}
+
+// ============== Reset with auto_expand ==============
+
+void test_bytebuffer_reset_with_auto_expand_enabled(void)
+{
+    ByteBuffer buf(8, true);
+    buf << (uint8_t)1 << (uint8_t)2 << (uint8_t)3;
+    buf << (uint8_t)4 << (uint8_t)5 << (uint8_t)6 << (uint8_t)7 << (uint8_t)8 << (uint8_t)9;
+    
+    TEST_ASSERT_GREATER_THAN_INT(8, buf.size());
+    
+    buf.reset();
+    TEST_ASSERT_EQUAL_INT(0, buf.length());
+    // Size should remain expanded
+    TEST_ASSERT_GREATER_THAN_INT(8, buf.size());
+}
+
+void test_bytebuffer_reset_then_refill_expanded(void)
+{
+    ByteBuffer buf(8, true);
+    buf << (uint8_t)1 << (uint8_t)2 << (uint8_t)3 << (uint8_t)4 << (uint8_t)5;
+    size_t expanded_size = buf.size();
+    
+    buf.reset();
+    buf << (uint8_t)10 << (uint8_t)11 << (uint8_t)12;
+    
+    TEST_ASSERT_EQUAL_INT(3, buf.length());
+    TEST_ASSERT_EQUAL_INT(expanded_size, buf.size());
+}
+
+// ============== Operator== with auto_expand ==============
+
+void test_bytebuffer_equality_same_content_different_auto_expand(void)
+{
+    ByteBuffer buf1(64, true);
+    ByteBuffer buf2(64, false);
+    
+    buf1 << (uint8_t)42 << (uint8_t)100;
+    buf2 << (uint8_t)42 << (uint8_t)100;
+    
+    TEST_ASSERT_TRUE(buf1 == buf2);
+}
+
+// ============== Edge cases with auto_expand ==============
+
+void test_bytebuffer_expand_zero_size_buffer(void)
+{
+    ByteBuffer buf(0, true);
+    // Resize from 0 should work
+    bool result = buf.resize(64);
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_EQUAL_INT(64, buf.size());
+}
+
+void test_bytebuffer_auto_expand_preserves_offset(void)
+{
+    ByteBuffer buf(4, true);
+    buf << (uint8_t)1 << (uint8_t)2;
+    TEST_ASSERT_EQUAL_INT(2, buf.length());
+    
+    buf << (uint8_t)3 << (uint8_t)4 << (uint8_t)5;
+    TEST_ASSERT_EQUAL_INT(5, buf.length());
+}
+
+void test_bytebuffer_auto_expand_multiple_expansions_large(void)
+{
+    ByteBuffer buf(16, true);
+    
+    for (int i = 0; i < 100; i++)
+    {
+        buf << (uint8_t)i;
+    }
+    
+    TEST_ASSERT_EQUAL_INT(100, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(16, buf.size());
+}
+
+void test_bytebuffer_no_expand_overflow_protection(void)
+{
+    ByteBuffer buf(4, false);
+    buf << (uint8_t)1 << (uint8_t)2;
+    
+    // Try to add data that would overflow
+    buf << (uint32_t)0xFFFFFFFF;
+    
+    // Should only have 2 bytes since resize would fail
+    TEST_ASSERT_EQUAL_INT(2, buf.length());
+}
+
+void test_bytebuffer_string_append_without_expand_within_bounds(void)
+{
+    ByteBuffer buf(20, false);
+    buf << "Hi";  // 1 + 2 = 3 bytes
+    TEST_ASSERT_EQUAL_INT(3, buf.length());
+}
+
+void test_bytebuffer_string_append_with_expand_overflow(void)
+{
+    ByteBuffer buf(5, true);
+    buf << "Test";  // 1 + 4 = 5 bytes
+    TEST_ASSERT_EQUAL_INT(5, buf.length());
+    
+    // Adding another string should auto-expand
+    buf << "Data";  // 1 + 4 = 5 bytes
+    TEST_ASSERT_EQUAL_INT(10, buf.length());
+    TEST_ASSERT_GREATER_THAN_INT(5, buf.size());
+}
+
+void test_bytebuffer_auto_expand_exponential_growth(void)
+{
+    ByteBuffer buf(4, true);
+    size_t prev_size = buf.size();
+    
+    // Fill and expand multiple times
+    for (int i = 0; i < 20; i++)
+    {
+        buf << (uint8_t)i;
+        if (buf.size() > prev_size)
+        {
+            // Size should have grown (auto-expanded)
+            TEST_ASSERT_GREATER_THAN_INT(prev_size, buf.size());
+            prev_size = buf.size();
+        }
+    }
+}
+
+// ============== Data integrity with auto_expand ==============
+
+void test_bytebuffer_data_integrity_after_expand(void)
+{
+    ByteBuffer buf(4, true);
+    uint8_t values[] = {10, 20, 30, 40, 50, 60, 70, 80};
+    
+    for (int i = 0; i < 8; i++)
+    {
+        buf << values[i];
+    }
+    
+    uint8_t retrieved[8];
+    buf.get_data(retrieved, 8);
+    
+    for (int i = 0; i < 8; i++)
+    {
+        TEST_ASSERT_EQUAL_INT(values[i], retrieved[i]);
+    }
+}
+
+void test_bytebuffer_mixed_numeric_types_data_integrity(void)
+{
+    ByteBuffer buf(4, true);
+    
+    uint8_t u8 = 0xFF;
+    uint16_t u16 = 0xABCD;
+    uint32_t u32 = 0xDEADBEEF;
+    
+    buf << u8 << u16 << u32;
+    
+    uint8_t data[7];
+    buf.get_data(data, 7);
+    
+    TEST_ASSERT_EQUAL_INT(u8, data[0]);
+    TEST_ASSERT_EQUAL_INT(0xCD, data[1]);  // Little-endian
+    TEST_ASSERT_EQUAL_INT(0xAB, data[2]);
+}
+
 int main(int argc, char** argv) {
     UNITY_BEGIN();
     
@@ -578,6 +1002,69 @@ int main(int argc, char** argv) {
     RUN_TEST(test_bytebuffer_large_buffer);
     RUN_TEST(test_bytebuffer_exactly_fill);
     RUN_TEST(test_bytebuffer_zero_size);
+
+    //---------------------------------
+
+        // Constructor tests with auto_expand
+    RUN_TEST(test_bytebuffer_constructor_auto_expand_default_disabled);
+    RUN_TEST(test_bytebuffer_constructor_auto_expand_explicitly_disabled);
+    RUN_TEST(test_bytebuffer_constructor_auto_expand_enabled);
+    RUN_TEST(test_bytebuffer_constructor_with_data_auto_expand_disabled);
+    RUN_TEST(test_bytebuffer_constructor_with_data_auto_expand_enabled);
+
+    // Copy constructor tests
+    RUN_TEST(test_bytebuffer_copy_constructor_preserves_auto_expand_disabled);
+    RUN_TEST(test_bytebuffer_copy_constructor_preserves_auto_expand_enabled);
+
+    // Assignment operator tests
+    RUN_TEST(test_bytebuffer_assignment_operator_preserves_auto_expand);
+
+    // Resize without auto_expand tests
+    RUN_TEST(test_bytebuffer_resize_without_auto_expand_success_shrink);
+    RUN_TEST(test_bytebuffer_resize_without_auto_expand_failure_expand);
+    RUN_TEST(test_bytebuffer_resize_without_auto_expand_same_size);
+
+    // Resize with auto_expand tests
+    RUN_TEST(test_bytebuffer_resize_with_auto_expand_success_expand);
+    RUN_TEST(test_bytebuffer_resize_with_auto_expand_multiple_expansions);
+    RUN_TEST(test_bytebuffer_resize_with_auto_expand_preserves_data);
+
+    // Operator<< without auto_expand tests
+    RUN_TEST(test_bytebuffer_operator_append_uint8_no_expand_within_bounds);
+    RUN_TEST(test_bytebuffer_operator_append_multiple_uint8_no_expand_within_bounds);
+    RUN_TEST(test_bytebuffer_operator_append_uint32_no_expand_within_bounds);
+
+    // Operator<< with auto_expand tests
+    RUN_TEST(test_bytebuffer_operator_append_uint8_with_expand);
+    RUN_TEST(test_bytebuffer_operator_append_uint16_with_expand);
+    RUN_TEST(test_bytebuffer_operator_append_uint32_with_expand);
+    RUN_TEST(test_bytebuffer_operator_append_string_with_expand);
+    RUN_TEST(test_bytebuffer_operator_append_large_string_with_expand);
+
+    // Mixed operations tests
+    RUN_TEST(test_bytebuffer_mixed_types_with_expand);
+    RUN_TEST(test_bytebuffer_expand_then_fill);
+
+    // Reset tests
+    RUN_TEST(test_bytebuffer_reset_with_auto_expand_enabled);
+    RUN_TEST(test_bytebuffer_reset_then_refill_expanded);
+
+    // Equality tests
+    RUN_TEST(test_bytebuffer_equality_same_content_different_auto_expand);
+
+    // Edge case tests
+    RUN_TEST(test_bytebuffer_expand_zero_size_buffer);
+    RUN_TEST(test_bytebuffer_auto_expand_preserves_offset);
+    RUN_TEST(test_bytebuffer_auto_expand_multiple_expansions_large);
+    RUN_TEST(test_bytebuffer_no_expand_overflow_protection);
+    RUN_TEST(test_bytebuffer_string_append_without_expand_within_bounds);
+    RUN_TEST(test_bytebuffer_string_append_with_expand_overflow);
+    RUN_TEST(test_bytebuffer_auto_expand_exponential_growth);
+
+    // Data integrity tests
+    RUN_TEST(test_bytebuffer_data_integrity_after_expand);
+    RUN_TEST(test_bytebuffer_mixed_numeric_types_data_integrity);
+
     
     return UNITY_END();
 }

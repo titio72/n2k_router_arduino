@@ -19,25 +19,25 @@ EVODisplay::EVODisplay() : init(false), display(NULL), enabled(false)
 
 EVODisplay::~EVODisplay()
 {
-#if (DO_DISPLAY == 1)
+    #if (DO_DISPLAY == 1)
     if (display)
         delete display;
-#endif
+    #endif
 }
 
 void EVODisplay::setup(Context &ctx)
 {
     if (!init)
     {
-#if (DO_DISPLAY == 1)
+        #if (DO_DISPLAY == 1)
         if (display==nullptr) display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, TwoWireProvider::get_two_wire(), OLED_RESET);
         init = display->begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
         if (init)
             display->clearDisplay();
-#else
+        #else
         init = true;
-#endif
-        Log::trace("[DS] Initialized {%d}\n", init);
+        #endif
+        Log::trace("[DS] Setup {%d}\n", init);
     }
 }
 

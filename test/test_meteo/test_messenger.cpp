@@ -6,10 +6,42 @@
 #include "Data.h"
 #include "N2K_router.h"
 
+class MockConfX: public MockConfiguration
+{
+public:
+    MockConfX()
+        : MockConfiguration()
+    {
+    }
+
+    MeteoSource pressure_source = METEO_BME;
+    MeteoSource temperature_source = METEO_BME;
+    MeteoSource temperature_el_source = METEO_BME;
+    MeteoSource humidity_source = METEO_BME;
+
+    virtual MeteoSource get_pressure_source() const override
+    {
+        return pressure_source;
+    }
+    virtual MeteoSource get_temperature_source() const override
+    {
+        return temperature_source;
+    }
+    virtual MeteoSource get_temperature_el_source() const override
+    {
+        return temperature_el_source;
+    }
+    virtual MeteoSource get_humidity_source() const override
+    {
+        return humidity_source;
+    }
+};
+
+
 #define MOCK_CONTEXT_TEST_MESSENGER \
 Data data; \
 TestN2KSender n2kSender; \
-MockConfiguration mockConf; \
+MockConfX mockConf; \
 Context context = {n2kSender, mockConf, data};
 
 
@@ -328,7 +360,9 @@ void test_env_skips_temperature_when_source_none(void)
 {
     MOCK_CONTEXT_TEST_MESSENGER
     mockConf.temperature_source = METEO_NONE;
+    mockConf.temperature_el_source = METEO_NONE;
     data.meteo_0.temperature = 22.5;
+    data.meteo_1.temperature = 23.5;
 
     EnvMessenger env;
     env.enable();

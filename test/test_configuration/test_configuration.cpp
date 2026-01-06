@@ -28,13 +28,13 @@ void tearDownConfiguration(void)
 
 void test_configuration_constructor(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     TEST_ASSERT_FALSE(conf.is_initialized());
 }
 
 void test_configuration_init_sets_initialized_flag(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     TEST_ASSERT_FALSE(conf.is_initialized());
     
     TEST_ASSERT_EQUAL_INT(CONFIG_RES_VERSION_MISMATCH, conf.init());
@@ -44,7 +44,7 @@ void test_configuration_init_sets_initialized_flag(void)
 
 void test_configuration_init_idempotent(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     TEST_ASSERT_TRUE(conf.is_initialized());
     
@@ -59,7 +59,7 @@ void test_configuration_init_idempotent(void)
 
 void test_configuration_get_services_returns_services_object(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     const N2KServices &svc = conf.get_services();
@@ -68,7 +68,7 @@ void test_configuration_get_services_returns_services_object(void)
 
 void test_configuration_save_services_updates_configuration(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices new_svc;
@@ -86,7 +86,7 @@ void test_configuration_save_services_updates_configuration(void)
 
 void test_configuration_services_persisted_after_save(void)
 {
-    ConfigurationRW conf1;
+    Configuration conf1;
     conf1.init();
     
     N2KServices svc;
@@ -97,7 +97,7 @@ void test_configuration_services_persisted_after_save(void)
     TEST_ASSERT_TRUE(conf1.save_services(svc));
     
     // Create new configuration and verify persistence
-    ConfigurationRW conf2;
+    Configuration conf2;
     TEST_ASSERT_EQUAL_INT(CONFIG_RES_OK, conf2.init());
     
     const N2KServices &retrieved = conf2.get_services();
@@ -112,7 +112,7 @@ void test_configuration_services_persisted_after_save(void)
 
 void test_configuration_get_n2k_source_default(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     unsigned char source = conf.get_n2k_source();
@@ -121,7 +121,7 @@ void test_configuration_get_n2k_source_default(void)
 
 void test_configuration_save_n2k_source(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_n2k_source(42);
@@ -132,11 +132,11 @@ void test_configuration_save_n2k_source(void)
 
 void test_configuration_n2k_source_persisted(void)
 {
-    ConfigurationRW conf1;
+    Configuration conf1;
     conf1.init();
     conf1.save_n2k_source(99);
         
-    ConfigurationRW conf2;   
+    Configuration conf2;   
     conf2.init();
 
     unsigned char source = conf2.get_n2k_source();
@@ -145,7 +145,7 @@ void test_configuration_n2k_source_persisted(void)
 
 void test_configuration_n2k_source_boundary_values(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_n2k_source(0);
@@ -161,7 +161,7 @@ void test_configuration_n2k_source_boundary_values(void)
 
 void test_configuration_get_rpm_adjustment_default(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     double rpm_adj = conf.get_rpm_adjustment();
@@ -170,7 +170,7 @@ void test_configuration_get_rpm_adjustment_default(void)
 
 void test_configuration_save_rpm_adjustment_positive(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_rpm_adjustment(1.5);
@@ -181,7 +181,7 @@ void test_configuration_save_rpm_adjustment_positive(void)
 
 void test_configuration_save_rpm_adjustment_negative(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_rpm_adjustment(-2.25);
@@ -192,7 +192,7 @@ void test_configuration_save_rpm_adjustment_negative(void)
 
 void test_configuration_save_rpm_adjustment_zero(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_rpm_adjustment(0.0);
@@ -203,7 +203,7 @@ void test_configuration_save_rpm_adjustment_zero(void)
 
 void test_configuration_rpm_adjustment_precision(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     double original = 3.14159;
@@ -216,10 +216,10 @@ void test_configuration_rpm_adjustment_precision(void)
 
 void test_configuration_rpm_adjustment_large_values(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
-    conf.save_rpm_adjustment(100.5);
+    TEST_ASSERT_TRUE(conf.save_rpm_adjustment(100.5));
     
     double rpm_adj = conf.get_rpm_adjustment();
     TEST_ASSERT_DOUBLE_WITHIN(0.001, 100.5, rpm_adj);
@@ -227,11 +227,11 @@ void test_configuration_rpm_adjustment_large_values(void)
 
 void test_configuration_rpm_adjustment_persisted(void)
 {
-    ConfigurationRW conf1;
+    Configuration conf1;
     conf1.init();
     conf1.save_rpm_adjustment(2.75);
     
-    ConfigurationRW conf2;
+    Configuration conf2;
     conf2.init();
     
     double rpm_adj = conf2.get_rpm_adjustment();
@@ -244,7 +244,7 @@ void test_configuration_rpm_adjustment_persisted(void)
 
 void test_configuration_get_device_name_default(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     const char *name = conf.get_device_name();
@@ -253,7 +253,7 @@ void test_configuration_get_device_name_default(void)
 
 void test_configuration_save_device_name_short(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_device_name("MyDevice");
@@ -264,7 +264,7 @@ void test_configuration_save_device_name_short(void)
 
 void test_configuration_save_device_name_single_char(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_device_name("A");
@@ -275,7 +275,7 @@ void test_configuration_save_device_name_single_char(void)
 
 void test_configuration_save_device_name_empty_string(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_device_name("");
@@ -286,7 +286,7 @@ void test_configuration_save_device_name_empty_string(void)
 
 void test_configuration_save_device_name_max_length(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     // Assuming device_name buffer is 16 bytes (typical)
@@ -299,7 +299,7 @@ void test_configuration_save_device_name_max_length(void)
 
 void test_configuration_save_device_name_truncated_if_too_long(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     // This tests that names longer than buffer are truncated gracefully
@@ -314,11 +314,11 @@ void test_configuration_save_device_name_truncated_if_too_long(void)
 
 void test_configuration_device_name_persisted(void)
 {
-    ConfigurationRW conf1;
+    Configuration conf1;
     conf1.init();
     conf1.save_device_name("StoredDevice");
     
-    ConfigurationRW conf2;
+    Configuration conf2;
     conf2.init();
     
     const char *name = conf2.get_device_name();
@@ -327,7 +327,7 @@ void test_configuration_device_name_persisted(void)
 
 void test_configuration_device_name_with_special_chars(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_device_name("Device-123_v2");
@@ -342,7 +342,7 @@ void test_configuration_device_name_with_special_chars(void)
 
 void test_configuration_get_battery_capacity_default(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     uint32_t capacity = conf.get_batter_capacity();
@@ -351,7 +351,7 @@ void test_configuration_get_battery_capacity_default(void)
 
 void test_configuration_save_battery_capacity_small(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_batter_capacity(50);
@@ -362,7 +362,7 @@ void test_configuration_save_battery_capacity_small(void)
 
 void test_configuration_save_battery_capacity_large(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_batter_capacity(10000);
@@ -373,7 +373,7 @@ void test_configuration_save_battery_capacity_large(void)
 
 void test_configuration_save_battery_capacity_zero(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_batter_capacity(0);
@@ -384,7 +384,7 @@ void test_configuration_save_battery_capacity_zero(void)
 
 void test_configuration_battery_capacity_max_uint32(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_batter_capacity(UINT16_MAX);
@@ -395,11 +395,11 @@ void test_configuration_battery_capacity_max_uint32(void)
 
 void test_configuration_battery_capacity_persisted(void)
 {
-    ConfigurationRW conf1;
+    Configuration conf1;
     conf1.init();
     conf1.save_batter_capacity(12000);
     
-    ConfigurationRW conf2;
+    Configuration conf2;
     conf2.init();
     
     uint32_t capacity = conf2.get_batter_capacity();
@@ -408,7 +408,7 @@ void test_configuration_battery_capacity_persisted(void)
 
 void test_configuration_battery_capacity_typical_values(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     // Test typical marine battery capacities
@@ -423,37 +423,11 @@ void test_configuration_battery_capacity_typical_values(void)
 
 #pragma endregion
 
-#pragma region UART Speed Tests
-
-void test_configuration_get_uart_speed_default(void)
-{
-    ConfigurationRW conf;
-    conf.init();
-    
-    unsigned char speed = conf.get_uart_speed();
-    TEST_ASSERT_EQUAL_INT(DEFAULT_GPS_SPEED, speed);
-}
-
-void test_configuration_save_uart_speed_no_effect(void)
-{
-    ConfigurationRW conf;
-    conf.init();
-    
-    unsigned char original_speed = conf.get_uart_speed();
-    conf.save_uart_speed(115);  // Try to save different value
-    
-    unsigned char speed = conf.get_uart_speed();
-    // Should remain unchanged (for compatibility)
-    TEST_ASSERT_EQUAL_INT(original_speed, speed);
-}
-
-#pragma endregion
-
 #pragma region Meteo Source Tests
 
 void test_configuration_get_pressure_source_bme_enabled(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -466,7 +440,7 @@ void test_configuration_get_pressure_source_bme_enabled(void)
 
 void test_configuration_get_pressure_source_bme_disabled(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -479,7 +453,7 @@ void test_configuration_get_pressure_source_bme_disabled(void)
 
 void test_configuration_get_temperature_source_dht_enabled(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -493,7 +467,7 @@ void test_configuration_get_temperature_source_dht_enabled(void)
 
 void test_configuration_get_temperature_source_bme_fallback(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -507,7 +481,7 @@ void test_configuration_get_temperature_source_bme_fallback(void)
 
 void test_configuration_get_temperature_source_priority_dht_over_bme(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -521,7 +495,7 @@ void test_configuration_get_temperature_source_priority_dht_over_bme(void)
 
 void test_configuration_get_temperature_source_none(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -535,7 +509,7 @@ void test_configuration_get_temperature_source_none(void)
 
 void test_configuration_get_humidity_source_dht_enabled(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -549,7 +523,7 @@ void test_configuration_get_humidity_source_dht_enabled(void)
 
 void test_configuration_get_humidity_source_bme_fallback(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -563,7 +537,7 @@ void test_configuration_get_humidity_source_bme_fallback(void)
 
 void test_configuration_get_humidity_source_priority_dht_over_bme(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -577,7 +551,7 @@ void test_configuration_get_humidity_source_priority_dht_over_bme(void)
 
 void test_configuration_get_temperature_el_source_both_enabled(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -591,7 +565,7 @@ void test_configuration_get_temperature_el_source_both_enabled(void)
 
 void test_configuration_get_temperature_el_source_only_dht(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -605,7 +579,7 @@ void test_configuration_get_temperature_el_source_only_dht(void)
 
 void test_configuration_get_temperature_el_source_only_bme(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -619,7 +593,7 @@ void test_configuration_get_temperature_el_source_only_bme(void)
 
 void test_configuration_get_temperature_el_source_none_enabled(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     N2KServices svc = conf.get_services();
@@ -637,7 +611,7 @@ void test_configuration_get_temperature_el_source_none_enabled(void)
 
 void test_configuration_save_multiple_values(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_device_name("TestDevice");
@@ -655,7 +629,7 @@ void test_configuration_persistence_roundtrip(void)
 {
     // First configuration instance - set values
     {
-        ConfigurationRW conf1;
+        Configuration conf1;
         conf1.init();
         
         conf1.save_device_name("StoredDevice");
@@ -672,7 +646,7 @@ void test_configuration_persistence_roundtrip(void)
     
     // Second configuration instance - verify persistence
     {
-        ConfigurationRW conf2;
+        Configuration conf2;
         conf2.init();
         
         TEST_ASSERT_EQUAL_STRING("StoredDevice", conf2.get_device_name());
@@ -689,11 +663,11 @@ void test_configuration_persistence_roundtrip(void)
 
 void test_configuration_independent_instances(void)
 {
-    ConfigurationRW conf1;
+    Configuration conf1;
     conf1.init();
     conf1.save_device_name("Device1");
     
-    ConfigurationRW conf2;
+    Configuration conf2;
     conf2.init();
     conf2.save_device_name("Device2");
     
@@ -704,7 +678,7 @@ void test_configuration_independent_instances(void)
 
 void test_configuration_overwrite_values(void)
 {
-    ConfigurationRW conf;
+    Configuration conf;
     conf.init();
     
     conf.save_device_name("FirstName");
@@ -768,11 +742,7 @@ void run_configuration_tests(void)
     RUN_TEST(test_configuration_battery_capacity_max_uint32);
     RUN_TEST(test_configuration_battery_capacity_persisted);
     RUN_TEST(test_configuration_battery_capacity_typical_values);
-    
-    // UART Speed
-    RUN_TEST(test_configuration_get_uart_speed_default);
-    RUN_TEST(test_configuration_save_uart_speed_no_effect);
-    
+
     // Meteo Sources
     RUN_TEST(test_configuration_get_pressure_source_bme_enabled);
     RUN_TEST(test_configuration_get_pressure_source_bme_disabled);

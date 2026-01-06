@@ -12,13 +12,13 @@ class N2KServices
 public:
   N2KServices();
 
-  void deserialize(uint8_t v);
-  uint8_t serialize() const;
+  void deserialize(uint16_t v);
+  uint16_t serialize() const;
 
-  bool from_string(const char* string);
-  bool to_string(char* dest, size_t len) const;
+  bool from_string(const char *string);
+  bool to_string(char *dest, size_t len) const;
 
-  N2KServices& operator =(const N2KServices &svc);
+  N2KServices &operator=(const N2KServices &svc);
 
   bool is_use_gps() const;
   bool is_use_bme() const;
@@ -27,6 +27,9 @@ public:
   bool is_sog_2_stw() const;
   bool is_use_tacho() const;
   bool is_use_vedirect() const;
+  bool is_keep_n2k_src() const;
+  bool is_use_tmp() const;
+  bool is_stw_paddle() const;
 
   void set_use_gps(bool v);
   void set_use_bme(bool v);
@@ -35,11 +38,19 @@ public:
   void set_sog_2_stw(bool v);
   void set_use_tacho(bool v);
   void set_use_vedirect(bool v);
+  void set_keep_n2k_src(bool v);
+  void set_use_tmp(bool v);
+  void set_stw_paddle(bool v);
 
   uint8_t size() const;
 
+  bool operator==(const N2KServices &other) const
+  {
+    return conf == other.conf;
+  }
+
 private:
-    uint8_t conf;
+  uint16_t conf;
 };
 
 enum MeteoSource
@@ -51,18 +62,23 @@ enum MeteoSource
 
 struct Conf
 {
-    uint8_t conf_version = CONF_VERSION;
-    
-    uint8_t n2k_source = DEFAULT_N2K_SOURCE;
-    int32_t rpm_adjustment = 1000;                          // x1000
-    uint16_t battery_capacity_Ah = DEFAULT_BATTERY_CAPACITY; // in Ah
-    char device_name[16];                                    // null-terminated
-    N2KServices services;
+  uint8_t conf_version = CONF_VERSION;
 
-    Conf()
-    {
-        device_name[0] = '\0';
-    }
+  uint8_t n2k_source = DEFAULT_N2K_SOURCE;
+  int16_t rpm_adjustment = 100;                           // x100
+  uint16_t battery_capacity_Ah = DEFAULT_BATTERY_CAPACITY; // in Ah
+  char device_name[16];                                    // null-terminated
+  N2KServices services;
+
+  uint8_t sea_temp_alpha = 100;
+  uint16_t sea_temp_adjustment = 10000;
+  uint8_t stw_paddle_alpha = 100;
+  uint16_t stw_paddle_adjustment = 10000;
+
+  Conf()
+  {
+    device_name[0] = '\0';
+  }
 };
 
 const int CONFIG_RES_ALREADY_INITIALIZED = -1;
@@ -70,147 +86,185 @@ const int CONFIG_RES_EEPROM_FAIL = -2;
 const int CONFIG_RES_VERSION_MISMATCH = -3;
 const int CONFIG_RES_OK = 0;
 
+class ConfigurationPersistence
+{
+public:
+  virtual bool init_persistence() = 0;
+  virtual bool save_configuration(const Conf &conf) = 0;
+  virtual bool load_configuration(Conf &conf) = 0;
+};
+
+class EngineHoursPersistence
+{
+public:
+  virtual bool init_persistence() = 0;
+  virtual bool save_engine_hours(uint64_t hours) = 0;
+  virtual uint64_t load_engine_hours() = 0;
+};
+
 class Configuration
 {
 public:
-  virtual int is_initialized() const = 0;
-
-
-  virtual double get_rpm_adjustment() const = 0;
-  virtual const char* get_device_name() const = 0;
-  virtual unsigned char get_n2k_source() const = 0;
-  virtual unsigned char get_uart_speed() const = 0;
-  virtual const N2KServices& get_services() const = 0;
-  virtual uint16_t get_batter_capacity() const = 0;
-  virtual MeteoSource get_pressure_source() const = 0;
-  virtual MeteoSource get_temperature_source() const = 0;
-  virtual MeteoSource get_temperature_el_source() const = 0;
-  virtual MeteoSource get_humidity_source() const = 0;
-};
-
-class EngineHours
-{
-public:
-  virtual uint64_t get_engine_hours() const = 0;
-  virtual bool save_engine_hours(uint64_t h) = 0;
-};
-
-class ConfigurationRWAbstract: public Configuration, public EngineHours
-{
-public:
-  virtual bool save_rpm_adjustment(double d) = 0;
-  virtual bool save_device_name(const char* name) = 0;
-  virtual bool save_n2k_source(unsigned char src) = 0;
-  virtual bool save_uart_speed(unsigned char speed) = 0;
-  virtual bool save_services(N2KServices& s) = 0;
-  virtual bool save_batter_capacity(uint16_t c) = 0;
-};
-
-class ConfigurationRW: public ConfigurationRWAbstract {
-
-public:
-  ConfigurationRW();
-  virtual ~ConfigurationRW();
+  Configuration(ConfigurationPersistence *persistence = nullptr);
+  virtual ~Configuration() {}
 
   int init();
+  bool is_initialized() const { return initialized; }
 
-  int is_initialized() const { return initialized; }
-
-  virtual uint64_t get_engine_hours() const;
-  virtual bool save_engine_hours(uint64_t h);
-
+  virtual double get_sea_temp_alpha() const;
+  virtual double get_stw_paddle_alpha() const;
+  virtual double get_sea_temp_adjustment() const;
+  virtual double get_stw_paddle_adjustement() const;
   virtual double get_rpm_adjustment() const;
-  uint32_t get_raw_rpm_adjustment() const { return conf.rpm_adjustment; }
-  bool save_rpm_adjustment(double d);
-
-  virtual const char* get_device_name() const;
-  bool save_device_name(const char* name);
-
+  virtual const char *get_device_name() const;
   virtual unsigned char get_n2k_source() const;
-  bool save_n2k_source(unsigned char src);
-
-  virtual unsigned char get_uart_speed() const;
-  bool save_uart_speed(unsigned char speed);
-
-  virtual const N2KServices& get_services() const;
-  bool save_services(N2KServices& s);
-
+  virtual const N2KServices &get_services() const;
   virtual uint16_t get_batter_capacity() const;
-  bool save_batter_capacity(uint16_t c);
 
   virtual MeteoSource get_pressure_source() const;
   virtual MeteoSource get_temperature_source() const;
   virtual MeteoSource get_temperature_el_source() const;
   virtual MeteoSource get_humidity_source() const;
 
-private:
+  virtual bool save_sea_temp_alpha(double a);
+  virtual bool save_stw_paddle_alpha(double a);
+  virtual bool save_sea_temp_adjustment(double a);
+  virtual bool save_stw_paddle_adjustment(double a);
+  virtual bool save_rpm_adjustment(double d);
+  virtual bool save_device_name(const char *name);
+  virtual bool save_n2k_source(unsigned char src);
+  virtual bool save_services(N2KServices &s);
+  virtual bool save_batter_capacity(uint16_t c);
 
+protected:
   Conf conf;
-  bool initialized;
-
-  bool save();
+  bool initialized = false;
+  ConfigurationPersistence* persistence;
 };
 
-class MockConfiguration: public ConfigurationRWAbstract
+class EngineHours
 {
 public:
-  int init() { return initialized; }
+  EngineHours(EngineHoursPersistence* persistence = nullptr);
+  virtual ~EngineHours() {}
 
-  int is_initialized() const { return initialized; }
+  int init();
+  bool is_initialized() const { return initialized; }
 
-  virtual uint64_t get_engine_hours() const { return saved_engine_hours; }
-  virtual bool save_engine_hours(uint64_t h) { save_engine_hours_calls++; saved_engine_hours = h; return true; }
+  /**
+   * Get the engine hours in milliseconds
+   */
+  virtual uint64_t get_engine_hours() const;
 
-  virtual double get_rpm_adjustment() const { return saved_rpm_adjustment; }
-  virtual const char* get_device_name() const { return saved_device_name.c_str(); }
-  virtual unsigned char get_n2k_source() const { return saved_n2k_src; }
-  virtual unsigned char get_uart_speed() const { return 2; }
-  virtual const N2KServices& get_services() const { return saved_services; }
-  virtual uint16_t get_batter_capacity() const { return saved_battery_capacity; }
-  virtual MeteoSource get_pressure_source() const { return pressure_source; }
-  virtual MeteoSource get_temperature_source() const { return temperature_source; }
-  virtual MeteoSource get_temperature_el_source() const { return temperature_el_source; }
-  virtual MeteoSource get_humidity_source() const { return humidity_source; }
+  /**
+   * Save the engine hours in milliseconds
+   */
+  virtual bool save_engine_hours(uint64_t h);
 
-  virtual bool save_rpm_adjustment(double d) { save_rpm_adjustment_calls++; saved_rpm_adjustment = d; return true; }
-  virtual bool save_device_name(const char* name) { save_device_name_calls++; saved_device_name = name; return true; }
-  virtual bool save_n2k_source(unsigned char src) { save_n2k_source_calls++; saved_n2k_src = src; return true; }
-  virtual bool save_uart_speed(unsigned char speed) { save_uart_speed_calls++; return true; }
-  virtual bool save_services(N2KServices& s) { save_services_calls++; saved_services = s; return true; }
-  virtual bool save_batter_capacity(uint16_t c) { save_battery_capacity_calls++; saved_battery_capacity = c; return true; }  
+protected:
+  uint64_t engine_hours;
+  bool initialized;
+  EngineHoursPersistence* persistence;
+};
 
-  bool initialized = true;
+#ifdef PIO_UNIT_TESTING
+class MockEngineHours : public EngineHours
+{
+public:
+  MockEngineHours();
 
-  double saved_rpm_adjustment = 1.0;
-  std::string saved_device_name = "TEST";
-  uint8_t saved_n2k_src = 11;
-  N2KServices saved_services;
-  uint16_t saved_battery_capacity = 280;
-  uint64_t saved_engine_hours = 0;
+  virtual bool save_engine_hours(uint64_t h) 
+  { 
+    save_engine_hours_calls++;
+    return EngineHours::save_engine_hours(h);
+  }
 
-  MeteoSource pressure_source = MeteoSource::METEO_BME;
-  MeteoSource temperature_source = MeteoSource::METEO_BME;
-  MeteoSource humidity_source = MeteoSource::METEO_BME;
-  MeteoSource temperature_el_source = MeteoSource::METEO_DHT;
+  int save_engine_hours_calls = 0;
+};
+
+class MockConfiguration : public Configuration
+{
+public:
+  MockConfiguration();
+
+  virtual bool save_rpm_adjustment(double d) override
+  {
+    save_rpm_adjustment_calls++;
+    return Configuration::save_rpm_adjustment(d);
+  }
+
+  virtual bool save_device_name(const char *name) override
+  {
+    save_device_name_calls++;
+    return Configuration::save_device_name(name);
+  }
+
+  virtual bool save_n2k_source(unsigned char src) override
+  {
+    save_n2k_source_calls++;
+    return Configuration::save_n2k_source(src);
+  }
+
+  virtual bool save_services(N2KServices &s)
+  {
+    save_services_calls++;
+    return Configuration::save_services(s);
+  }
+
+  virtual bool save_batter_capacity(uint16_t c)
+  {
+    save_battery_capacity_calls++;
+    return Configuration::save_batter_capacity(c);
+  }
+
+  virtual bool save_sea_temp_alpha(double a) override
+  {
+    save_sea_temp_alpha_calls++;
+    return Configuration::save_sea_temp_alpha(a);
+  }
+
+  virtual bool save_stw_paddle_alpha(double a) override
+  {
+    save_stw_paddle_alpha_calls++;
+    return Configuration::save_stw_paddle_alpha(a);
+  }
+
+  virtual bool save_sea_temp_adjustment(double a) override
+  {
+    save_sea_temp_adjustment_calls++;
+    return Configuration::save_sea_temp_adjustment(a);
+  }
+
+  virtual bool save_stw_paddle_adjustment(double a) override
+  {
+    save_stw_paddle_adjustment_calls++;
+    return Configuration::save_stw_paddle_adjustment(a);
+  }
 
   int save_rpm_adjustment_calls = 0;
   int save_device_name_calls = 0;
   int save_services_calls = 0;
-  int save_engine_hours_calls = 0;
   int save_n2k_source_calls = 0;
   int save_uart_speed_calls = 0;
   int save_battery_capacity_calls = 0;
+  int save_sea_temp_alpha_calls = 0;
+  int save_stw_paddle_alpha_calls = 0;
+  int save_sea_temp_adjustment_calls = 0;
+  int save_stw_paddle_adjustment_calls = 0;
 
   void reset_call_counts()
   {
     save_rpm_adjustment_calls = 0;
     save_device_name_calls = 0;
     save_services_calls = 0;
-    save_engine_hours_calls = 0;
     save_n2k_source_calls = 0;
     save_uart_speed_calls = 0;
     save_battery_capacity_calls = 0;
+    save_sea_temp_alpha_calls = 0;
+    save_stw_paddle_alpha_calls = 0;
+    save_sea_temp_adjustment_calls = 0;
+    save_stw_paddle_adjustment_calls = 0;
   }
 };
-
+#endif
 #endif

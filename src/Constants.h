@@ -46,6 +46,9 @@ static unsigned char UART_SPEED_115200 = 5;
 #define TACHO_RPM_ADJUSTMENT 0.0 // Default adjustment for tachometer RPM calculation
 #endif
 
+#define RPM_ADJUSTMENT_SCALE 100.0
+
+
 #define MAX_RETRY 3 // number of retries to start an agent
 #define N2K_BLINK_USEC 100000L /* micros */
 
@@ -57,6 +60,7 @@ static unsigned char UART_SPEED_115200 = 5;
 #define DEFAULT_USE_TIME 0
 #define DEFAULT_USE_TACHO 0
 #define DEFAULT_USE_VE_DIRECT 0
+#define DEFAULT_KEEP_N2K_SRC 0
 #define DEFAULT_RPM_ADJUSTMENT 1.00
 #define DEFAULT_GPS_SPEED UART_SPEED_57600
 #define DEFAULT_N2K_SOURCE 22
@@ -70,6 +74,7 @@ static unsigned char UART_SPEED_115200 = 5;
 #define BLE_CONF_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define BLE_DATA_UUID "55da66c7-801f-498d-b652-c57cb3f1b590"
 #define BLE_COMMAND_UUID "68ad1094-0989-4e22-9f21-4df7ef390803"
+#define BLE_INACTIVITY_TIMEOUT 30000UL  // milliseconds
 
 //ble values
 static const int32_t INVALID_32 = 0xFFFFFF7F;

@@ -27,6 +27,7 @@ N2K_router::N2K_router(n2k_source_change_handler sh)
 
 void N2K_router::setup(Context &ctx)
 {
+    Log::tracex("N2K", "Setup", "Initializing N2K Router");
     n2k_device_info info;
     info.ModelSerialCode = "0.1.0";
     info.ProductCode = 100;

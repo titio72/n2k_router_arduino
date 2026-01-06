@@ -1,8 +1,6 @@
 #ifndef NATIVE
 #include <Arduino.h>
 
-#include "Constants.h"
-
 #include <Ports.h>
 #include <ArduinoPort.hpp>
 #include <Utils.h>
@@ -12,16 +10,19 @@
 #include "N2K_router.h"
 #include "Context.h"
 #include "Conf.h"
+#include "Constants.h"
+#include "Dummy.h"
 
 #if GPS_TYPE == 1
 #include "GPSX.h"
 #elif GPS_TYPE == 2
 #include "GPSX.h"
 #endif
-#include "Dummy.h"
+
 #if DO_TACHOMETER == 1
 #include "Tachometer.h"
 #endif
+
 #include "MeteoBME.h"
 #include "MeteoDHT.h"
 #include "Display.h"
@@ -31,6 +32,8 @@
 #include "BMV712.h"
 #endif
 
+#include "Temperature.h"
+#include "SpeedThroughWater.h"
 #include "EnvMessenger.h"
 #include "BLEConf.h"
 #include "CommandHandler.hpp"
@@ -40,7 +43,8 @@ void on_source_claim(const unsigned char old_source, const unsigned char new_sou
 void on_command(char command, const char *command_value);
 
 #pragma region CONTEXT
-ConfigurationRW conf;
+Configuration conf;
+EngineHours engineHours;
 Data cache;
 N2K_router n2k(on_source_claim);
 Context context(n2k, conf, cache);
@@ -56,7 +60,7 @@ Context context(n2k, conf, cache);
 GPSX gps;
 #elif GPS_TYPE == 2
 HardwareSerial gpsSerial(Serial1);
-GPSX gps(context, &gpsSerial, GPS_RX_PIN, GPS_TX_PIN);
+GPSX gps(&gpsSerial, GPS_RX_PIN, GPS_TX_PIN);
 #else
 Dummy gps;
 #endif
@@ -68,20 +72,12 @@ BMV712 bmv712(veDirectPort);
 Dummy bmv712;
 #endif
 
-#if (DO_TACHOMETER == 1)
-Tachometer tacho(ENGINE_RPM_PIN, &conf, TACHO_POLES, TACHO_RPM_RATIO, TACHO_RPM_ADJUSTMENT);
-#else
-DummyTachometer tacho;
-#endif
-
-#if (DO_DISPLAY == 1)
 EVODisplay display;
-#else
-DummyDisplay display;
-#endif
-
+Tachometer tacho(ENGINE_RPM_PIN, &engineHours, TACHO_POLES, TACHO_RPM_RATIO, TACHO_RPM_ADJUSTMENT);
 MeteoDHT dht(DHT_PIN, MeteoDHT::DHT_MODEL::DHT_TYPE, 1);
 MeteoBME bme(BME_ADDRESS, 0);
+WaterTemperature waterTemp(WATER_TEMP_PIN);
+SpeedThroughWater speedThroughWater(STW_PADDLE_PIN);
 Leds leds;
 BLEConf bleConf(on_command);
 EnvMessenger envMessanger;
@@ -103,8 +99,12 @@ struct AppStats
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source)
 {
-  conf.save_n2k_source(new_source);
-  Log::tracex(APP_LOG_TAG, "Save new claimed n2k source", " New Source {%d}", new_source);
+  if (!conf.get_services().is_keep_n2k_src())
+  {
+    conf.save_n2k_source(new_source);
+  }
+  Log::tracex(APP_LOG_TAG, "New claimed n2k source", " New Source {%d} Old Source {%d} Save {%d}", 
+    new_source, old_source, conf.get_services().is_keep_n2k_src() ? 1 : 0);
 }
 
 void on_message_sent(const tN2kMsg &N2kMsg, bool success)
@@ -184,7 +184,10 @@ void _setup()
   unsigned long ver = __cplusplus;
   Log::tracex(APP_LOG_TAG, "CPU", "Freq {%d} C++ {%l}", f1, ver);
   conf.init();
-
+  engineHours.init();
+  Log::tracex(APP_LOG_TAG, "Engine Hours", "Loaded engine time {%lu.%03d}", 
+    (uint32_t)(engineHours.get_engine_hours() / 1000L), (uint16_t)(engineHours.get_engine_hours() % 1000L));
+  
   N2K::set_sent_message_callback(on_message_sent);  
   n2k.set_desired_source(conf.get_n2k_source());
   n2k.setup(context);
@@ -205,7 +208,7 @@ void _setup()
 
 void on_command(char command, const char *command_value)
 {
-  CommandHandler::on_command(command, command_value, conf, cache);
+  CommandHandler::on_command(command, command_value, conf, engineHours, cache);
 }
 
 #ifndef PIO_UNIT_TESTING
