@@ -29,9 +29,9 @@ void BLEConf::on_write(int handle, const char *value)
   if (!initialized)
     return;
 
-  last_activity = millis();
+  last_activity = micros();
   
-  Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
+  //Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
   if (handle == ble_conf_handle)
   {
     const char command = 'S';
@@ -156,12 +156,16 @@ void BLEConf::loop(unsigned long ms, Context &ctx)
     {
       ble.set_device_name(ctx.conf.get_device_name());
     }
-    if (last_activity && ((ms-last_activity) < BLE_INACTIVITY_TIMEOUT))
+    if (last_activity==0 || ((ms-last_activity) < BLE_INACTIVITY_TIMEOUT))
     {
       last_activity = ms;
       fill_buffer(services_buffer, ctx);
       //Log::tracex(BLE_LOG_TAG, "Update", "Sending BLE data length {%d}", services_buffer.length());
       ble.set_field_value(0, services_buffer.data(), services_buffer.length());
+    }
+    else
+    {
+      //Log::tracex(BLE_LOG_TAG, "Inactivity", "No activity for %lu ms, disabling BLE", (ms - last_activity));
     }
   }
 }

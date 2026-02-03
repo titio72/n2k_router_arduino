@@ -5,6 +5,7 @@ struct WaterData;
 struct Configuration;
 
 #include "SpeedSensor.h"
+#include "Agents.hpp"
 
 class WaterTemperature
 {
@@ -12,19 +13,18 @@ public:
     WaterTemperature(int pin);
     ~WaterTemperature();
 
-    unsigned long get_sample_age() const { return last_read_time; }
+    AB_AGENT
 
     void setup();
 
-    void read_data(WaterData &data, Configuration &conf, unsigned long milliseconds);
-
-    void loop_micros(unsigned long now_micros);
+    void read_data(WaterData &data, Configuration &conf);
 
 private:
-    int pin;
-    double temperature;
+    int pin = -1;
+    double temperature = NAN;
     unsigned long last_read_time = 0;
     double adjustment_factor = 1.0;
+    bool enabled = false;
 };
 
 #endif

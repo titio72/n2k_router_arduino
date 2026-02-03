@@ -26,6 +26,7 @@ private:
     SpeedSensorInterrupt speed_sensor;
     bool enabled;
     double adjustment_factor = 1.0;
+    unsigned long last_read = 0;
 };
 
 #endif

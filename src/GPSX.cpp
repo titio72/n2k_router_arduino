@@ -4,12 +4,16 @@
 #include <Utils.h>
 #include <TwoWireProvider.h>
 #include <Log.h>
+#include <WMM_Tinier.h>
 #include "N2K_router.h"
 #include "Conf.h"
 #include "Data.h"
 
 // enable/disable sending sats 130577
 #define SEND_SATS 0
+
+static WMM_Tinier myDeclination;
+static bool WMM_init = false;
 
 const unsigned long READ_PERIOD = 50000; // microseconds
 const int HIG_LOW_FREQ_RATIO = 4;        // manage a low freq event every 4 high freq events
@@ -84,11 +88,17 @@ bool GPSX::loadPVT()
         uint32_t time = myGNSS.getUnixEpoch(micros);
         data.gps_unix_time = time;
         data.gps_unix_time_ms = micros / 1000; // convert to milliseconds
+        data.year = myGNSS.getYear();
+        data.month = myGNSS.getMonth();
+        data.day = myGNSS.getDay();
     }
     else
     {
         data.gps_unix_time = 0;
         data.gps_unix_time_ms = 0;
+        data.year = 0;
+        data.month = 0;
+        data.day = 0;
     }
 
     if (myGNSS.getGnssFixOk())
@@ -115,6 +125,9 @@ bool GPSX::loadPVT()
         data.cog = NAN;
         data.sog = NAN;
         data.fix = 0; // no fix
+        data.year = 0;
+        data.month = 0;
+        data.day = 0;
     }
     return true;
 }
@@ -139,6 +152,9 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
         //if (/*loadFix() && */loadSats())
         {
             ctx.n2k.sendGNSSPosition(data, sid);
+            float variation = myDeclination.magneticDeclination(data.latitude_signed, data.longitude_signed,
+                                                              data.year - 2000, data.month, data.day);
+            ctx.n2k.sendMagneticVariation(variation, data.gps_unix_time / 86400);
         }
         if (ctx.conf.get_services().is_sog_2_stw())
         {
@@ -187,6 +203,11 @@ void GPSX::loop(unsigned long micros, Context &ctx)
 void GPSX::setup(Context &ctx)
 {
     Log::tracex(GPS_LOG_TAG, "Setup", "Initializing GPS module");
+    if (!WMM_init)
+    {
+        myDeclination.begin();
+        WMM_init = true;
+    }
 }
 
 bool GPSX::is_enabled()

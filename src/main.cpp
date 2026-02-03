@@ -164,6 +164,8 @@ void _loop()
     handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT");
     handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712");
     handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO");
+    handle_agent_loop(speedThroughWater, context, conf.get_services().is_stw_paddle(), NULL, t, "STW");
+    handle_agent_loop(waterTemp, context, true, NULL, t, "WTRTEMP");
     handle_agent_loop(envMessanger, context, true, &app_stats.retry_env_messager, t, "ENV");
     handle_agent_loop(bleConf, context, true, NULL, t, "BLE");
     handle_display(t);
@@ -200,6 +202,9 @@ void _setup()
   bleConf.setup(context);
   bmv712.setup(context);
   tacho.setup(context);
+  speedThroughWater.setup(context);
+  waterTemp.setup();
+  envMessanger.setup(context);
   msleep(500);
   started = true;
 

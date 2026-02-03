@@ -130,6 +130,18 @@ bool N2KSenderAbstract::sendGNSSPosition(const GPSData &gps, unsigned char sid)
     return false;
 }
 
+bool N2KSenderAbstract::sendMagneticVariation(double variation, uint16_t days_since_1970)
+{
+    if (isnan(variation))
+        return false;
+    else
+    {
+        tN2kMsg N2kMsg(get_source());
+        SetN2kMagneticVariation(N2kMsg, 0, tN2kMagneticVariation::N2kmagvar_WMM2025, days_since_1970, DegToRad(variation));
+        return send_it(N2kMsg);
+    }
+}
+
 bool N2KSenderAbstract::sendSystemTime(uint32_t _now, unsigned char sid, uint16_t _now_ms)
 {
     int days_since_1970 = _now / 86400;
@@ -162,6 +174,16 @@ bool N2KSenderAbstract::sendElectronicTemperature(const double temp, unsigned ch
     m.Add2ByteUDouble(CToKelvin(temp), 0.01);
     m.Add2ByteUDouble(CToKelvin(60.0), 0.01);
     m.AddByte(0xff); // Reserved
+    return send_it(m);
+}
+
+bool N2KSenderAbstract::sendSeaTemperature(const double temp, unsigned char sid)
+{
+    if (isnan(temp))
+        return false;
+
+    tN2kMsg m(get_source());
+    SetN2kTemperature(m, sid, 0, tN2kTempSource::N2kts_SeaTemperature, CToKelvin(temp));
     return send_it(m);
 }
 
@@ -289,6 +311,18 @@ bool N2KSenderAbstract::sendEngineHours(uint8_t instance, double seconds)
     tN2kMsg m;
     SetN2kPGN127489(m, instance, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, seconds, N2kDoubleNA, N2kDoubleNA, 127, 127, 0, 0);
     return send_it(m);
+}
+
+bool N2KSenderAbstract::sendMagneticHeading(double heading)
+{
+    if (isnan(heading))
+        return false;
+    else
+    {
+        tN2kMsg N2kMsg(get_source());
+        SetN2kMagneticHeading(N2kMsg, 0, DegToRad(heading));
+        return send_it(N2kMsg);
+    }
 }
 
 N2KStats N2KSenderAbstract::getStats()

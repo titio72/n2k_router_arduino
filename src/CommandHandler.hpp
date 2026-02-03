@@ -73,6 +73,10 @@ public:
             }
         }
         break;
+        case 'h':
+        {
+            // heartbeat
+        }
         default:
             Log::tracex(CMD_LOG_TAG, "Unknown command", " CMD {%c} Value {%s}", command, command_value);
         }

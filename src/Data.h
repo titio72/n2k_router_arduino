@@ -74,6 +74,9 @@ public:
 
   uint32_t gps_unix_time = 0;    // in seconds since epoch
   uint16_t gps_unix_time_ms = 0; // the milliseconds part of the time (0-999)
+  uint16_t year = 0;
+  uint8_t month = 0;
+  uint8_t day = 0;
 
   short nSat = 0;
   short nUsedSats = 0;

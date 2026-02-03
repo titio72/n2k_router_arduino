@@ -14,7 +14,7 @@ class N2KSender
 {
 public:
     virtual bool sendCOGSOG(double sog, double cog, unsigned char sid) = 0;
-    virtual bool sendSTW(double sog) = 0;
+    virtual bool sendSTW(double stw) = 0;
     virtual bool sendSystemTime(uint32_t t, unsigned char sid, uint16_t t_ms = 0) = 0;
     virtual bool sendPosition(double latitude, double longitude) = 0;
     virtual bool sendCabinTemp(const double temperature, unsigned char sid = 0xFF) = 0;
@@ -22,13 +22,16 @@ public:
     virtual bool sendHumidity(const double humidity, unsigned char sid = 0xFF) = 0;
     virtual bool sendPressure(const double pressure, unsigned char sid = 0xFF) = 0;
     virtual bool sendElectronicTemperature(const double temp, unsigned char sid = 0xFF) = 0;
+    virtual bool sendSeaTemperature(const double temp, unsigned char sid = 0xFF) = 0;
     virtual bool sendGNSSPosition(const GPSData &gps, unsigned char sid) = 0;
+    virtual bool sendMagneticVariation(double variation, uint16_t days_since_1970) = 0;
     virtual bool sendGNNSStatus(const GPSData &data, unsigned char sid) = 0;
     virtual bool sendSatellites(const GPSData &data, unsigned char sid) = 0;
     virtual bool sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance) = 0;
     virtual bool sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance) = 0;
     virtual bool sendEngineRPM(uint8_t engine_n, uint16_t rpm) = 0;
     virtual bool sendEngineHours(uint8_t engine_n, double hours) = 0;
+    virtual bool sendMagneticHeading(double heading) = 0; //for tests only
 
     virtual N2KStats getStats() = 0;
 
@@ -49,13 +52,16 @@ public:
     virtual bool sendHumidity(const double humidity, unsigned char sid = 0xFF) override;
     virtual bool sendPressure(const double pressure, unsigned char sid = 0xFF) override;
     virtual bool sendElectronicTemperature(const double temp, unsigned char sid = 0xFF) override;
+    virtual bool sendSeaTemperature(const double temp, unsigned char sid = 0xFF) override;
     virtual bool sendGNSSPosition(const GPSData &gps, unsigned char sid) override;
     virtual bool sendGNNSStatus(const GPSData &data, unsigned char sid) override;
+    virtual bool sendMagneticVariation(double variation, uint16_t days_since_1970) override;
     virtual bool sendSatellites(const GPSData &data, unsigned char sid) override;
     virtual bool sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance) override;
     virtual bool sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance) override;
     virtual bool sendEngineRPM(uint8_t engine_n, uint16_t rpm) override;
     virtual bool sendEngineHours(uint8_t engine_n, double hours) override;
+    virtual bool sendMagneticHeading(double heading) override; //for tests only
 
     virtual N2KStats getStats() override;
 
