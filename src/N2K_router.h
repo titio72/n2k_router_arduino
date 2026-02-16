@@ -63,8 +63,6 @@ public:
     virtual bool sendEngineHours(uint8_t engine_n, double hours) override;
     virtual bool sendMagneticHeading(double heading) override; //for tests only
 
-    virtual N2KStats getStats() override;
-
 protected:
     N2KStats stats;
     virtual bool send_it(tN2kMsg &N2kMsg) = 0;
@@ -80,6 +78,8 @@ public:
     virtual unsigned char get_source() override;
 
     AB_AGENT
+
+    N2KStats getStats() override;
 
 protected:
     virtual bool send_it(tN2kMsg &N2kMsg);

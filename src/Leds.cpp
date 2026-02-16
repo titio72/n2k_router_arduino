@@ -161,7 +161,7 @@ void Leds::loop(unsigned long micros, Context &ctx)
     #endif
 }
 
-void Leds::enable()
+void Leds::enable(Context &ctx)
 {
     #ifndef DISABLE_LEDS
     if (!enabled)
@@ -176,7 +176,7 @@ void Leds::enable()
     #endif
 }
 
-void Leds::disable()
+void Leds::disable(Context &ctx)
 {
     #ifndef DISABLE_LEDS
     if (enabled)

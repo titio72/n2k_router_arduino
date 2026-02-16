@@ -34,7 +34,7 @@ static const char *CONF_LOG_TAG = "CONF";
 #define SVC_ACCESSOR(name, id)                   \
     bool N2KServices::is_##name() const          \
     {                                            \
-        return (conf & ((1 << id) & 0xFF)) != 0; \
+        return (conf & ((1 << id) & 0xFFFF)) != 0; \
     }                                            \
     void N2KServices::set_##name(bool v)         \
     {                                            \
@@ -61,8 +61,8 @@ N2KServices::N2KServices()
         DEFAULT_SOG_2_STW * BIT_MASK(SOG2STW_ID) |
         DEFAULT_USE_VE_DIRECT * BIT_MASK(VED_ID) |
         DEFAULT_KEEP_N2K_SRC * BIT_MASK(N2K_SRC_ID) |
-        0 * BIT_MASK(TMP_ID) |
-        0 * BIT_MASK(STW_PADDLE_ID);
+        DEFAULT_USE_TMP * BIT_MASK(TMP_ID) |
+        DEFAULT_STW_PADDLE * BIT_MASK(STW_PADDLE_ID);
 }
 
 uint8_t N2KServices::size() const
@@ -124,18 +124,17 @@ SVC_ACCESSOR(sog_2_stw, SOG2STW_ID)
 SVC_ACCESSOR(use_vedirect, VED_ID)
 SVC_ACCESSOR(keep_n2k_src, N2K_SRC_ID)
 SVC_ACCESSOR(use_tmp, TMP_ID)
-SVC_ACCESSOR(stw_paddle, STW_PADDLE_ID)
+SVC_ACCESSOR(use_stw_paddle, STW_PADDLE_ID)
 
 #pragma endregion
 
 #pragma region Persistence & Logging
 void do_log(Conf &conf, const char *action, bool success)
 {
-    Log::tracex(CONF_LOG_TAG, action, "gps {%d} bme {%d} dht {%d} time {%d} tacho {%d} stw {%d} ved {%d} \
-        n2k src {%d} rpm adjustment {%d} device {%s} battery {%d} success {%d}",
-                conf.services.is_use_gps(), conf.services.is_use_bme(), conf.services.is_use_dht(), conf.services.is_send_time(),
-                conf.services.is_use_tacho(), conf.services.is_sog_2_stw(), conf.services.is_use_vedirect(),
-                conf.n2k_source, conf.rpm_adjustment, conf.device_name, conf.battery_capacity_Ah, success);
+    Log::tracex(CONF_LOG_TAG, action, "\n use_gps {%d}\n send_time {%d}\n sog_2_stw {%d}\n use_bme {%d}\n use_dht {%d}\n use_tacho {%d}\n use_vedirect {%d}\n use_tmp {%d}\n use_stw_paddle {%d}\n n2k_src {%d}\n rpm_adjustment {%d}\n device {%s}\n battery {%d}\n success {%d}",
+                conf.services.is_use_gps(), conf.services.is_send_time(), conf.services.is_sog_2_stw(), conf.services.is_use_bme(), conf.services.is_use_dht(),
+                conf.services.is_use_tacho(), conf.services.is_use_vedirect(),
+                conf.services.is_use_tmp(), conf.services.is_use_stw_paddle(), conf.n2k_source, conf.rpm_adjustment, conf.device_name, conf.battery_capacity_Ah, success);
 }
 
 static bool eee_initialized = false;
@@ -423,7 +422,7 @@ double Configuration::get_sea_temp_adjustment() const
     return (double)(conf.sea_temp_adjustment) / 10000.0;
 }
 
-double Configuration::get_stw_paddle_adjustement() const
+double Configuration::get_stw_paddle_adjustment() const
 {
     return (double)(conf.stw_paddle_adjustment) / 10000.0;
 }

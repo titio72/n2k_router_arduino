@@ -6,6 +6,7 @@ struct Configuration;
 
 #include "SpeedSensor.h"
 #include "Agents.hpp"
+#include "Context.h"
 
 class WaterTemperature
 {
@@ -14,8 +15,6 @@ public:
     ~WaterTemperature();
 
     AB_AGENT
-
-    void setup();
 
     void read_data(WaterData &data, Configuration &conf);
 

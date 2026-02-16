@@ -75,14 +75,14 @@ MeteoBME::~MeteoBME()
     delete bme;
 }
 
-void reset(MeteoData &data)
+static void reset(MeteoData &data)
 {
   data.pressure = NAN;
   data.temperature = NAN;
   data.humidity = NAN;
 }
 
-void MeteoBME::enable()
+void MeteoBME::enable(Context &ctx)
 {
   if (!enabled)
   {
@@ -92,13 +92,24 @@ void MeteoBME::enable()
   }
 }
 
-void MeteoBME::disable()
+void MeteoBME::disable(Context &ctx)
 {
   if (enabled)
   {
+    switch (meteo_index)
+    {
+    case 0:
+      reset(ctx.data_cache.meteo_0);
+      break;
+    case 1:
+      reset(ctx.data_cache.meteo_1);
+      break;
+    default:
+      break;
+    }
     enabled = false;
-    Log::tracex(BME_LOG_TAG, "Disable", "Succsess {%d}", !enabled);
-  }
+      Log::tracex(BME_LOG_TAG, "Disable", "Succsess {%d}", !enabled);
+    }
 }
 
 void MeteoBME::read(unsigned long ms, MeteoData &data)

@@ -88,15 +88,10 @@ static inline T to_int(double value, double factor, T invalid_value)
 void fill_buffer(ByteBuffer &buffer, Context &ctx)
 {
   N2KStats s(ctx.n2k.getStats());
-
-  double p = ctx.data_cache.get_pressure(ctx.conf);
-  double h = ctx.data_cache.get_humidity(ctx.conf);
-  double t = ctx.data_cache.get_temperature(ctx.conf);
-
   const int8_t _gpsFix = ctx.data_cache.gps.fix;
-  const uint32_t _atmo = to_int(p, 10.0, INVALID_U32);
-  const int16_t _temp = to_int(t, 10.0, INVALID_16);
-  const int16_t _hum = to_int(h, 100.0, INVALID_16);
+  const uint32_t _atmo = to_int(ctx.data_cache.get_pressure(ctx.conf), 10.0, INVALID_U32);
+  const int16_t _temp = to_int(ctx.data_cache.get_temperature(ctx.conf), 10.0, INVALID_16);
+  const int16_t _hum = to_int(ctx.data_cache.get_humidity(ctx.conf), 100.0, INVALID_16);
   const int32_t _lat = to_int(ctx.data_cache.gps.latitude_signed, 1000000.0, INVALID_32);
   const int32_t _lon = to_int(ctx.data_cache.gps.longitude_signed, 1000000.0, INVALID_32);
   const int16_t _sog = to_int(ctx.data_cache.gps.sog, 100.0, INVALID_16);
@@ -116,7 +111,7 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
   const uint8_t _n2k_source = ctx.conf.get_n2k_source();
   const int16_t _stw = to_int(ctx.data_cache.water_data.speed, 100.0, INVALID_16);
   const int16_t _water_temp = to_int(ctx.data_cache.water_data.temperature, 10.0, INVALID_16);
-  const uint32_t _stw_adjustment = to_int(ctx.conf.get_stw_paddle_adjustement(), 10000.0, INVALID_U32);
+  const uint32_t _stw_adjustment = to_int(ctx.conf.get_stw_paddle_adjustment(), 10000.0, INVALID_U32);
   const uint32_t _sea_temp_adjustment = to_int(ctx.conf.get_sea_temp_adjustment(), 10000.0, INVALID_U32);
 
   buffer.reset()
@@ -175,13 +170,13 @@ bool BLEConf::is_enabled()
   return enabled;
 }
 
-void BLEConf::enable()
+void BLEConf::enable(Context &ctx)
 {
   if (initialized)
     enabled = true;
 }
 
-void BLEConf::disable()
+void BLEConf::disable(Context &ctx)
 {
   enabled = false;
 }

@@ -58,7 +58,6 @@ MeteoDHT::MeteoDHT(int _pin, DHT_MODEL _model, uint8_t ix, DHTInternal *impl) : 
 
 MeteoDHT::~MeteoDHT()
 {
-  disable();
   if (own) delete dht;
 }
 
@@ -104,7 +103,7 @@ bool MeteoDHT::is_enabled()
   return enabled;
 }
 
-void MeteoDHT::enable()
+void MeteoDHT::enable(Context &ctx)
 {
   if (!enabled)
   {
@@ -114,7 +113,7 @@ void MeteoDHT::enable()
   }
 }
 
-void MeteoDHT::disable()
+void MeteoDHT::disable(Context &ctx)
 {
   if (enabled)
   {

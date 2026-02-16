@@ -121,7 +121,7 @@ bool BMV712::is_enabled()
   return enabled;
 }
 
-void BMV712::enable()
+void BMV712::enable(Context &ctx)
 {
   if (!enabled)
   {
@@ -130,12 +130,14 @@ void BMV712::enable()
   }
 }
 
-void BMV712::disable()
+void BMV712::disable(Context &ctx)
 {
   if (enabled)
   {
     bmv_vedirect.reset();
     enabled = false;
+    reset_cache(&ctx.data_cache.battery_eng);
+    reset_cache(&ctx.data_cache.battery_svc);
     reset_cache(&data_eng);
     reset_cache(&data_svc);
     p.close();

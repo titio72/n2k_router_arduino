@@ -5,6 +5,7 @@
 #include "N2K_router.h"
 #include <Utils.h>
 #include <math.h>
+#include <Log.h>
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -12,7 +13,7 @@
 // Mock Arduino functions for testing
 #define INPUT 0
 inline int analogReadMilliVolts(int pin) { return 1650; } // 1.65V mock value
-inline void pinMode(int pin, int mode) {}
+//inline void pinMode(int pin, int mode) {}
 #endif
 
 #define WATER_TEMP_PERIOD 1000000L // Period for temperature reading
@@ -25,35 +26,45 @@ const float NTC_BETA = 3950;         // Beta coefficient (typical for 10k NTC)
 const float REF_VOLTAGE = 5.0;       // Reference voltage (check the PCB!!!!)
 
 // Smoothing filter alpha
-const double DEFAULT_ALPHA = 0.1;
+const double DEFAULT_ALPHA = 0.67; // Smoothing factor for exponential moving average (0.0 - 1.0)
 
 // Temperature smoothing and calibration
 const double DEFAULT_ADJUSTMENT = 1.0;
 const double CELSIUS_OFFSET = 273.15;
 
+static void reset_water_temp_data(WaterData &data, uint8_t error_code = TEMP_ERROR_OK)
+{
+    data.temperature = NAN;
+    data.temperature_error = error_code;
+}
+
 WaterTemperature::WaterTemperature(int _pin)
     : temperature(NAN),
       last_read_time(0),
       adjustment_factor(DEFAULT_ADJUSTMENT),
-      pin(_pin)
+      pin(_pin),
+      enabled(false)
 {}
 
 WaterTemperature::~WaterTemperature()
 {
 }
 
-void WaterTemperature::enable()
+void WaterTemperature::enable(Context &ctx)
 {
     if (!enabled)
     {
+        Log::tracex("WTT", "Enabling", "Pin {%d}", pin);
         enabled = true;
     }
 }
 
-void WaterTemperature::disable()
+void WaterTemperature::disable(Context &ctx)
 {
     if (enabled)
     {
+        reset_water_temp_data(ctx.data_cache.water_data);
+        Log::tracex("WTT", "Disabling", "Pin {%d}", pin);
         enabled = false;
     }
 }
@@ -63,9 +74,10 @@ bool WaterTemperature::is_enabled()
     return enabled;
 }
 
-void WaterTemperature::setup()
+void WaterTemperature::setup(Context &ctx)
 {
     // Configure the pin as analog input
+    Log::tracex("WTT", "Setup", "Pin {%d}", pin);
     if (pin != -1) pinMode(pin, INPUT);
 }
 
@@ -76,8 +88,7 @@ void WaterTemperature::loop(unsigned long now_micros, Context &ctx)
     // Check if temperature measurement is enabled
     if (!is_enabled() || pin == -1) {
         // Temperature measurement disabled
-        data.temperature = NAN;
-        data.temperature_error = TEMP_ERROR_NO_SIGNAL;
+        reset_water_temp_data(data, TEMP_ERROR_NO_SIGNAL);
         return;
     }
     
@@ -94,6 +105,7 @@ void WaterTemperature::loop(unsigned long now_micros, Context &ctx)
 
 double read_ntc(int pin, double &r, double &v) {
   // read ADC value in volts
+  int i = analogRead(pin);
   v = (double)analogReadMilliVolts(pin) / 1000.0; // in volts
   
   // Calculate NTC resistance using voltage divider formula
@@ -114,32 +126,33 @@ void WaterTemperature::read_data(WaterData &data, Configuration &conf)
     double r_thermistor;
     double voltage;
     double temp_celsius = read_ntc(pin, r_thermistor, voltage);
+    //Log::tracex("WTT", "Reading temperature", "Pin {%d} Voltage {%.2f} Ohms {%.2f} Temp {%.2f}", pin, voltage, r_thermistor, temp_celsius);
     if (isnan(temp_celsius)) {
         // Reading failed
-        data.temperature = NAN;
-        data.temperature_error = TEMP_ERROR_NO_SIGNAL;
+        reset_water_temp_data(data, TEMP_ERROR_NO_SIGNAL);
         return;
     }
     
     // Apply smoothing filter (exponential moving average)
+    if (isnan(temperature)) {
+        // First reading, initialize temperature
+        temperature = temp_celsius;
+    }
     temperature = DEFAULT_ALPHA * temp_celsius + (1.0 - DEFAULT_ALPHA) * temperature;
     
-    // Apply configuration adjustment factor
-    double smoothed_temp = temperature * conf.get_sea_temp_alpha();
-    
-    // Clamp temperature to reasonable range (-10°C to 50°C)
+        // Clamp temperature to reasonable range (-10°C to 70°C)
     const double MIN_TEMP = -10.0;
-    const double MAX_TEMP = 50.0;
+    const double MAX_TEMP = 70.0;
     
-    if (smoothed_temp < MIN_TEMP || smoothed_temp > MAX_TEMP) {
+    if (temperature < MIN_TEMP || temperature > MAX_TEMP) {
         // Temperature out of valid range
-        data.temperature = NAN;
-        data.temperature_error = TEMP_ERROR_NO_SIGNAL;
+        reset_water_temp_data(data, TEMP_ERROR_NO_SIGNAL);
     }
     else
     {
+        //Serial.printf("---- %f", temperature);
         // Set temperature data
-        data.temperature = smoothed_temp * adjustment_factor;
+        data.temperature = temperature * adjustment_factor;
         data.temperature_error = TEMP_ERROR_OK;
     }
 }

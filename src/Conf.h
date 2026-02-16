@@ -29,7 +29,7 @@ public:
   bool is_use_vedirect() const;
   bool is_keep_n2k_src() const;
   bool is_use_tmp() const;
-  bool is_stw_paddle() const;
+  bool is_use_stw_paddle() const;
 
   void set_use_gps(bool v);
   void set_use_bme(bool v);
@@ -40,7 +40,7 @@ public:
   void set_use_vedirect(bool v);
   void set_keep_n2k_src(bool v);
   void set_use_tmp(bool v);
-  void set_stw_paddle(bool v);
+  void set_use_stw_paddle(bool v);
 
   uint8_t size() const;
 
@@ -114,7 +114,7 @@ public:
   virtual double get_sea_temp_alpha() const;
   virtual double get_stw_paddle_alpha() const;
   virtual double get_sea_temp_adjustment() const;
-  virtual double get_stw_paddle_adjustement() const;
+  virtual double get_stw_paddle_adjustment() const;
   virtual double get_rpm_adjustment() const;
   virtual const char *get_device_name() const;
   virtual unsigned char get_n2k_source() const;

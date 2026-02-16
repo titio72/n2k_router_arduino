@@ -66,7 +66,7 @@ void EVODisplay::loop(unsigned long micros, Context &ctx)
 {
 }
 
-void EVODisplay::enable()
+void EVODisplay::enable(Context &ctx)
 {
     if (!enabled && init)
     {
@@ -76,7 +76,7 @@ void EVODisplay::enable()
 
 }
 
-void EVODisplay::disable()
+void EVODisplay::disable(Context &ctx)
 {
     if (enabled)
     {

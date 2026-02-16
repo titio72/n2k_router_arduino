@@ -325,8 +325,8 @@ bool N2KSenderAbstract::sendMagneticHeading(double heading)
     }
 }
 
-N2KStats N2KSenderAbstract::getStats()
+N2KStats N2K_router::getStats()
 {
-    return stats;
+    return n2k.getStats();
 }
 #pragma endregion

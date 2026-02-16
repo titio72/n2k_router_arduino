@@ -12,8 +12,8 @@ EnvMessenger::EnvMessenger(): enabled(false), t0(0)
 
 EnvMessenger::~EnvMessenger() {}
 
-void EnvMessenger::enable() { enabled = true; }
-void EnvMessenger::disable() { enabled = false; }
+void EnvMessenger::enable(Context &ctx) { enabled = true; }
+void EnvMessenger::disable(Context &ctx) { enabled = false; }
 bool EnvMessenger::is_enabled() { return enabled; }
 void EnvMessenger::setup(Context& ctx) {}
 

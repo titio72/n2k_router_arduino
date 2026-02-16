@@ -7,7 +7,7 @@
 #define RPM_LOG_TAG "RPM"
 
 // frequency calculation
-#define PERIOD 500000L // Period for RPM calculation
+#define PERIOD 1000000L // Period for RPM calculation
 #define PERIOD_H 2000000L // Period for sending engine hours
 #define FREQ_SMOOTHING_BUFFER_SIZE 3 // Smooth over the last N periods
 
@@ -30,7 +30,6 @@ Tachometer::Tachometer(uint8_t _pin, EngineHours *eng, uint8_t _poles, double _r
 
 Tachometer::~Tachometer()
 {
-    disable();
     delete[] freq_buffer;
 }
 
@@ -39,7 +38,7 @@ bool Tachometer::is_tacho_registered() const
     return true; //contains_tacho(speed_sensor);
 }
 
-void Tachometer::enable()
+void Tachometer::enable(Context &ctx)
 {
     if (!enabled && is_setup)
     {
@@ -48,7 +47,7 @@ void Tachometer::enable()
     }
 }
 
-void Tachometer::disable()
+void Tachometer::disable(Context &ctx)
 {
     if (enabled)
     {
@@ -96,7 +95,7 @@ void Tachometer::loop(unsigned long micros, Context &ctx)
         // calc frequency in Hzs
         bool ok = speed_sensor.read_data(micros / 1000L, fr, cnt); // dT is in micros, convert to millis
         // apply smoothing using a buffer
-        double freq = fr; //add_and_get_freq((fr / 2.0) * 1000000.0, freq_buffer, freq_buffer_ix);
+        double freq = fr / 2.0; //add_and_get_freq((fr / 2.0) * 1000000.0, freq_buffer, freq_buffer_ix);
         int rpm = (int)(ctx.conf.get_rpm_adjustment() * 60.0 * rpm_ratio * freq / poles);
         //Log::trace("Ok {%d} Cnt {%d} Freq {%.3fHz} RPM {%d} D-Time {%lu} ET {%lu}\n", ok, cnt, freq, rpm, dT, (unsigned long)(current_engine_time/1000L));
 

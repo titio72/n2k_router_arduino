@@ -12,12 +12,7 @@
 #include "Conf.h"
 #include "Constants.h"
 #include "Dummy.h"
-
-#if GPS_TYPE == 1
 #include "GPSX.h"
-#elif GPS_TYPE == 2
-#include "GPSX.h"
-#endif
 
 #if DO_TACHOMETER == 1
 #include "Tachometer.h"
@@ -66,7 +61,11 @@ Dummy gps;
 #endif
 
 #if (DO_VE_DIRECT == 1)
-ArduinoPort<HardwareSerial> veDirectPort("VE", Serial1, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, false);
+#if SOC_UART_NUM > 2
+ArduinoPort<HardwareSerial> veDirectPort("VE", Serial2, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, false);
+#else
+ArduinoPort<HardwareSerial> veDirectPort("VE", Serial0, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, false);
+#endif
 BMV712 bmv712(veDirectPort);
 #else
 Dummy bmv712;
@@ -80,7 +79,7 @@ WaterTemperature waterTemp(WATER_TEMP_PIN);
 SpeedThroughWater speedThroughWater(STW_PADDLE_PIN);
 Leds leds;
 BLEConf bleConf(on_command);
-EnvMessenger envMessanger;
+EnvMessenger environmentMessenger;
 #pragma endregion
 
 bool started = false;
@@ -94,7 +93,38 @@ struct AppStats
   unsigned short retry_tacho = 0;
   unsigned short retry_display = 0;
   unsigned short retry_leds = 0;
-  unsigned short retry_env_messager = 0;
+  unsigned short retry_environment_messenger = 0;
+  unsigned short retry_water_temp = 0;
+  unsigned short retry_stw_paddle = 0;
+
+  unsigned long n2k_loop_time = 0;
+  unsigned long gps_loop_time = 0;
+  unsigned long dht_loop_time = 0;
+  unsigned long bme_loop_time = 0;
+  unsigned long bmv712_loop_time = 0;
+  unsigned long tacho_loop_time = 0;
+  unsigned long display_loop_time = 0;
+  unsigned long leds_loop_time = 0;
+  unsigned long environment_messenger_loop_time = 0;
+  unsigned long water_temp_loop_time = 0;
+  unsigned long stw_paddle_loop_time = 0;
+  unsigned long bleConf_loop_time = 0;
+
+  void reset_loop_time()
+  {
+    n2k_loop_time = 0;
+    gps_loop_time = 0;
+    dht_loop_time = 0;
+    bme_loop_time = 0;
+    bmv712_loop_time = 0;
+    tacho_loop_time = 0;
+    display_loop_time = 0;
+    leds_loop_time = 0;
+    environment_messenger_loop_time = 0;
+    water_temp_loop_time = 0;
+    stw_paddle_loop_time = 0;
+    bleConf_loop_time = 0;
+  }
 } app_stats;
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source)
@@ -134,6 +164,19 @@ void handle_leds(unsigned long ms)
 void dump_process_stats()
 {
   Log::tracex(APP_LOG_TAG, "Stats", "Cycles {%d} in 10s", app_stats.cycles);
+  Log::tracex(APP_LOG_TAG, "Stats", "N2K Loop Time {%lu} micros", app_stats.n2k_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "GPS Loop Time {%lu} micros", app_stats.gps_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "DHT Loop Time {%lu} micros", app_stats.dht_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "BME Loop Time {%lu} micros", app_stats.bme_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "BMV712 Loop Time {%lu} micros", app_stats.bmv712_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "Tacho Loop Time {%lu} micros", app_stats.tacho_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "Display Loop Time {%lu} micros", app_stats.display_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "Leds Loop Time {%lu} micros", app_stats.leds_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "Environment Messenger Loop Time {%lu} micros", app_stats.environment_messenger_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "Water Temp Loop Time {%lu} micros", app_stats.water_temp_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "STW Paddle Loop Time {%lu} micros", app_stats.stw_paddle_loop_time);
+  Log::tracex(APP_LOG_TAG, "Stats", "BLE Conf Loop Time {%lu} micros", app_stats.bleConf_loop_time);  
+  app_stats.reset_loop_time();
 }
 
 void report_stats(unsigned long ms)
@@ -156,18 +199,19 @@ void _loop()
   unsigned long t = micros();
   if (started)
   {
-    n2k.loop(t, context);
-    handle_agent_loop(leds, context, true, &app_stats.retry_leds, t, "Leds");
-    handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display");
-    handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS");
-    handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BMP");
-    handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT");
-    handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712");
-    handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO");
-    handle_agent_loop(speedThroughWater, context, conf.get_services().is_stw_paddle(), NULL, t, "STW");
-    handle_agent_loop(waterTemp, context, true, NULL, t, "WTRTEMP");
-    handle_agent_loop(envMessanger, context, true, &app_stats.retry_env_messager, t, "ENV");
-    handle_agent_loop(bleConf, context, true, NULL, t, "BLE");
+    app_stats.n2k_loop_time += handle_agent_loop_simple(n2k, context, true, NULL, t, "N2K");
+    app_stats.leds_loop_time += handle_agent_loop(leds, context, true, &app_stats.retry_leds, t, "Leds");
+    app_stats.display_loop_time += handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display");
+    app_stats.gps_loop_time += handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS");
+    app_stats.bme_loop_time += handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BMP");
+    app_stats.dht_loop_time += handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT");
+    app_stats.bmv712_loop_time += handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712");
+    app_stats.tacho_loop_time += handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO");
+    app_stats.stw_paddle_loop_time += handle_agent_loop(speedThroughWater, context, conf.get_services().is_use_stw_paddle(), &app_stats.retry_stw_paddle, t, "STW");
+    app_stats.water_temp_loop_time += handle_agent_loop(waterTemp, context, conf.get_services().is_use_tmp(), &app_stats.retry_water_temp, t, "WTRTEMP");
+    app_stats.environment_messenger_loop_time += handle_agent_loop(environmentMessenger, context, true, &app_stats.retry_environment_messenger, t, "ENV");
+    app_stats.bleConf_loop_time += handle_agent_loop(bleConf, context, true, NULL, t, "BLE");
+
     handle_display(t);
     handle_leds(t);
     report_stats(t);
@@ -177,11 +221,12 @@ void _loop()
 void _setup()
 {  
   Serial.begin(115200);
-  bool res_cpu_freq = setCpuFrequencyMhz(80);
+  //Log::disable();
+  bool res_cpu_freq = setCpuFrequencyMhz(160);
   uint32_t f1 = getCpuFrequencyMhz();
   Log::enable();
 
-  msleep(500);
+  msleep(3500);
 
   unsigned long ver = __cplusplus;
   Log::tracex(APP_LOG_TAG, "CPU", "Freq {%d} C++ {%l}", f1, ver);
@@ -203,8 +248,8 @@ void _setup()
   bmv712.setup(context);
   tacho.setup(context);
   speedThroughWater.setup(context);
-  waterTemp.setup();
-  envMessanger.setup(context);
+  waterTemp.setup(context);
+  environmentMessenger.setup(context);
   msleep(500);
   started = true;
 

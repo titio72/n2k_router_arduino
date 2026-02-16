@@ -215,7 +215,7 @@ bool GPSX::is_enabled()
     return enabled;
 }
 
-void GPSX::enable()
+void GPSX::enable(Context &ctx)
 {
     if (!enabled)
     {
@@ -281,7 +281,7 @@ void GPSX::enable()
     }
 }
 
-void GPSX::disable()
+void GPSX::disable(Context &ctx)
 {
     if (enabled)
     {
