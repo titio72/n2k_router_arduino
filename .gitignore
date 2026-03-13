@@ -8,3 +8,4 @@ _autosave*
 *.zip
 
 n2k_router_arduino.code-workspace
+nmea.log
