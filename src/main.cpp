@@ -199,7 +199,6 @@ void _loop()
   unsigned long t = micros();
   if (started)
   {
-    app_stats.n2k_loop_time += handle_agent_loop_simple(n2k, context, true, NULL, t, "N2K");
     app_stats.leds_loop_time += handle_agent_loop(leds, context, true, &app_stats.retry_leds, t, "Leds");
     app_stats.display_loop_time += handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display");
     app_stats.gps_loop_time += handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS");
@@ -211,7 +210,6 @@ void _loop()
     app_stats.water_temp_loop_time += handle_agent_loop(waterTemp, context, conf.get_services().is_use_tmp(), &app_stats.retry_water_temp, t, "WTRTEMP");
     app_stats.environment_messenger_loop_time += handle_agent_loop(environmentMessenger, context, true, &app_stats.retry_environment_messenger, t, "ENV");
     app_stats.bleConf_loop_time += handle_agent_loop(bleConf, context, true, NULL, t, "BLE");
-
     handle_display(t);
     handle_leds(t);
     report_stats(t);

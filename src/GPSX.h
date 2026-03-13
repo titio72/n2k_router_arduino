@@ -23,25 +23,20 @@ public:
 
     AB_AGENT
 
-    double getLatitude() { return data.latitude_signed; }
-    double getLongitude() { return data.longitude_signed; }
-
     void dumpStats();
 
 private:
     void manageLowFrequency(unsigned long tstamp, Context& ctx);
     void manageHighFrequency(unsigned long tstamp, Context &ctx);
-    //bool set_system_time(unsigned char sid, Context &ctx);
     bool enabled;
     unsigned long last_read_time;
-    //time_t delta_time;
-    //bool gps_time_set;
+
     int count_sent;
     bool cache_ok;
     HardwareSerial *serial_port;
     int rx_pin;
     int tx_pin;
-
+    TaskHandle_t GNSS_Task;
     SFE_UBLOX_GNSS myGNSS;
 
     GPSData data;

@@ -6,6 +6,12 @@
 #include "Agents.hpp"
 #include "Data.h"
 
+#ifndef NATIVE
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#endif
+
 #ifndef N2K_SOURCE
 #define N2K_SOURCE 22
 #endif
@@ -86,6 +92,11 @@ protected:
 
 private:
     N2K &n2k;
+#ifndef NATIVE
+    QueueHandle_t _send_queue = nullptr;
+    TaskHandle_t _n2k_task = nullptr;
+    static void n2k_task_fn(void *param);
+#endif
 };
 
 #ifdef PIO_UNIT_TESTING

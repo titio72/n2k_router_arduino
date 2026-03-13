@@ -87,32 +87,35 @@ static inline T to_int(double value, double factor, T invalid_value)
 
 void fill_buffer(ByteBuffer &buffer, Context &ctx)
 {
+  Configuration &conf = ctx.conf;
+  Data &data_cache = ctx.data_cache;
   N2KStats s(ctx.n2k.getStats());
-  const int8_t _gpsFix = ctx.data_cache.gps.fix;
-  const uint32_t _atmo = to_int(ctx.data_cache.get_pressure(ctx.conf), 10.0, INVALID_U32);
-  const int16_t _temp = to_int(ctx.data_cache.get_temperature(ctx.conf), 10.0, INVALID_16);
-  const int16_t _hum = to_int(ctx.data_cache.get_humidity(ctx.conf), 100.0, INVALID_16);
-  const int32_t _lat = to_int(ctx.data_cache.gps.latitude_signed, 1000000.0, INVALID_32);
-  const int32_t _lon = to_int(ctx.data_cache.gps.longitude_signed, 1000000.0, INVALID_32);
-  const int16_t _sog = to_int(ctx.data_cache.gps.sog, 100.0, INVALID_16);
-  const int16_t _cog = to_int(ctx.data_cache.gps.cog, 10.0, INVALID_16);
-  const int16_t _current = to_int(ctx.data_cache.battery_svc.current, 100.0, INVALID_16);
-  const int16_t _voltage = to_int(ctx.data_cache.battery_svc.voltage, 100.0, INVALID_16);
-  const int16_t _soc = to_int(ctx.data_cache.battery_svc.soc, 100.0, INVALID_16);
-  const uint32_t _rpmAdj = to_int(ctx.conf.get_rpm_adjustment(), 10000.0, INVALID_U32);
-  const int32_t _timestamp = ctx.data_cache.gps.gps_unix_time;
-  const uint16_t _rpm = ctx.data_cache.engine.rpm;
+
+  const int8_t _gpsFix = data_cache.gps.fix;
+  const uint32_t _atmo = to_int(data_cache.get_pressure(conf), 10.0, INVALID_U32);
+  const int16_t _temp = to_int(data_cache.get_temperature(conf), 10.0, INVALID_16);
+  const int16_t _hum = to_int(data_cache.get_humidity(conf), 100.0, INVALID_16);
+  const int32_t _lat = to_int(data_cache.gps.latitude_signed, 1000000.0, INVALID_32);
+  const int32_t _lon = to_int(data_cache.gps.longitude_signed, 1000000.0, INVALID_32);
+  const int16_t _sog = to_int(data_cache.gps.sog, 100.0, INVALID_16);
+  const int16_t _cog = to_int(data_cache.gps.cog, 10.0, INVALID_16);
+  const int16_t _current = to_int(data_cache.battery_svc.current, 100.0, INVALID_16);
+  const int16_t _voltage = to_int(data_cache.battery_svc.voltage, 100.0, INVALID_16);
+  const int16_t _soc = to_int(data_cache.battery_svc.soc, 100.0, INVALID_16);
+  const uint32_t _rpmAdj = to_int(conf.get_rpm_adjustment(), 10000.0, INVALID_U32);
+  const int32_t _timestamp = data_cache.gps.gps_unix_time;
+  const uint16_t _rpm = data_cache.engine.rpm;
   const int32_t _mem = get_free_mem();
   const int8_t _canbus = s.canbus;
   const int32_t _canbus_s = s.sent;
   const int32_t _canbus_e = s.fail;
-  const uint32_t _engine_time = static_cast<uint32_t>(ctx.data_cache.engine.engine_time / 1000L); // send engine time in seconds
-  const uint16_t _services = ctx.conf.get_services().serialize();
-  const uint8_t _n2k_source = ctx.conf.get_n2k_source();
-  const int16_t _stw = to_int(ctx.data_cache.water_data.speed, 100.0, INVALID_16);
-  const int16_t _water_temp = to_int(ctx.data_cache.water_data.temperature, 10.0, INVALID_16);
-  const uint32_t _stw_adjustment = to_int(ctx.conf.get_stw_paddle_adjustment(), 10000.0, INVALID_U32);
-  const uint32_t _sea_temp_adjustment = to_int(ctx.conf.get_sea_temp_adjustment(), 10000.0, INVALID_U32);
+  const uint32_t _engine_time = static_cast<uint32_t>(data_cache.engine.engine_time / 1000L); // send engine time in seconds
+  const uint16_t _services = conf.get_services().serialize();
+  const uint8_t _n2k_source = conf.get_n2k_source();
+  const int16_t _stw = to_int(data_cache.water_data.speed, 100.0, INVALID_16);
+  const int16_t _water_temp = to_int(data_cache.water_data.temperature, 10.0, INVALID_16);
+  const uint32_t _stw_adjustment = to_int(conf.get_stw_paddle_adjustment(), 10000.0, INVALID_U32);
+  const uint32_t _sea_temp_adjustment = to_int(conf.get_sea_temp_adjustment(), 10000.0, INVALID_U32);
 
   buffer.reset()
       << (uint8_t)BUFFER_LAYOUT_VERSION   // version

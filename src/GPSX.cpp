@@ -15,11 +15,12 @@
 static WMM_Tinier myDeclination;
 static bool WMM_init = false;
 
-const unsigned long READ_PERIOD = 50000; // microseconds
-const int HIG_LOW_FREQ_RATIO = 4;        // manage a low freq event every 4 high freq events
-const int NAVIGATION_DATA_FREQUENCY = 4; // Hz
+const int HIG_LOW_FREQ_RATIO = 10;         // manage a low freq event every 10 high freq events
+const int NAVIGATION_DATA_FREQUENCY = 10; // Hz
 
 const int GPS_SERIAL_SPEED = 57600; // Default speed for GPS serial port
+
+const int GPS_SERIAL_FALLBACK_SPEEDS[] = {9600, 57600}; // Fallback speed for GPS serial port if default fails
 
 const char* GPS_LOG_TAG = "GPS";
 
@@ -46,6 +47,10 @@ void reset_gps_data(GPSData &data)
 
 bool GPSX::loadSats()
 {
+    if (!myGNSS.getNAVSAT()) {
+        return false;
+    }
+
     sat *satellites = data.satellites;
     UBX_NAV_SAT_data_t *d = &myGNSS.packetUBXNAVSAT->data;
     int usedSats = 0;
@@ -103,10 +108,6 @@ bool GPSX::loadPVT()
 
     if (myGNSS.getGnssFixOk())
     {
-        data.hdop = myGNSS.getHorizontalDOP() / 100.0;
-        data.vdop = myGNSS.getVerticalDOP() / 100.0;
-        data.tdop = myGNSS.getTimeDOP() / 100.0;
-        data.pdop = myGNSS.getPDOP() / 100.0;
         data.latitude_signed = myGNSS.getLatitude() / 10000000.0f;
         data.longitude_signed = myGNSS.getLongitude() / 10000000.0f;
         data.cog = myGNSS.getHeading() / 100000.0f;                         // headVeh is deg*1e-05
@@ -115,10 +116,6 @@ bool GPSX::loadPVT()
     }
     else
     {
-        data.hdop = NAN;
-        data.vdop = NAN;
-        data.tdop = NAN;
-        data.pdop = NAN;
         data.gps_unix_time = 0;
         data.latitude_signed = NAN;
         data.longitude_signed = NAN;
@@ -147,15 +144,24 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
 {
     if (cache_ok && count_sent == 0)
     {
+        if (myGNSS.getDOP()) {
+            data.hdop = myGNSS.getHorizontalDOP() / 100.0;
+            data.vdop = myGNSS.getVerticalDOP() / 100.0;
+            data.tdop = myGNSS.getTimeDOP() / 100.0;
+            data.pdop = myGNSS.getPDOP() / 100.0;
+        } else {
+            data.hdop = NAN;
+            data.vdop = NAN;
+            data.tdop = NAN;
+            data.pdop = NAN;
+        }
+
         static N2KSid _sid;
         unsigned char sid = _sid.getNew();
-        //if (/*loadFix() && */loadSats())
-        {
-            ctx.n2k.sendGNSSPosition(data, sid);
-            float variation = myDeclination.magneticDeclination(data.latitude_signed, data.longitude_signed,
-                                                              data.year - 2000, data.month, data.day);
-            ctx.n2k.sendMagneticVariation(variation, data.gps_unix_time / 86400);
-        }
+        ctx.n2k.sendGNSSPosition(data, sid);
+        float variation = myDeclination.magneticDeclination(data.latitude_signed, data.longitude_signed,
+                                                            data.year - 2000, data.month, data.day);
+        ctx.n2k.sendMagneticVariation(variation, data.gps_unix_time / 86400);
         if (ctx.conf.get_services().is_sog_2_stw())
         {
             ctx.n2k.sendSTW(data.sog);
@@ -165,19 +171,18 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
             ctx.n2k.sendSystemTime(data.gps_unix_time, sid, data.gps_unix_time_ms);
         }
 #if (SEND_SATS == 1)
-        ctx.n2k.sendSatellites(data, sid);
+        if (loadSats())
+        {
+            ctx.n2k.sendSatellites(data, sid);
+        }
 #endif
-        //set_system_time(sid, ctx);
     }
 }
 
 void GPSX::manageHighFrequency(unsigned long micros, Context &ctx)
 {
-    // if (loadPVT())
-    {
-        ctx.n2k.sendCOGSOG(data.sog, data.cog, 0xFF);
-        ctx.n2k.sendPosition(data.latitude_signed, data.longitude_signed);
-    }
+    ctx.n2k.sendCOGSOG(data.sog, data.cog, 0xFF);
+    ctx.n2k.sendPosition(data.latitude_signed, data.longitude_signed);
     count_sent++;
     count_sent %= HIG_LOW_FREQ_RATIO;
 }
@@ -228,8 +233,8 @@ void GPSX::enable(Context &ctx)
                 myGNSS.setI2COutput(COM_TYPE_UBX); // Set the I2C port to output UBX only (turn off NMEA noise)
                 myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
                 myGNSS.setAutoPVT(true);
-                myGNSS.setAutoDOP(true);
-                myGNSS.setAutoNAVSAT(true);
+                myGNSS.setAutoDOP(false);
+                myGNSS.setAutoNAVSAT(false);
             }
             enabled = _enabled;
             Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
@@ -252,9 +257,9 @@ void GPSX::enable(Context &ctx)
                 }
                 else
                 {
-                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connection failed at %d baud, trying 9600\n", GPS_SERIAL_SPEED);
+                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connection failed at %d baud, trying %d\n", GPS_SERIAL_SPEED, GPS_SERIAL_FALLBACK_SPEEDS[retry_count % 2]);
                     serial_port->end();
-                    serial_port->begin(9600, SERIAL_8N1, rx_pin, tx_pin);
+                    serial_port->begin(GPS_SERIAL_FALLBACK_SPEEDS[retry_count % 2], SERIAL_8N1, rx_pin, tx_pin);
                     if (myGNSS.begin(*serial_port))
                     {
                         myGNSS.setSerialRate(GPS_SERIAL_SPEED); // Set the serial port to 57600 baud)
@@ -269,11 +274,12 @@ void GPSX::enable(Context &ctx)
 
             if (_enabled)
             {
+                myGNSS.setUART2Output(COM_TYPE_UBX); // Set the port to output UBX only (turn off NMEA noise)
                 myGNSS.setUART1Output(COM_TYPE_UBX); // Set the port to output UBX only (turn off NMEA noise)
                 myGNSS.setNavigationFrequency(NAVIGATION_DATA_FREQUENCY);
                 myGNSS.setAutoPVT(true);
-                myGNSS.setAutoDOP(true);
-                myGNSS.setAutoNAVSAT(true);
+                myGNSS.setAutoDOP(false);    // no point in doing this automatically, since we only read DOP values at low frequency, we can read them on demand on the loop when needed
+                myGNSS.setAutoNAVSAT(false); // no point in doing this automatically, since we only read NAVSAT at low frequency, we can read them on demand on the loop when needed
             }
             enabled = _enabled;
             Log::tracex(GPS_LOG_TAG, "Enable", "Success {%d}", enabled);
@@ -286,11 +292,8 @@ void GPSX::disable(Context &ctx)
     if (enabled)
     {
         enabled = false;
-
         reset_gps_data(data);
-
         myGNSS.end();
-
         Log::tracex(GPS_LOG_TAG, "Disable", "Success {%d}", !enabled);
     }
 }

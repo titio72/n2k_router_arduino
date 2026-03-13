@@ -41,6 +41,12 @@ void N2K_router::setup(Context &ctx)
     info.ManufacturerCode = 2046;   // Just choosen free from code list on http://www.nmea.org/Assets/20121020%20nmea%202000%20registration%20list.pdf   
 
     n2k.setup(info);
+
+#ifndef NATIVE
+    _send_queue = xQueueCreate(256, sizeof(tN2kMsg));
+    xTaskCreatePinnedToCore(n2k_task_fn, "N2KTask", 4096, this, 10, &_n2k_task, 0);
+    Log::tracex("N2K", "Setup", "N2K task pinned to core 0");
+#endif
 }
 
 void N2K_router::loop(unsigned long time, Context &ctx)
@@ -60,8 +66,34 @@ unsigned char N2K_router::get_source()
 
 bool N2K_router::send_it(tN2kMsg &N2kMsg)
 {
+#ifndef NATIVE
+    if (_send_queue)
+    {
+        xQueueSend(_send_queue, &N2kMsg, pdMS_TO_TICKS(10));
+        return true;
+    }
+    return false;
+#else
     return n2k.send_msg(N2kMsg);
+#endif
 }
+
+#ifndef NATIVE
+void N2K_router::n2k_task_fn(void *param)
+{
+    N2K_router *self = static_cast<N2K_router *>(param);
+    for (;;)
+    {
+        self->n2k.loop(micros());
+        tN2kMsg msg;
+        while (xQueueReceive(self->_send_queue, &msg, 0) == pdTRUE)
+        {
+            self->n2k.send_msg(msg);
+        }
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+#endif
 #pragma endregion
 
 #pragma region N2KSenderAbstract

@@ -71,7 +71,7 @@ unsigned long handle_agent_loop(T &agent, Context &ctx, bool enable, unsigned sh
       agent.loop(now_micros, ctx);
     }
   }
-  else
+  else if (agent.is_enabled())
   {
     agent.disable(ctx);
     if (retry)
