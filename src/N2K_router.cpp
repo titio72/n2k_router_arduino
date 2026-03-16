@@ -51,7 +51,7 @@ void N2K_router::setup(Context &ctx)
 
 void N2K_router::loop(unsigned long time, Context &ctx)
 {
-    n2k.loop(time);
+    //n2k.loop(time); - handled in task
 }
 
 void N2K_router::set_desired_source(unsigned char src)

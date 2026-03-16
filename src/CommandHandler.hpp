@@ -28,6 +28,16 @@ public:
             conf.save_device_name(command_value);
         }
         break;
+        case 'B':
+        {
+            Log::tracex(CMD_LOG_TAG, "Command set battery capacity AH", "B {%s}", command_value);
+            int c = atoi(command_value);
+            if (c > 0)
+            {
+                conf.save_battery_capacity(c);
+            }
+        }
+        break;
         case 'C':
         {
             Log::tracex(CMD_LOG_TAG, "Command set services", "C {%s}", command_value);
@@ -38,7 +48,7 @@ public:
         break;
         case 'H':
         {
-            Log::tracex(CMD_LOG_TAG, "Command set engine time", "H {%s}", command_value);
+            Log::tracex(CMD_LOG_TAG, "Command set engine time hhhh:mm", "H {%s}", command_value);
             int64_t engine_time_secs = atol(command_value);
             if (engine_time_secs > 0)
             {
@@ -77,6 +87,7 @@ public:
         {
             // heartbeat
         }
+        break;
         default:
             Log::tracex(CMD_LOG_TAG, "Unknown command", " CMD {%c} Value {%s}", command, command_value);
         }

@@ -4,9 +4,11 @@
 #include "Utils.h"
 #include "Agents.hpp"
 #include <SpeedSensorInterrupt.h>
+#include <SpeedSensor.h>
+#include "SpeedSensorAnalog.h"
+#include <esp_timer.h>
 
 class EngineHours;
-class SpeedSensor;
 
 class Tachometer
 {
@@ -38,11 +40,16 @@ private:
     unsigned long last_read;
     unsigned long last_read_eng_h;
 
-    SpeedSensorInterrupt speed_sensor;
+    //SpeedSensorInterrupt speed_sensor;
+    //SpeedSensor speed_sensor;
+    SpeedSensorAnalog speed_sensor;
 
     double *freq_buffer;
     int freq_buffer_ix;
     bool is_setup;
+
+    esp_timer_handle_t timer_handle;
+    static void IRAM_ATTR timer_callback(void *arg);
 };
 
 #endif

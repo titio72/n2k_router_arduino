@@ -401,7 +401,7 @@ uint16_t Configuration::get_batter_capacity() const
     return conf.battery_capacity_Ah;
 }
 
-bool Configuration::save_batter_capacity(uint16_t c)
+bool Configuration::save_battery_capacity(uint16_t c)
 {
     conf.battery_capacity_Ah = c;
     SAVE_CONF

@@ -134,7 +134,7 @@ public:
   virtual bool save_device_name(const char *name);
   virtual bool save_n2k_source(unsigned char src);
   virtual bool save_services(N2KServices &s);
-  virtual bool save_batter_capacity(uint16_t c);
+  virtual bool save_battery_capacity(uint16_t c);
 
 protected:
   Conf conf;
@@ -211,10 +211,10 @@ public:
     return Configuration::save_services(s);
   }
 
-  virtual bool save_batter_capacity(uint16_t c)
+  virtual bool save_battery_capacity(uint16_t c)
   {
     save_battery_capacity_calls++;
-    return Configuration::save_batter_capacity(c);
+    return Configuration::save_battery_capacity(c);
   }
 
   virtual bool save_sea_temp_alpha(double a) override
