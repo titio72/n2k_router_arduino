@@ -87,32 +87,35 @@ void test_constructor_with_different_meteo_indices() {
 
 // ==================== Tests: Enable/Disable ====================
 void test_enable_calls_dht_setup() {
+    MOCK_CONTEXT
     TestDHTInternal test_impl;
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
     
-    dht.enable();
+    dht.enable(context);
     
     TEST_ASSERT_TRUE(test_impl.setup_called);
     TEST_ASSERT_TRUE(dht.is_enabled());
 }
 
 void test_enable_when_setup_fails() {
+    MOCK_CONTEXT
     TestDHTInternal test_impl;
     test_impl.setup_success = false;
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
     
-    dht.enable();
+    dht.enable(context);
     
     TEST_ASSERT_FALSE(dht.is_enabled());
 }
 
 void test_enable_when_already_enabled() {
+    MOCK_CONTEXT
     TestDHTInternal test_impl;
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
     
-    dht.enable();
+    dht.enable(context);
     test_impl.reset();  // Reset setup_called flag
-    dht.enable();      // Try to enable again
+    dht.enable(context);      // Try to enable again
     
     // Setup should not be called again
     TEST_ASSERT_FALSE(test_impl.setup_called);
@@ -120,35 +123,38 @@ void test_enable_when_already_enabled() {
 }
 
 void test_disable_clears_enabled_flag() {
+    MOCK_CONTEXT
     TestDHTInternal test_impl;
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
     
-    dht.enable();
+    dht.enable(context);
     TEST_ASSERT_TRUE(dht.is_enabled());
     
-    dht.disable();
+    dht.disable(context);
     TEST_ASSERT_FALSE(dht.is_enabled());
 }
 
 void test_disable_when_already_disabled() {
+    MOCK_CONTEXT
     TestDHTInternal test_impl;
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    
-    dht.disable();
+
+    dht.disable(context);
     TEST_ASSERT_FALSE(dht.is_enabled());
 }
 
 void test_enable_disable_toggle() {
+    MOCK_CONTEXT
     TestDHTInternal test_impl;
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
     
-    dht.enable();
+    dht.enable(context);
     TEST_ASSERT_TRUE(dht.is_enabled());
     
-    dht.disable();
+    dht.disable(context);
     TEST_ASSERT_FALSE(dht.is_enabled());
     
-    dht.enable();
+    dht.enable(context);
     TEST_ASSERT_TRUE(dht.is_enabled());
 }
 
@@ -180,7 +186,7 @@ void test_read_when_enabled_updates_data() {
     test_impl.humidity = 70.0;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // First loop call - should update on first call
     dht.loop(10000000, context);
@@ -209,7 +215,7 @@ void test_read_respects_sampling_period() {
     test_impl.temperature = 20.0;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // First read at time 0
     dht.loop(10000000, context);
@@ -230,7 +236,7 @@ void test_read_after_sampling_period_updates() {
     test_impl.temperature = 20.0;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // First read at time 0
     dht.loop(10000000, context);
@@ -248,7 +254,7 @@ void test_read_temperature_multiple_values() {
     test_impl.minimum_sampling_period = 100;  // 100 ms for faster test
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     unsigned long current_time = 10000000;
 
@@ -274,7 +280,7 @@ void test_read_humidity_multiple_values() {
     test_impl.minimum_sampling_period = 100;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // First read
     test_impl.humidity = 40.0;
@@ -295,7 +301,7 @@ void test_read_to_meteo_index_0() {
     test_impl.humidity = 65.0;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     dht.loop(10000000, context);
     
     // Should write to meteo_0
@@ -310,7 +316,7 @@ void test_read_to_meteo_index_1() {
     test_impl.humidity = 70.0;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 1, &test_impl);
-    dht.enable();
+    dht.enable(context);
     dht.loop(10000000, context);
     
     // Should write to meteo_1, meteo_0 should be NAN
@@ -328,12 +334,12 @@ void test_read_independent_meteo_indices() {
     
     test_impl.temperature = 20.0;
     test_impl.humidity = 50.0;
-    dht0.enable();
+    dht0.enable(context);
     dht0.loop(10000000, context);
     
     test_impl.temperature = 30.0;
     test_impl.humidity = 80.0;
-    dht1.enable();
+    dht1.enable(context);
     dht1.loop(10500000, context);
     
     TEST_ASSERT_EQUAL_DOUBLE(20.0, context.data_cache.meteo_0.temperature);
@@ -346,7 +352,7 @@ void test_extreme_temperature_values() {
     TestDHTInternal test_impl;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // Very low temperature
     test_impl.temperature = -40.0;
@@ -364,7 +370,7 @@ void test_extreme_humidity_values() {
     TestDHTInternal test_impl;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // 0% humidity
     test_impl.humidity = 0.0;
@@ -382,7 +388,7 @@ void test_nan_temperature_values() {
     TestDHTInternal test_impl;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     test_impl.temperature = NAN;
     dht.loop(0, context);
@@ -395,7 +401,7 @@ void test_nan_humidity_values() {
     TestDHTInternal test_impl;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     test_impl.humidity = NAN;
     dht.loop(0, context);
@@ -409,7 +415,7 @@ void test_very_fast_sampling_period() {
     test_impl.minimum_sampling_period = 1;  // 1 ms
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     // Multiple reads very close together
     test_impl.temperature = 20.0;
@@ -427,7 +433,7 @@ void test_zero_microseconds() {
     test_impl.temperature = 22.5;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     dht.loop(0, context);
     TEST_ASSERT_TRUE(isnan(context.data_cache.meteo_0.temperature)); // First read at time 0 should not update
@@ -439,7 +445,7 @@ void test_large_microseconds() {
     test_impl.temperature = 22.5;
     
     MeteoDHT dht(5, MeteoDHT::DHT22, 0, &test_impl);
-    dht.enable();
+    dht.enable(context);
     
     dht.loop(0xFFFFFFFFUL, context);
     TEST_ASSERT_EQUAL_DOUBLE(22.5, context.data_cache.meteo_0.temperature);
@@ -456,8 +462,8 @@ void test_dht22_vs_dht11_models() {
     test_impl.temperature = 24.0;
     test_impl.humidity = 60.0;
     
-    dht22.enable();
-    dht11.enable();
+    dht22.enable(context);
+    dht11.enable(context);
     
     dht22.loop(10000000, context);
     dht11.loop(10000000, context);
@@ -482,7 +488,7 @@ void test_full_lifecycle() {
     TEST_ASSERT_FALSE(dht.is_enabled());
     
     // Enable the sensor
-    dht.enable();
+    dht.enable(context);
     TEST_ASSERT_TRUE(dht.is_enabled());
 
     // Loop should populate data
@@ -492,7 +498,7 @@ void test_full_lifecycle() {
     TEST_ASSERT_EQUAL_DOUBLE(22.0, context.data_cache.meteo_0.temperature);
     
     // Disable
-    dht.disable();
+    dht.disable(context);
     TEST_ASSERT_FALSE(dht.is_enabled());
     
     // Loop should clear data

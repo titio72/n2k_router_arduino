@@ -354,7 +354,7 @@ void test_configuration_save_battery_capacity_small(void)
     Configuration conf;
     conf.init();
     
-    conf.save_batter_capacity(50);
+    conf.save_battery_capacity(50);
     
     uint32_t capacity = conf.get_batter_capacity();
     TEST_ASSERT_EQUAL_UINT32(50, capacity);
@@ -365,7 +365,7 @@ void test_configuration_save_battery_capacity_large(void)
     Configuration conf;
     conf.init();
     
-    conf.save_batter_capacity(10000);
+    conf.save_battery_capacity(10000);
     
     uint32_t capacity = conf.get_batter_capacity();
     TEST_ASSERT_EQUAL_UINT32(10000, capacity);
@@ -376,7 +376,7 @@ void test_configuration_save_battery_capacity_zero(void)
     Configuration conf;
     conf.init();
     
-    conf.save_batter_capacity(0);
+    conf.save_battery_capacity(0);
     
     uint32_t capacity = conf.get_batter_capacity();
     TEST_ASSERT_EQUAL_UINT32(0, capacity);
@@ -387,7 +387,7 @@ void test_configuration_battery_capacity_max_uint32(void)
     Configuration conf;
     conf.init();
     
-    conf.save_batter_capacity(UINT16_MAX);
+    conf.save_battery_capacity(UINT16_MAX);
     
     uint32_t capacity = conf.get_batter_capacity();
     TEST_ASSERT_EQUAL_UINT32(UINT16_MAX, capacity);
@@ -397,7 +397,7 @@ void test_configuration_battery_capacity_persisted(void)
 {
     Configuration conf1;
     conf1.init();
-    conf1.save_batter_capacity(12000);
+    conf1.save_battery_capacity(12000);
     
     Configuration conf2;
     conf2.init();
@@ -416,7 +416,7 @@ void test_configuration_battery_capacity_typical_values(void)
     
     for (size_t i = 0; i < sizeof(test_values)/sizeof(test_values[0]); i++)
     {
-        conf.save_batter_capacity(test_values[i]);
+        conf.save_battery_capacity(test_values[i]);
         TEST_ASSERT_EQUAL_UINT32(test_values[i], conf.get_batter_capacity());
     }
 }
@@ -617,7 +617,7 @@ void test_configuration_save_multiple_values(void)
     conf.save_device_name("TestDevice");
     conf.save_rpm_adjustment(1.5);
     conf.save_n2k_source(50);
-    conf.save_batter_capacity(5000);
+    conf.save_battery_capacity(5000);
     
     TEST_ASSERT_EQUAL_STRING("TestDevice", conf.get_device_name());
     TEST_ASSERT_DOUBLE_WITHIN(0.0001, 1.5, conf.get_rpm_adjustment());
@@ -635,7 +635,7 @@ void test_configuration_persistence_roundtrip(void)
         conf1.save_device_name("StoredDevice");
         conf1.save_rpm_adjustment(2.25);
         conf1.save_n2k_source(75);
-        conf1.save_batter_capacity(8000);
+        conf1.save_battery_capacity(8000);
         
         N2KServices svc;
         svc.set_use_gps(true);

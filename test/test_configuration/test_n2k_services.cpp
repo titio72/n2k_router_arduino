@@ -29,6 +29,9 @@ void test_n2k_services_constructor_default_values(void)
     TEST_ASSERT_EQUAL_INT(DEFAULT_SOG_2_STW, svc.is_sog_2_stw());
     TEST_ASSERT_EQUAL_INT(DEFAULT_USE_TACHO, svc.is_use_tacho());
     TEST_ASSERT_EQUAL_INT(DEFAULT_USE_VE_DIRECT, svc.is_use_vedirect());
+    TEST_ASSERT_EQUAL_INT(DEFAULT_KEEP_N2K_SRC, svc.is_keep_n2k_src());
+    TEST_ASSERT_EQUAL_INT(DEFAULT_USE_TMP, svc.is_use_tmp());
+    TEST_ASSERT_EQUAL_INT(DEFAULT_STW_PADDLE, svc.is_use_stw_paddle());
 }
 
 void test_n2k_services_size_returns_correct_value(void)
@@ -146,6 +149,51 @@ void test_n2k_services_set_use_vedirect_false(void)
     TEST_ASSERT_FALSE(svc.is_use_vedirect());
 }
 
+void test_n2k_services_set_keep_n2k_src_true(void)
+{
+    N2KServices svc;
+    svc.set_keep_n2k_src(true);
+    TEST_ASSERT_TRUE(svc.is_keep_n2k_src());
+}
+
+void test_n2k_services_set_keep_n2k_src_false(void)
+{
+    N2KServices svc;
+    svc.set_keep_n2k_src(true);
+    svc.set_keep_n2k_src(false);
+    TEST_ASSERT_FALSE(svc.is_keep_n2k_src());
+}
+
+void test_n2k_services_set_use_tmp_true(void)
+{
+    N2KServices svc;
+    svc.set_use_tmp(true);
+    TEST_ASSERT_TRUE(svc.is_use_tmp());
+}
+
+void test_n2k_services_set_use_tmp_false(void)
+{
+    N2KServices svc;
+    svc.set_use_tmp(true);
+    svc.set_use_tmp(false);
+    TEST_ASSERT_FALSE(svc.is_use_tmp());
+}
+
+void test_n2k_services_set_use_stw_paddle_true(void)
+{
+    N2KServices svc;
+    svc.set_use_stw_paddle(true);
+    TEST_ASSERT_TRUE(svc.is_use_stw_paddle());
+}
+
+void test_n2k_services_set_use_stw_paddle_false(void)
+{
+    N2KServices svc;
+    svc.set_use_stw_paddle(true);
+    svc.set_use_stw_paddle(false);
+    TEST_ASSERT_FALSE(svc.is_use_stw_paddle());
+}
+
 #pragma endregion
 
 #pragma region Multiple Services Tests
@@ -185,6 +233,9 @@ void test_n2k_services_all_services_enabled(void)
     svc.set_use_tacho(true);
     svc.set_sog_2_stw(true);
     svc.set_use_vedirect(true);
+    svc.set_keep_n2k_src(true);
+    svc.set_use_tmp(true);
+    svc.set_use_stw_paddle(true);
 
     TEST_ASSERT_TRUE(svc.is_use_gps());
     TEST_ASSERT_TRUE(svc.is_use_bme());
@@ -193,6 +244,9 @@ void test_n2k_services_all_services_enabled(void)
     TEST_ASSERT_TRUE(svc.is_use_tacho());
     TEST_ASSERT_TRUE(svc.is_sog_2_stw());
     TEST_ASSERT_TRUE(svc.is_use_vedirect());
+    TEST_ASSERT_TRUE(svc.is_keep_n2k_src());
+    TEST_ASSERT_TRUE(svc.is_use_tmp());
+    TEST_ASSERT_TRUE(svc.is_use_stw_paddle());
 }
 
 void test_n2k_services_all_services_disabled(void)
@@ -205,6 +259,9 @@ void test_n2k_services_all_services_disabled(void)
     svc.set_use_tacho(false);
     svc.set_sog_2_stw(false);
     svc.set_use_vedirect(false);
+    svc.set_keep_n2k_src(false);
+    svc.set_use_tmp(false);
+    svc.set_use_stw_paddle(false);
 
     TEST_ASSERT_FALSE(svc.is_use_gps());
     TEST_ASSERT_FALSE(svc.is_use_bme());
@@ -213,6 +270,9 @@ void test_n2k_services_all_services_disabled(void)
     TEST_ASSERT_FALSE(svc.is_use_tacho());
     TEST_ASSERT_FALSE(svc.is_sog_2_stw());
     TEST_ASSERT_FALSE(svc.is_use_vedirect());
+    TEST_ASSERT_FALSE(svc.is_keep_n2k_src());
+    TEST_ASSERT_FALSE(svc.is_use_tmp());
+    TEST_ASSERT_FALSE(svc.is_use_stw_paddle());
 }
 
 #pragma endregion
@@ -229,9 +289,12 @@ void test_n2k_services_serialize_empty(void)
     svc.set_use_tacho(false);
     svc.set_sog_2_stw(false);
     svc.set_use_vedirect(false);
+    svc.set_keep_n2k_src(false);
+    svc.set_use_tmp(false);
+    svc.set_use_stw_paddle(false);
 
-    uint8_t serialized = svc.serialize();
-    TEST_ASSERT_EQUAL_HEX8(0x00, serialized);
+    uint16_t serialized = svc.serialize();
+    TEST_ASSERT_EQUAL_HEX16(0x0000, serialized);
 }
 
 void test_n2k_services_serialize_all_set(void)
@@ -244,25 +307,31 @@ void test_n2k_services_serialize_all_set(void)
     svc.set_use_tacho(true);
     svc.set_sog_2_stw(true);
     svc.set_use_vedirect(true);
+    svc.set_keep_n2k_src(true);
+    svc.set_use_tmp(true);
+    svc.set_use_stw_paddle(true);
 
-    uint8_t serialized = svc.serialize();
-    TEST_ASSERT_EQUAL_HEX8(0x7F, serialized); // 0111 1111 = 7 bits set
+    uint16_t serialized = svc.serialize();
+    TEST_ASSERT_EQUAL_HEX16(0x03FF, serialized); // bits 0-9 set = 10 services
 }
 
 void test_n2k_services_serialize_mixed(void)
 {
     N2KServices svc;
-    svc.set_use_gps(true); // bit 0
-    svc.set_use_dht(true); // bit 1
-    svc.set_use_bme(false);
-    svc.set_send_time(false);
-    svc.set_use_tacho(true); // bit 4
-    svc.set_sog_2_stw(false);
-    svc.set_use_vedirect(true); // bit 6
+    svc.set_use_gps(true);       // bit 0
+    svc.set_use_dht(true);       // bit 1
+    svc.set_use_bme(false);      // bit 2
+    svc.set_send_time(false);    // bit 3
+    svc.set_use_tacho(true);     // bit 4
+    svc.set_sog_2_stw(false);    // bit 5
+    svc.set_use_vedirect(true);  // bit 6
+    svc.set_keep_n2k_src(false); // bit 7
+    svc.set_use_tmp(false);      // bit 8
+    svc.set_use_stw_paddle(false); // bit 9
 
-    uint8_t serialized = svc.serialize();
-    // bits: 6543210 = 1010011 = 0x53
-    TEST_ASSERT_EQUAL_HEX8(0x53, serialized);
+    uint16_t serialized = svc.serialize();
+    // bits 9..0 = 00 1010011 = 0x0053
+    TEST_ASSERT_EQUAL_HEX16(0x0053, serialized);
 }
 
 void test_n2k_services_deserialize_empty(void)
@@ -348,7 +417,7 @@ void test_n2k_services_to_string_all_enabled(void)
     svc.set_use_vedirect(true);
     svc.set_keep_n2k_src(true);
     svc.set_use_tmp(true);
-    svc.set_stw_paddle(true);
+    svc.set_use_stw_paddle(true);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
@@ -369,7 +438,7 @@ void test_n2k_services_to_string_all_disabled(void)
     svc.set_use_vedirect(false);
     svc.set_keep_n2k_src(false);
     svc.set_use_tmp(false);
-    svc.set_stw_paddle(false);
+    svc.set_use_stw_paddle(false);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
@@ -390,7 +459,7 @@ void test_n2k_services_to_string_mixed(void)
     svc.set_use_vedirect(true);
     svc.set_keep_n2k_src(false);
     svc.set_use_tmp(true);
-    svc.set_stw_paddle(false);
+    svc.set_use_stw_paddle(false);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
@@ -430,65 +499,77 @@ void test_n2k_services_to_string_null_terminated(void)
 void test_n2k_services_from_string_all_enabled(void)
 {
     N2KServices svc;
-    const char *input = "1111111";
+    const char *input = "1111111111";
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
     TEST_ASSERT_TRUE(svc.is_use_gps());
-    TEST_ASSERT_TRUE(svc.is_use_bme());
     TEST_ASSERT_TRUE(svc.is_use_dht());
+    TEST_ASSERT_TRUE(svc.is_use_bme());
     TEST_ASSERT_TRUE(svc.is_send_time());
     TEST_ASSERT_TRUE(svc.is_use_tacho());
     TEST_ASSERT_TRUE(svc.is_sog_2_stw());
     TEST_ASSERT_TRUE(svc.is_use_vedirect());
+    TEST_ASSERT_TRUE(svc.is_keep_n2k_src());
+    TEST_ASSERT_TRUE(svc.is_use_tmp());
+    TEST_ASSERT_TRUE(svc.is_use_stw_paddle());
 }
 
 void test_n2k_services_from_string_all_disabled(void)
 {
     N2KServices svc;
-    const char *input = "0000000";
+    const char *input = "0000000000";
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
     TEST_ASSERT_FALSE(svc.is_use_gps());
-    TEST_ASSERT_FALSE(svc.is_use_bme());
     TEST_ASSERT_FALSE(svc.is_use_dht());
+    TEST_ASSERT_FALSE(svc.is_use_bme());
     TEST_ASSERT_FALSE(svc.is_send_time());
     TEST_ASSERT_FALSE(svc.is_use_tacho());
     TEST_ASSERT_FALSE(svc.is_sog_2_stw());
     TEST_ASSERT_FALSE(svc.is_use_vedirect());
+    TEST_ASSERT_FALSE(svc.is_keep_n2k_src());
+    TEST_ASSERT_FALSE(svc.is_use_tmp());
+    TEST_ASSERT_FALSE(svc.is_use_stw_paddle());
 }
 
 void test_n2k_services_from_string_mixed(void)
 {
     N2KServices svc;
-    const char *input = "1010101";
+    const char *input = "1010101010";
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_TRUE(svc.is_use_gps());
-    TEST_ASSERT_FALSE(svc.is_use_dht());
-    TEST_ASSERT_TRUE(svc.is_use_bme());
-    TEST_ASSERT_FALSE(svc.is_send_time());
-    TEST_ASSERT_TRUE(svc.is_use_tacho());
-    TEST_ASSERT_FALSE(svc.is_sog_2_stw());
-    TEST_ASSERT_TRUE(svc.is_use_vedirect());
+    TEST_ASSERT_TRUE(svc.is_use_gps());      // bit 0 = '1'
+    TEST_ASSERT_FALSE(svc.is_use_dht());     // bit 1 = '0'
+    TEST_ASSERT_TRUE(svc.is_use_bme());      // bit 2 = '1'
+    TEST_ASSERT_FALSE(svc.is_send_time());   // bit 3 = '0'
+    TEST_ASSERT_TRUE(svc.is_use_tacho());    // bit 4 = '1'
+    TEST_ASSERT_FALSE(svc.is_sog_2_stw());  // bit 5 = '0'
+    TEST_ASSERT_TRUE(svc.is_use_vedirect()); // bit 6 = '1'
+    TEST_ASSERT_FALSE(svc.is_keep_n2k_src()); // bit 7 = '0'
+    TEST_ASSERT_TRUE(svc.is_use_tmp());      // bit 8 = '1'
+    TEST_ASSERT_FALSE(svc.is_use_stw_paddle()); // bit 9 = '0'
 }
 
 void test_n2k_services_from_string_non_binary_chars_treated_as_true(void)
 {
     N2KServices svc;
-    const char *input = "X010X01"; // Non-'0' chars treated as true
+    const char *input = "X010X01010"; // Non-'0' chars treated as true
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_TRUE(svc.is_use_gps()); // 'X' is non-zero, treated as true
-    TEST_ASSERT_FALSE(svc.is_use_dht());
-    TEST_ASSERT_TRUE(svc.is_use_bme()); // '1' is true
-    TEST_ASSERT_FALSE(svc.is_send_time());
-    TEST_ASSERT_TRUE(svc.is_use_tacho()); // 'X' is non-zero, treated as true
-    TEST_ASSERT_FALSE(svc.is_sog_2_stw());
-    TEST_ASSERT_TRUE(svc.is_use_vedirect()); // '1' is true
+    TEST_ASSERT_TRUE(svc.is_use_gps());      // 'X' treated as true
+    TEST_ASSERT_FALSE(svc.is_use_dht());     // '0'
+    TEST_ASSERT_TRUE(svc.is_use_bme());      // '1'
+    TEST_ASSERT_FALSE(svc.is_send_time());   // '0'
+    TEST_ASSERT_TRUE(svc.is_use_tacho());    // 'X' treated as true
+    TEST_ASSERT_FALSE(svc.is_sog_2_stw());  // '0'
+    TEST_ASSERT_TRUE(svc.is_use_vedirect()); // '1'
+    TEST_ASSERT_FALSE(svc.is_keep_n2k_src()); // '0'
+    TEST_ASSERT_TRUE(svc.is_use_tmp());      // '1'
+    TEST_ASSERT_FALSE(svc.is_use_stw_paddle()); // '0'
 }
 
 void test_n2k_services_to_from_string_roundtrip(void)
@@ -566,6 +647,12 @@ void run_N2k_services_tests(void)
     RUN_TEST(test_n2k_services_set_sog_2_stw_false);
     RUN_TEST(test_n2k_services_set_use_vedirect_true);
     RUN_TEST(test_n2k_services_set_use_vedirect_false);
+    RUN_TEST(test_n2k_services_set_keep_n2k_src_true);
+    RUN_TEST(test_n2k_services_set_keep_n2k_src_false);
+    RUN_TEST(test_n2k_services_set_use_tmp_true);
+    RUN_TEST(test_n2k_services_set_use_tmp_false);
+    RUN_TEST(test_n2k_services_set_use_stw_paddle_true);
+    RUN_TEST(test_n2k_services_set_use_stw_paddle_false);
 
     RUN_TEST(test_n2k_services_multiple_services_independent);
     RUN_TEST(test_n2k_services_toggle_multiple_times);

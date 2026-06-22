@@ -214,15 +214,20 @@ void _loop()
     handle_leds(t);
     report_stats(t);
   }
+  delay(2);
 }
 
 void _setup()
 {  
   Serial.begin(115200);
-  //Log::disable();
   bool res_cpu_freq = setCpuFrequencyMhz(160);
   uint32_t f1 = getCpuFrequencyMhz();
+
+  #ifdef DEBUG
   Log::enable();
+  #else
+  Log::disable();
+  #endif
 
   msleep(3500);
 

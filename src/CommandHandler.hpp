@@ -14,7 +14,7 @@ public:
     {
         switch (command)
         {
-        case 'S':
+        case 'S': // switch services
         {
             Log::tracex(CMD_LOG_TAG, "Command switch services", "S {%s}", command_value);
             N2KServices c = conf.get_services();
@@ -22,13 +22,13 @@ public:
             conf.save_services(c);
         }
         break;
-        case 'N':
+        case 'N': // set device name
         {
             Log::tracex(CMD_LOG_TAG, "Command set device name", "N {%s}", command_value);
             conf.save_device_name(command_value);
         }
         break;
-        case 'B':
+        case 'B': // set battery capacity in Ah
         {
             Log::tracex(CMD_LOG_TAG, "Command set battery capacity AH", "B {%s}", command_value);
             int c = atoi(command_value);
@@ -38,15 +38,7 @@ public:
             }
         }
         break;
-        case 'C':
-        {
-            Log::tracex(CMD_LOG_TAG, "Command set services", "C {%s}", command_value);
-            N2KServices s;
-            s.from_string(command_value);
-            conf.save_services(s);
-        }
-        break;
-        case 'H':
+        case 'H': // set engine hours
         {
             Log::tracex(CMD_LOG_TAG, "Command set engine time hhhh:mm", "H {%s}", command_value);
             int64_t engine_time_secs = atol(command_value);
@@ -59,7 +51,7 @@ public:
             }
         }
         break;
-        case 'T':
+        case 'T': // tachometer calibration
         {
             Log::tracex(CMD_LOG_TAG, "Command tachometer calibration", "T {%s}", command_value);
             int rpm = atoi(command_value);
@@ -73,7 +65,7 @@ public:
             }
         }
         break;
-        case 't':
+        case 't': // tachometer adjustment
         {
             Log::tracex(CMD_LOG_TAG, "Command tachometer adjustment", "t {%s}", command_value);
             int adj = atoi(command_value);
@@ -83,7 +75,27 @@ public:
             }
         }
         break;
-        case 'h':
+        case 's': // stw paddle adjustment
+        {
+            Log::tracex(CMD_LOG_TAG, "Command stw paddle adjustment", "s {%s}", command_value);
+            int adj = atoi(command_value);
+            if (adj > 0)
+            {
+                conf.save_stw_paddle_adjustment(adj / STW_PADDLE_ADJUSTMENT_SCALE);
+            }
+        }
+        break;
+        case 'a': // stw paddle alpha
+        {
+            Log::tracex(CMD_LOG_TAG, "Command stw paddle alpha", "a {%s}", command_value);
+            int adj = atoi(command_value);
+            if (adj > 0)
+            {
+                conf.save_stw_paddle_alpha(adj / STW_PADDLE_ALPHA_SCALE);
+            }
+        }
+        break;
+        case 'h': // heartbeat
         {
             // heartbeat
         }

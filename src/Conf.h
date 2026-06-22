@@ -65,15 +65,15 @@ struct Conf
   uint8_t conf_version = CONF_VERSION;
 
   uint8_t n2k_source = DEFAULT_N2K_SOURCE;
-  int16_t rpm_adjustment = 100;                           // x100
+  int16_t rpm_adjustment = DEFAULT_RPM_ADJUSTMENT * RPM_ADJUSTMENT_SCALE; // x100
   uint16_t battery_capacity_Ah = DEFAULT_BATTERY_CAPACITY; // in Ah
   char device_name[16];                                    // null-terminated
   N2KServices services;
 
-  uint8_t sea_temp_alpha = 100;
-  uint16_t sea_temp_adjustment = 10000;
-  uint8_t stw_paddle_alpha = 100;
-  uint16_t stw_paddle_adjustment = 10000;
+  uint8_t sea_temp_alpha = DEFAULT_SEA_TEMP_ALPHA * SEA_TEMP_ALPHA_SCALE;
+  uint16_t sea_temp_adjustment = DEFAULT_SEA_TEMP_ADJUSTMENT * SEA_TEMP_ADJUSTMENT_SCALE;
+  uint8_t stw_paddle_alpha = DEFAULT_STW_PADDLE_ALPHA * STW_PADDLE_ALPHA_SCALE;
+  uint16_t stw_paddle_adjustment = DEFAULT_STW_PADDLE_ADJUSTMENT * STW_PADDLE_ADJUSTMENT_SCALE;
 
   Conf()
   {

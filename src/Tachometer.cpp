@@ -9,34 +9,30 @@
 // frequency calculation
 #define PERIOD 1000000L // Period for RPM calculation
 #define PERIOD_H 2000000L // Period for sending engine hours
-#define FREQ_SMOOTHING_BUFFER_SIZE 5 // Smooth over the last N periods
-
-double add_and_get_freq(double freq, double* freqs, int &ix)
-{
-    freqs[ix] = freq;
-    ix = (ix + 1) % FREQ_SMOOTHING_BUFFER_SIZE;
-    double sum = 0;
-    for (int i = 0; i<FREQ_SMOOTHING_BUFFER_SIZE; i++) sum += freqs[i]; // for small buffers, it is more efficient to sum, rather than subtract and add
-    return sum / FREQ_SMOOTHING_BUFFER_SIZE;
-}
 
 void IRAM_ATTR Tachometer::timer_callback(void *arg)
 {
     Tachometer *self = static_cast<Tachometer *>(arg);
-    self->speed_sensor.loop_micros((unsigned long)esp_timer_get_time());
+    self->speed_sensor.loop_micros(_micros());
 }
 
 Tachometer::Tachometer(uint8_t _pin, EngineHours *eng, uint8_t _poles, double _rpm_ratio, double _rpm_adjustment)
     :enabled(false), poles(_poles), rpm_ratio(_rpm_ratio), current_rpm(0), engine_hours_svc(eng),
-    last_read(0), last_read_eng_h(0), freq_buffer(NULL), freq_buffer_ix(0), is_setup(false), current_engine_time(0), speed_sensor(_pin), timer_handle(NULL)
+    last_read(0), last_read_eng_h(0), is_setup(false), current_engine_time(0), speed_sensor(_pin), timer_handle(NULL)
 {
-    freq_buffer = new double[FREQ_SMOOTHING_BUFFER_SIZE];
-    memset(freq_buffer, 0, FREQ_SMOOTHING_BUFFER_SIZE * sizeof(double));
 }
 
 Tachometer::~Tachometer()
 {
-    delete[] freq_buffer;
+    enabled = false;
+    if (timer_handle)
+    {
+        #ifndef NATIVE
+        esp_timer_stop(timer_handle);
+        esp_timer_delete(timer_handle);
+        timer_handle = NULL;
+        #endif
+    }
 }
 
 bool Tachometer::is_tacho_registered() const
@@ -49,6 +45,7 @@ void Tachometer::enable(Context &ctx)
     if (!enabled && is_setup)
     {
         enabled = true;
+        #ifndef NATIVE
         esp_timer_create_args_t timer_args = {};
         timer_args.callback = &Tachometer::timer_callback;
         timer_args.arg = this;
@@ -56,6 +53,7 @@ void Tachometer::enable(Context &ctx)
         timer_args.name = "tacho_loop";
         esp_timer_create(&timer_args, &timer_handle);
         esp_timer_start_periodic(timer_handle, 1000); // 1000 µs = 1 ms
+        #endif
         Log::tracex(RPM_LOG_TAG, "Enable", "Success {%d}", enabled);
     }
 }
@@ -68,8 +66,10 @@ void Tachometer::disable(Context &ctx)
         enabled = false;
         if (timer_handle)
         {
+            #ifndef NATIVE
             esp_timer_stop(timer_handle);
             esp_timer_delete(timer_handle);
+            #endif
             timer_handle = NULL;
         }
     }
@@ -95,7 +95,11 @@ bool is_engine_on(int rpm)
 
 void Tachometer::read_signal()
 {
-    //speed_sensor.signal();
+#ifdef NATIVE
+    _test_signal_state = (_test_signal_state == LOW) ? HIGH : LOW;
+    _test_signal_time += 5000; // 5ms per transition, above 2ms debounce threshold
+    speed_sensor.read_signal(_test_signal_state, _test_signal_time);
+#endif
 }
 
 void Tachometer::loop(unsigned long micros, Context &ctx)
@@ -111,17 +115,15 @@ void Tachometer::loop(unsigned long micros, Context &ctx)
     {
         double fr = NAN;
         int cnt = 0;
-        // get frequency in Hzs
+        // get frequency in Hz
         bool ok = speed_sensor.read_data(micros / 1000L, fr, cnt); // dT is in micros, convert to millis
-        // apply smoothing using a buffer
-        double freq = ((double)cnt / 2.0) * 1000000.0 / (double)dT; // add_and_get_freq(fr, freq_buffer, freq_buffer_ix);
+        double freq = ((double)cnt / 2.0) * 1000000.0 / (double)dT; // in Hz, cnt is divided by 2 because we count both rising and falling edges, so we have 2 transitions per cycle
         int rpm = (int)(ctx.conf.get_rpm_adjustment() * 60.0 * rpm_ratio * freq / poles);
-        Log::trace("Ok {%d} Cnt {%d} Freq {%.3fHz} RPM {%d} D-Time {%lu} ET {%lu}\n", ok, cnt, freq, rpm, dT, (unsigned long)(current_engine_time/1000L));
-
+        //Log::tracex(RPM_LOG_TAG, "Loop", "Ok {%d} Cnt {%d} Freq {%.3fHz} RPM {%d} D-Time {%lu} ET {%lu.%03d} Max {%d} Min {%d}", ok, cnt, freq, rpm, dT, (uint32_t)(current_engine_time / 1000), (uint16_t)(current_engine_time % 1000), speed_sensor.max, speed_sensor.min);
         current_engine_time = engine_hours_svc->get_engine_hours();
         if (is_engine_on(rpm))
         {
-            current_engine_time = current_engine_time + (uint64_t)(dT / 1000);
+            current_engine_time = current_engine_time + (uint64_t)(((double)dT / 1000.0)+0.5); // engine time in milliseconds, add 0.5 to round to the nearest millisecond
             if (engine_hours_svc) engine_hours_svc->save_engine_hours(current_engine_time); // milliseconds
         }
         ctx.data_cache.engine.rpm = rpm;

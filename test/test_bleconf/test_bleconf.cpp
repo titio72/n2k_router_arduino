@@ -250,8 +250,9 @@ void test_setup_with_empty_device_name() {
 
 // ==================== Tests: Enable/Disable ====================
 void test_enable_without_setup() {
+    MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_FALSE(ble.is_enabled());
 }
 
@@ -259,7 +260,7 @@ void test_enable_sets_enabled_flag() {
     MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
 }
 
@@ -267,10 +268,10 @@ void test_disable_clears_enabled_flag() {
     MOCK_CONTEXT_X
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
     
-    ble.disable();
+    ble.disable(context);
     TEST_ASSERT_FALSE(ble.is_enabled());
 }
 
@@ -280,7 +281,7 @@ void test_is_enabled_returns_state() {
     ble.setup(context);
     
     TEST_ASSERT_FALSE(ble.is_enabled());
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
 }
 
@@ -289,9 +290,9 @@ void test_multiple_enable_calls() {
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
     
-    ble.enable();
-    ble.enable();
-    ble.enable();
+    ble.enable(context);
+    ble.enable(context);
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
 }
 
@@ -299,11 +300,11 @@ void test_multiple_disable_calls() {
     MOCK_CONTEXT_X    
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
-    ble.disable();
-    ble.disable();
-    ble.disable();
+    ble.disable(context);
+    ble.disable(context);
+    ble.disable(context);
     TEST_ASSERT_FALSE(ble.is_enabled());
 }
 
@@ -312,11 +313,11 @@ void test_enable_disable_toggle() {
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
 
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
-    ble.disable();
+    ble.disable(context);
     TEST_ASSERT_FALSE(ble.is_enabled());
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
 }
 
@@ -479,7 +480,7 @@ void test_loop_initially_sends_at_first_update() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -492,7 +493,7 @@ void test_loop_respects_update_period() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
     ble.loop(500000, context);
@@ -505,7 +506,7 @@ void test_loop_with_nan_values() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -518,7 +519,7 @@ void test_loop_with_valid_temperature_data() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -534,7 +535,7 @@ void test_loop_with_valid_gps_data() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -548,7 +549,7 @@ void test_loop_with_battery_data() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -561,7 +562,7 @@ void test_loop_with_engine_data() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -595,7 +596,7 @@ void test_loop_with_complete_data() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -609,7 +610,7 @@ void test_loop_updates_device_name_if_changed() {
     TEST_ASSERT_EQUAL_STRING("InitialName", ble.get_device_name());
     
     mockConf.save_device_name("UpdatedName");
-    ble.enable();
+    ble.enable(context);
     ble.loop(0, context);
 }
 
@@ -660,7 +661,7 @@ void test_loop_with_zero_milliseconds() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0, context);
 }
@@ -671,7 +672,7 @@ void test_loop_with_large_milliseconds() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(0xFFFFFFFFUL, context);
 }
@@ -697,12 +698,12 @@ void test_setup_and_loop_sequence() {
     ble.setup(context);
     TEST_ASSERT_EQUAL_STRING("TestDevice", ble.get_device_name());
     
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
     
     ble.loop(0, context);
     
-    ble.disable();
+    ble.disable(context);
     TEST_ASSERT_FALSE(ble.is_enabled());
 }
 
@@ -713,7 +714,7 @@ void test_ble_startup_lifecycle() {
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     TEST_ASSERT_TRUE(ble.is_enabled());
     
     for (int i = 0; i < 5; i++) {
@@ -764,7 +765,7 @@ void test_services_buffer_fills_with_gps_data() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -780,7 +781,7 @@ void test_services_buffer_contains_gps_fix_value() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -799,7 +800,7 @@ void test_services_buffer_contains_temperature() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -820,7 +821,7 @@ void test_services_buffer_contains_humidity() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -840,7 +841,7 @@ void test_services_buffer_contains_latitude() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -860,7 +861,7 @@ void test_services_buffer_contains_longitude() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -880,7 +881,7 @@ void test_services_buffer_contains_rpm() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -899,7 +900,7 @@ void test_services_buffer_contains_engine_time() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -918,7 +919,7 @@ void test_services_buffer_contains_voltage() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -938,7 +939,7 @@ void test_services_buffer_contains_current() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -958,7 +959,7 @@ void test_services_buffer_contains_soc() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -1000,15 +1001,16 @@ void test_services_buffer_total_length_is_58_bytes() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
     ByteBuffer buf = ble.get_services_buffer();
-    // Total should be 58 bytes: version(1) + fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) + 
-    // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) + 
-    // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1)
-    TEST_ASSERT_EQUAL_INT(58, buf.length());
+    // version(1) + fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) +
+    // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) +
+    // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1) +
+    // stw(2) + water_temp(2) + stw_adjustment(4) + stw_alpha(4) + sea_temp_adjustment(4) + sea_temp_alpha(4) = 78
+    TEST_ASSERT_EQUAL_INT(78, buf.length());
 }
 
 void test_data_characteristic_value() {
@@ -1040,16 +1042,14 @@ void test_data_characteristic_value() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
     ByteBuffer buf = ble.get_services_buffer();
     ByteBuffer char_value = ble.get_field_value_buffer(0);
-    // Total should be 58 bytes: version(1) + fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) + 
-    // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) + 
-    // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1)
-    TEST_ASSERT_EQUAL_INT(58, char_value.length());
+    // 78 bytes: same layout as test_services_buffer_total_length_is_58_bytes
+    TEST_ASSERT_EQUAL_INT(78, char_value.length());
     TEST_ASSERT_TRUE(buf==char_value);
 }
 
@@ -1060,7 +1060,7 @@ void test_services_buffer_resets_on_loop_call() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     // First loop
     ble.loop(10000000, context);
@@ -1084,7 +1084,7 @@ void test_services_buffer_nan_values_become_invalid_sentinel() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -1118,7 +1118,7 @@ void test_services_buffer_contains_sog() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -1138,7 +1138,7 @@ void test_services_buffer_contains_cog() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     
@@ -1158,7 +1158,7 @@ void test_services_buffer_contains_n2k_source() {
     
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    ble.enable();
+    ble.enable(context);
     
     ble.loop(10000000, context);
     

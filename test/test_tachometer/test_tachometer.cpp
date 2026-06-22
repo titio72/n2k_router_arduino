@@ -14,7 +14,7 @@
 #endif
 
 // Timing constants from Tachometer.cpp
-#define PERIOD 500000L       // 500ms in microseconds
+#define PERIOD 1000000L      // 1s in microseconds for RPM calculation
 #define PERIOD_H 2000000L    // 2s in microseconds for engine hours
 
 void setUp(void)
@@ -135,8 +135,9 @@ void test_tachometer_enable_without_setup_fails(void)
 {
     EngineHours *eng = new MockEngineHours();
     Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
 
-    tacho.enable();
+    tacho.enable(context);
 
     TEST_ASSERT_FALSE(tacho.is_enabled());
 
@@ -150,7 +151,7 @@ void test_tachometer_enable_after_setup_succeeds(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     TEST_ASSERT_TRUE(tacho.is_enabled());
     TEST_ASSERT_TRUE(tacho.is_tacho_registered());
@@ -165,8 +166,8 @@ void test_tachometer_enable_idempotent(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
-    tacho.enable();
+    tacho.enable(context);
+    tacho.enable(context);
 
     TEST_ASSERT_TRUE(tacho.is_enabled());
 
@@ -180,10 +181,10 @@ void test_tachometer_disable_success(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
     TEST_ASSERT_TRUE(tacho.is_enabled());
 
-    tacho.disable();
+    tacho.disable(context);
     
     TEST_ASSERT_FALSE(tacho.is_enabled());
 
@@ -197,7 +198,7 @@ void test_tachometer_disable_when_not_enabled(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.disable();
+    tacho.disable(context);
 
     TEST_ASSERT_FALSE(tacho.is_enabled());
 
@@ -214,10 +215,10 @@ void test_tachometer_enable_disable_cycle(void)
 
     for (int i = 0; i < 3; i++)
     {
-        tacho.enable();
+        tacho.enable(context);
         TEST_ASSERT_TRUE(tacho.is_enabled());
 
-        tacho.disable();
+        tacho.disable(context);
         TEST_ASSERT_FALSE(tacho.is_enabled());
     }
 
@@ -278,7 +279,7 @@ void test_tachometer_loop_enabled_no_signal_rpm_zero(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     // No signal transitions
     tacho.loop(0, context);
@@ -297,7 +298,7 @@ void test_tachometer_loop_calculates_rpm(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     // Initialize first loop
     tacho.loop(0, context);
@@ -328,7 +329,7 @@ void test_tachometer_loop_rpm_affected_by_poles(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     // Simulate signals before first loop
     simulate_signal(tacho, 100);
@@ -360,7 +361,7 @@ void test_tachometer_loop_rpm_affected_by_ratio(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     // This test just verifies that with ratio != 1.0, setup/enable work correctly
     TEST_ASSERT_TRUE(tacho.is_enabled());
@@ -377,7 +378,7 @@ void test_tachometer_loop_rpm_affected_by_config_adjustment(void)
     // First with adjustment = 1.0
     Tachometer tacho(25, eng, 12, 1.5, 1.0);
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     tacho.loop(0, context);
     simulate_signal(tacho, 100);
@@ -386,8 +387,8 @@ void test_tachometer_loop_rpm_affected_by_config_adjustment(void)
 
     // Now change config adjustment to 0.5
     mockConf.save_rpm_adjustment(0.5);
-    tacho.disable();
-    tacho.enable();
+    tacho.disable(context);
+    tacho.enable(context);
 
     tacho.loop(PERIOD + 200000, context);
     simulate_signal(tacho, 100);
@@ -407,7 +408,7 @@ void test_tachometer_loop_respects_period_timing(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     // Simulate signals before any loop
     simulate_signal(tacho, 100);
@@ -439,7 +440,7 @@ void test_tachometer_engine_hours_not_updated_when_rpm_low(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     tacho.loop(0, context);
     // No transitions at all = 0 RPM (well below 200 threshold)
@@ -460,7 +461,7 @@ void test_tachometer_engine_hours_updated_when_rpm_above_threshold(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     tacho.loop(0, context);
     // Simulate enough transitions for RPM > 200
@@ -513,7 +514,7 @@ void test_tachometer_engine_hours_persisted(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     tacho.loop(0, context);
     simulate_signal(tacho, 200);
@@ -541,7 +542,7 @@ void test_tachometer_engine_hours_continues_from_saved(void)
     // After setup, engine time should be loaded from persistence
     TEST_ASSERT_EQUAL_UINT64(1000000, context.data_cache.engine.engine_time);
     
-    tacho.enable();
+    tacho.enable(context);
 
     tacho.loop(0, context);
     simulate_signal(tacho, 200);
@@ -567,7 +568,7 @@ void test_tachometer_sends_rpm_to_n2k(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     int initial_sent = n2kSender.getStats().sent;
 
@@ -588,7 +589,7 @@ void test_tachometer_sends_engine_hours_periodically(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     // First loop to initialize
     tacho.loop(0, context);
@@ -627,7 +628,7 @@ void test_tachometer_full_lifecycle(void)
     TEST_ASSERT_FALSE(tacho.is_enabled());
 
     // Enable
-    tacho.enable();
+    tacho.enable(context);
     TEST_ASSERT_TRUE(tacho.is_enabled());
     TEST_ASSERT_TRUE(tacho.is_tacho_registered());
 
@@ -639,7 +640,7 @@ void test_tachometer_full_lifecycle(void)
     TEST_ASSERT_GREATER_THAN(0, context.data_cache.engine.rpm);
 
     // Disable
-    tacho.disable();
+    tacho.disable(context);
     TEST_ASSERT_FALSE(tacho.is_enabled());
 
     // After disable, RPM goes to 0
@@ -661,16 +662,16 @@ void test_tachometer_multiple_instances(void)
     tacho1.setup(context);
     tacho2.setup(context);
 
-    tacho1.enable();
-    tacho2.enable();
+    tacho1.enable(context);
+    tacho2.enable(context);
 
     TEST_ASSERT_TRUE(tacho1.is_enabled());
     TEST_ASSERT_TRUE(tacho2.is_enabled());
     TEST_ASSERT_TRUE(tacho1.is_tacho_registered());
     TEST_ASSERT_TRUE(tacho2.is_tacho_registered());
 
-    tacho1.disable();
-    tacho2.disable();
+    tacho1.disable(context);
+    tacho2.disable(context);
 
     TEST_ASSERT_FALSE(tacho1.is_enabled());
     TEST_ASSERT_FALSE(tacho2.is_enabled());
@@ -685,7 +686,7 @@ void test_tachometer_dump_stats_no_crash(void)
     MOCK_CONTEXT
 
     tacho.setup(context);
-    tacho.enable();
+    tacho.enable(context);
 
     tacho.loop(0, context);
     simulate_signal(tacho, 100);

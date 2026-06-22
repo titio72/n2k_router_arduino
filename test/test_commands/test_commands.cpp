@@ -167,7 +167,7 @@ void test_command_C_set_single_service(void)
 {
     MOCK_CONTEXT_TEST
 
-    CommandHandler::on_command('C', "1000000", conf, engineHours, data);
+    CommandHandler::on_command('S', "1000000", conf, engineHours, data);
 
     TEST_ASSERT_EQUAL_INT(1, conf.save_services_calls);
     TEST_ASSERT_TRUE(conf.get_services().is_use_gps());
@@ -177,7 +177,7 @@ void test_command_C_set_all_services(void)
 {
     MOCK_CONTEXT_TEST
 
-    CommandHandler::on_command('C', "1111111",conf, engineHours, data);
+    CommandHandler::on_command('S', "1111111",conf, engineHours, data);
 
     TEST_ASSERT_EQUAL_INT(1, conf.save_services_calls);
     TEST_ASSERT_TRUE(conf.get_services().is_use_gps());
@@ -189,7 +189,7 @@ void test_command_C_clear_all_services(void)
 {
     MOCK_CONTEXT_TEST
 
-    CommandHandler::on_command('C', "0000000",conf, engineHours, data);
+    CommandHandler::on_command('S', "0000000",conf, engineHours, data);
 
     TEST_ASSERT_EQUAL_INT(1, conf.save_services_calls);
     TEST_ASSERT_FALSE(conf.get_services().is_use_gps());

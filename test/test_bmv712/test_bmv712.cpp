@@ -54,7 +54,7 @@ void test_bmv712_read_valid_message(void)
     MockPort mock_port("BMV_PORT");
     BMV712 bmv(mock_port);
     bmv.setup(context);
-    bmv.enable();
+    bmv.enable(context);
     
     unsigned long t = 1250000000; // arbitrary time
     
@@ -91,7 +91,7 @@ void test_bmv712_read_valid_message_split_in_two(void)
     MockPort mock_port("BMV_PORT");
     BMV712 bmv(mock_port);
     bmv.setup(context);
-    bmv.enable();
+    bmv.enable(context);
     
     unsigned long t = 1250000000; // arbitrary time
     
@@ -166,7 +166,7 @@ void setup()
     Serial.begin(115200);
     Log::enable();
     bmv.setup(ccc);
-    bmv.enable();
+    bmv.enable(context);
 }
 int i = 0;
 void loop() {

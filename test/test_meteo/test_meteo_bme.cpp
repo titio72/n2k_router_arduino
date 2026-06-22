@@ -143,10 +143,11 @@ void test_meteo_bme_destructor_cleans_up(void)
 
 void test_meteo_bme_enable_success(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
     TEST_ASSERT_TRUE(bme.is_enabled());
     TEST_ASSERT_EQUAL_INT(1, mock_impl->start_call_count); // start() called in enable()
@@ -154,24 +155,26 @@ void test_meteo_bme_enable_success(void)
 
 void test_meteo_bme_enable_fails_gracefully(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     mock_impl->should_fail_start = true;
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
     TEST_ASSERT_FALSE(bme.is_enabled());
 }
 
 void test_meteo_bme_enable_idempotent(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
     int first_call_count = mock_impl->start_call_count;
 
-    bme.enable();
+    bme.enable(context);
     int second_call_count = mock_impl->start_call_count;
 
     TEST_ASSERT_EQUAL_INT(first_call_count, second_call_count);
@@ -179,40 +182,43 @@ void test_meteo_bme_enable_idempotent(void)
 
 void test_meteo_bme_disable_success(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
     TEST_ASSERT_TRUE(bme.is_enabled());
 
-    bme.disable();
+    bme.disable(context);
 
     TEST_ASSERT_FALSE(bme.is_enabled());
 }
 
 void test_meteo_bme_disable_when_not_enabled(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
     TEST_ASSERT_FALSE(bme.is_enabled());
-    bme.disable();
+    bme.disable(context);
 
     TEST_ASSERT_FALSE(bme.is_enabled());
 }
 
 void test_meteo_bme_enable_disable_cycle(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
     TEST_ASSERT_TRUE(bme.is_enabled());
 
-    bme.disable();
+    bme.disable(context);
     TEST_ASSERT_FALSE(bme.is_enabled());
 
-    bme.enable();
+    bme.enable(context);
     TEST_ASSERT_TRUE(bme.is_enabled());
 }
 
@@ -222,18 +228,19 @@ void test_meteo_bme_enable_disable_cycle(void)
 
 void test_meteo_bme_read_when_enabled(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     mock_impl->set_mock_values(101325.0f, 20.5f, 45.0f);
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
-    MeteoData data;
-    bme.read(0, data);
+    MeteoData meteo;
+    bme.read(0, meteo);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 101325.0f, data.pressure);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 20.5f, data.temperature);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 45.0f, data.humidity);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 101325.0f, meteo.pressure);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 20.5f, meteo.temperature);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 45.0f, meteo.humidity);
 }
 
 void test_meteo_bme_read_when_disabled_returns_nan(void)
@@ -255,94 +262,100 @@ void test_meteo_bme_read_when_disabled_returns_nan(void)
 
 void test_meteo_bme_read_pressure_zero(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     mock_impl->set_mock_values(0.0f, 20.0f, 45.0f);
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
-    MeteoData data;
-    bme.read(0, data);
+    MeteoData meteo;
+    bme.read(0, meteo);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, data.pressure);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, meteo.pressure);
 }
 
 void test_meteo_bme_read_negative_temperature(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     mock_impl->set_mock_values(101325.0f, -15.5f, 30.0f);
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
-    MeteoData data;
-    bme.read(0, data);
+    MeteoData meteo;
+    bme.read(0, meteo);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, -15.5f, data.temperature);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, -15.5f, meteo.temperature);
 }
 
 void test_meteo_bme_read_temperature_range(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
     float test_temps[] = {-40.0f, 0.0f, 25.0f, 85.0f};
     
     for (size_t i = 0; i < sizeof(test_temps) / sizeof(test_temps[0]); i++)
     {
         mock_impl->set_mock_values(101325.0f, test_temps[i], 50.0f);
-        MeteoData data;
-        bme.read(0, data);
-        TEST_ASSERT_FLOAT_WITHIN(0.1f, test_temps[i], data.temperature);
+        MeteoData meteo;
+        bme.read(0, meteo);
+        TEST_ASSERT_FLOAT_WITHIN(0.1f, test_temps[i], meteo.temperature);
     }
 }
 
 void test_meteo_bme_read_humidity_zero(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     mock_impl->set_mock_values(101325.0f, 20.0f, 0.0f);
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
-    MeteoData data;
-    bme.read(0, data);
+    MeteoData meteo;
+    bme.read(0, meteo);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, data.humidity);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, meteo.humidity);
 }
 
 void test_meteo_bme_read_humidity_max(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     mock_impl->set_mock_values(101325.0f, 20.0f, 100.0f);
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
-    MeteoData data;
-    bme.read(0, data);
+    MeteoData meteo;
+    bme.read(0, meteo);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 100.0f, data.humidity);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 100.0f, meteo.humidity);
 }
 
 void test_meteo_bme_read_multiple_times(void)
 {
+    MOCK_CONTEXT
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
     for (int i = 0; i < 5; i++)
     {
         mock_impl->set_mock_values(101325.0f + i, 20.0f + i, 45.0f + i);
-        MeteoData data;
-        bme.read(0, data);
-        
-        TEST_ASSERT_FLOAT_WITHIN(0.1f, 101325.0f + i, data.pressure);
-        TEST_ASSERT_FLOAT_WITHIN(0.1f, 20.0f + i, data.temperature);
-        TEST_ASSERT_FLOAT_WITHIN(0.1f, 45.0f + i, data.humidity);
+        MeteoData meteo;
+        bme.read(0, meteo);
+
+        TEST_ASSERT_FLOAT_WITHIN(0.1f, 101325.0f + i, meteo.pressure);
+        TEST_ASSERT_FLOAT_WITHIN(0.1f, 20.0f + i, meteo.temperature);
+        TEST_ASSERT_FLOAT_WITHIN(0.1f, 45.0f + i, meteo.humidity);
     }
 }
 
@@ -359,7 +372,7 @@ void test_meteo_bme_loop_updates_meteo_0_when_enabled(void)
     MeteoBME bme(0x77, 0, mock_impl);
 
     bme.setup(context);
-    bme.enable();
+    bme.enable(context);
 
     // First loop call
     unsigned long ms1 = 1500000; // 1.5 seconds after start
@@ -379,7 +392,7 @@ void test_meteo_bme_loop_updates_meteo_1_when_enabled(void)
     MeteoBME bme(0x77, 1, mock_impl);
 
     bme.setup(context);
-    bme.enable();
+    bme.enable(context);
 
     unsigned long ms = 1500000; // 1.5 secs after start
     bme.loop(ms, context);
@@ -398,7 +411,7 @@ void test_meteo_bme_loop_respects_timing_interval(void)
     MeteoBME bme(0x77, 0, mock_impl);
 
     bme.setup(context);
-    bme.enable();
+    bme.enable(context);
 
     unsigned long ms1 = 10000000L;
     bme.loop(ms1, context);
@@ -422,7 +435,7 @@ void test_meteo_bme_loop_updates_after_interval_elapsed(void)
     MeteoBME bme(0x77, 0, mock_impl);
 
     bme.setup(context);
-    bme.enable();
+    bme.enable(context);
 
     unsigned long ms1 = 0;
     bme.loop(ms1, context);
@@ -462,7 +475,7 @@ void test_meteo_bme_loop_invalid_index_ignored(void)
     MeteoBME bme(0x77, 99, mock_impl);  // Invalid index
 
     bme.setup(context);
-    bme.enable();
+    bme.enable(context);
 
     unsigned long ms = 0;
     bme.loop(ms, context);
@@ -521,7 +534,7 @@ void test_meteo_bme_is_enabled_after_enable(void)
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
+    bme.enable(context);
 
     TEST_ASSERT_TRUE(bme.is_enabled());
 }
@@ -533,8 +546,8 @@ void test_meteo_bme_is_enabled_after_disable(void)
     MockBME280 *mock_impl = new MockBME280();
     MeteoBME bme(0x77, 0, mock_impl);
 
-    bme.enable();
-    bme.disable();
+    bme.enable(context);
+    bme.disable(context);
 
     TEST_ASSERT_FALSE(bme.is_enabled());
 }
@@ -556,7 +569,7 @@ void test_meteo_bme_full_lifecycle(void)
     TEST_ASSERT_FALSE(bme.is_enabled());
 
     // Enable
-    bme.enable();
+    bme.enable(context);
     TEST_ASSERT_TRUE(bme.is_enabled());
 
     // Loop - should read data
@@ -566,7 +579,7 @@ void test_meteo_bme_full_lifecycle(void)
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 101325.0f, context.data_cache.meteo_0.pressure);
 
     // Disable
-    bme.disable();
+    bme.disable(context);
     TEST_ASSERT_FALSE(bme.is_enabled());
 
     // Loop - should not read data
@@ -593,8 +606,8 @@ void test_meteo_bme_multiple_instances_independent(void)
     bme0.setup(context);
     bme1.setup(context);
 
-    bme0.enable();
-    bme1.enable();
+    bme0.enable(context);
+    bme1.enable(context);
 
     unsigned long ms = 1500000;
     bme0.loop(ms, context);
@@ -614,9 +627,9 @@ void test_meteo_bme_rapid_enable_disable_cycles(void)
 
     for (int i = 0; i < 10; i++)
     {
-        bme.enable();
+        bme.enable(context);
         TEST_ASSERT_TRUE(bme.is_enabled());
-        bme.disable();
+        bme.disable(context);
         TEST_ASSERT_FALSE(bme.is_enabled());
     }
 }
@@ -633,9 +646,9 @@ void test_meteo_bme_read_different_addresses(void)
         MockBME280 *mock_impl = new MockBME280();
         MeteoBME bme(addresses[i], 0, mock_impl);
         
-        bme.enable();
+        bme.enable(context);
         TEST_ASSERT_TRUE(bme.is_enabled());
-        bme.disable();
+        bme.disable(context);
     }
 }
 

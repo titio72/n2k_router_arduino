@@ -107,40 +107,45 @@ void test_env_constructor_initializes_disabled(void)
 
 void test_env_enable(void)
 {
+    MOCK_CONTEXT_TEST_MESSENGER
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     TEST_ASSERT_TRUE(env.is_enabled());
 }
 
 void test_env_disable(void)
 {
+    MOCK_CONTEXT_TEST_MESSENGER
     EnvMessenger env;
-    env.enable();
-    env.disable();
+    env.enable(context);
+    env.disable(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 }
 
 void test_env_disable_when_already_disabled(void)
 {
+    MOCK_CONTEXT_TEST_MESSENGER
     EnvMessenger env;
-    env.disable();
+    env.disable(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 }
 
 void test_env_multiple_enable_calls(void)
 {
+    MOCK_CONTEXT_TEST_MESSENGER
     EnvMessenger env;
-    env.enable();
-    env.enable();
+    env.enable(context);
+    env.enable(context);
     TEST_ASSERT_TRUE(env.is_enabled());
 }
 
 void test_env_multiple_disable_calls(void)
 {
+    MOCK_CONTEXT_TEST_MESSENGER
     EnvMessenger env;
-    env.enable();
-    env.disable();
-    env.disable();
+    env.enable(context);
+    env.disable(context);
+    env.disable(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 }
 
@@ -158,7 +163,7 @@ void test_env_setup_when_enabled(void)
 {
     MOCK_CONTEXT_TEST_MESSENGER
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     TEST_ASSERT_TRUE(env.is_enabled());
 }
@@ -185,7 +190,7 @@ void test_env_loop_sends_on_period_elapsed(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
 
     env.loop(0, context);
@@ -205,7 +210,7 @@ void test_env_loop_does_not_send_within_period(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
 
     env.loop(10000000, context);
@@ -225,7 +230,7 @@ void test_env_loop_multiple_periods(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
 
     env.loop(0, context);
@@ -251,7 +256,7 @@ void test_env_sends_pressure_from_bme(void)
     data.meteo_0.pressure = 101325.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -269,7 +274,7 @@ void test_env_skips_pressure_when_source_none(void)
     data.meteo_0.pressure = 101325.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -288,7 +293,7 @@ void test_env_skips_nan_pressure(void)
     data.meteo_0.pressure = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -309,7 +314,7 @@ void test_env_sends_cabin_temp_from_bme(void)
     data.meteo_0.temperature = 22.5;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -327,7 +332,7 @@ void test_env_sends_cabin_temp_from_dht(void)
     data.meteo_1.temperature = 23.5;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -345,7 +350,7 @@ void test_env_skips_nan_temperature(void)
     data.meteo_0.temperature = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -365,7 +370,7 @@ void test_env_skips_temperature_when_source_none(void)
     data.meteo_1.temperature = 23.5;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -385,7 +390,7 @@ void test_env_sends_humidity_from_bme(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -403,7 +408,7 @@ void test_env_sends_humidity_from_dht(void)
     data.meteo_1.humidity = 70.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -421,7 +426,7 @@ void test_env_skips_nan_humidity(void)
     data.meteo_0.humidity = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -439,7 +444,7 @@ void test_env_skips_humidity_when_source_none(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -459,7 +464,7 @@ void test_env_sends_electronic_temp_from_bme(void)
     data.meteo_0.temperature = 25.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(10000000, context);
     
@@ -477,7 +482,7 @@ void test_env_skips_nan_electronic_temp(void)
     data.meteo_0.temperature = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -495,7 +500,7 @@ void test_env_skips_electronic_temp_when_source_none(void)
     data.meteo_0.temperature = 25.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -516,7 +521,7 @@ void test_env_sends_raymar_env_with_all_valid_values(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -535,7 +540,7 @@ void test_env_sends_raymar_env_with_pressure_only(void)
     data.meteo_0.humidity = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -554,7 +559,7 @@ void test_env_skips_raymar_env_when_all_nan(void)
     data.meteo_0.humidity = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -573,7 +578,7 @@ void test_env_sends_raymar_env_with_only_humidity_valid(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -592,7 +597,7 @@ void test_env_sends_raymar_env_with_only_temp_valid(void)
     data.meteo_0.humidity = NAN;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -623,7 +628,7 @@ void test_env_full_lifecycle_with_one_source(void)
     env.setup(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 
-    env.enable();
+    env.enable(context);
     TEST_ASSERT_TRUE(env.is_enabled());
 
     env.loop(0, context);
@@ -637,7 +642,7 @@ void test_env_full_lifecycle_with_one_source(void)
     TEST_ASSERT_EQUAL_INT(1, n2kSender.raymar_env_calls);
     n2kSender.reset_calls();
 
-    env.disable();
+    env.disable(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 
     unsigned int sent_disabled = n2kSender.getStats().sent;
@@ -663,7 +668,7 @@ void test_env_full_lifecycle_with_two_source(void)
     env.setup(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 
-    env.enable();
+    env.enable(context);
     TEST_ASSERT_TRUE(env.is_enabled());
 
     env.loop(0, context);
@@ -677,7 +682,7 @@ void test_env_full_lifecycle_with_two_source(void)
     TEST_ASSERT_EQUAL_INT(1, n2kSender.raymar_env_calls);
     n2kSender.reset_calls();
 
-    env.disable();
+    env.disable(context);
     TEST_ASSERT_FALSE(env.is_enabled());
 
     unsigned int sent_disabled = n2kSender.getStats().sent;
@@ -693,7 +698,7 @@ void test_env_dynamic_meteo_source_changes(void)
     data.meteo_1.temperature = 25.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -716,7 +721,7 @@ void test_env_empty_data_update_cycle(void)
     // All values are NAN by default
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -736,7 +741,7 @@ void test_env_mixed_nan_values(void)
     data.meteo_0.humidity = 65.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -753,7 +758,7 @@ void test_env_high_pressure_values(void)
     data.meteo_0.pressure = 110000.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -770,7 +775,7 @@ void test_env_extreme_temperatures(void)
     data.meteo_0.temperature = -40.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -787,7 +792,7 @@ void test_env_edge_case_humidity_0(void)
     data.meteo_0.humidity = 0.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     
@@ -804,7 +809,7 @@ void test_env_edge_case_humidity_100(void)
     data.meteo_0.humidity = 100.0;
 
     EnvMessenger env;
-    env.enable();
+    env.enable(context);
     env.setup(context);
     env.loop(0, context);
     

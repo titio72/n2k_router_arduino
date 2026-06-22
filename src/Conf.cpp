@@ -414,7 +414,7 @@ double Configuration::get_sea_temp_alpha() const
 
 double Configuration::get_stw_paddle_alpha() const
 {
-    return (double)(conf.stw_paddle_alpha) / 100.0;
+    return (double)(conf.stw_paddle_alpha) / STW_PADDLE_ALPHA_SCALE;
 }
 
 double Configuration::get_sea_temp_adjustment() const
@@ -424,7 +424,7 @@ double Configuration::get_sea_temp_adjustment() const
 
 double Configuration::get_stw_paddle_adjustment() const
 {
-    return (double)(conf.stw_paddle_adjustment) / 10000.0;
+    return (double)(conf.stw_paddle_adjustment) / STW_PADDLE_ADJUSTMENT_SCALE;
 }
 
 bool Configuration::save_sea_temp_alpha(double a)
@@ -435,7 +435,7 @@ bool Configuration::save_sea_temp_alpha(double a)
 
 bool Configuration::save_stw_paddle_alpha(double a)
 {
-    conf.stw_paddle_alpha = (uint8_t)(a * 100.0);
+    conf.stw_paddle_alpha = (uint8_t)(a * STW_PADDLE_ALPHA_SCALE);
     SAVE_CONF
 }
 
@@ -447,7 +447,7 @@ bool Configuration::save_sea_temp_adjustment(double a)
 
 bool Configuration::save_stw_paddle_adjustment(double a)
 {
-    conf.stw_paddle_adjustment = (uint16_t)(a * 10000.0);
+    conf.stw_paddle_adjustment = (uint16_t)(a * STW_PADDLE_ADJUSTMENT_SCALE);
     SAVE_CONF
 }
 

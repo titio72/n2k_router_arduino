@@ -29,7 +29,7 @@ void BLEConf::on_write(int handle, const char *value)
   if (!initialized)
     return;
 
-  last_activity = micros();
+  last_activity = _micros();
   
   //Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
   if (handle == ble_conf_handle)
@@ -114,8 +114,10 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
   const uint8_t _n2k_source = conf.get_n2k_source();
   const int16_t _stw = to_int(data_cache.water_data.speed, 100.0, INVALID_16);
   const int16_t _water_temp = to_int(data_cache.water_data.temperature, 10.0, INVALID_16);
-  const uint32_t _stw_adjustment = to_int(conf.get_stw_paddle_adjustment(), 10000.0, INVALID_U32);
-  const uint32_t _sea_temp_adjustment = to_int(conf.get_sea_temp_adjustment(), 10000.0, INVALID_U32);
+  const uint32_t _stw_adjustment = to_int(conf.get_stw_paddle_adjustment(), 100.0, INVALID_U32);
+  const uint32_t _stw_alpha = to_int(conf.get_stw_paddle_alpha(), 100.0, INVALID_U32);
+  const uint32_t _sea_temp_adjustment = to_int(conf.get_sea_temp_adjustment(), 100.0, INVALID_U32);
+  const uint32_t _sea_temp_alpha = to_int(conf.get_sea_temp_alpha(), 100.0, INVALID_U32);
 
   buffer.reset()
       << (uint8_t)BUFFER_LAYOUT_VERSION   // version
@@ -142,8 +144,10 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
       << _n2k_source  // 1 58 
       << _stw         // 2 60
       << _water_temp  // 2 62
-      << _stw_adjustment        // 4 66
-      << _sea_temp_adjustment;  // 4 70 plenty of room in 128 byte buffer
+      << _stw_adjustment      // 4 66
+      << _stw_alpha           // 4 70
+      << _sea_temp_adjustment // 4 74
+      << _sea_temp_alpha;     // 4 78 plenty of room in 128 byte buffer
 }
 
 void BLEConf::loop(unsigned long ms, Context &ctx)
@@ -156,7 +160,6 @@ void BLEConf::loop(unsigned long ms, Context &ctx)
     }
     if (last_activity==0 || ((ms-last_activity) < BLE_INACTIVITY_TIMEOUT))
     {
-      last_activity = ms;
       fill_buffer(services_buffer, ctx);
       //Log::tracex(BLE_LOG_TAG, "Update", "Sending BLE data length {%d}", services_buffer.length());
       ble.set_field_value(0, services_buffer.data(), services_buffer.length());

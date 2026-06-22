@@ -108,6 +108,22 @@ public:
         stats.canbus = 1;
     }
 
+    virtual bool sendSeaTemperature(const double temp, unsigned char sid = 0xFF) override
+    {
+        stats.sent++;
+        return true;
+    }
+    virtual bool sendMagneticVariation(double variation, uint16_t days_since_1970) override
+    {
+        stats.sent++;
+        return true;
+    }
+    virtual bool sendMagneticHeading(double heading) override
+    {
+        stats.sent++;
+        return true;
+    }
+
     virtual bool sendCOGSOG(double sog, double cog, unsigned char sid) override
     {
         stats.sent++;

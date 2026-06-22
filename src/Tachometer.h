@@ -5,8 +5,17 @@
 #include "Agents.hpp"
 #include <SpeedSensorInterrupt.h>
 #include <SpeedSensor.h>
-#include "SpeedSensorAnalog.h"
+#ifndef NATIVE
 #include <esp_timer.h>
+#else
+#ifndef IRAM_ATTR
+#define IRAM_ATTR
+#endif
+#ifndef esp_timer_handle_t
+#define esp_timer_handle_t void*
+#endif
+#endif
+
 
 class EngineHours;
 
@@ -41,15 +50,17 @@ private:
     unsigned long last_read_eng_h;
 
     //SpeedSensorInterrupt speed_sensor;
-    //SpeedSensor speed_sensor;
-    SpeedSensorAnalog speed_sensor;
+    SpeedSensor speed_sensor;
 
-    double *freq_buffer;
-    int freq_buffer_ix;
     bool is_setup;
 
     esp_timer_handle_t timer_handle;
     static void IRAM_ATTR timer_callback(void *arg);
+
+#ifdef NATIVE
+    int _test_signal_state = 0;
+    unsigned long _test_signal_time = 0;
+#endif
 };
 
 #endif
