@@ -214,7 +214,7 @@ void _loop()
     handle_leds(t);
     report_stats(t);
   }
-  delay(2);
+  delay(5);
 }
 
 void _setup()

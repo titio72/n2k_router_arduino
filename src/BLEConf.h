@@ -30,7 +30,9 @@
 #define BUFFER_OFFSET_STW          58
 #define BUFFER_OFFSET_WATER_TEMP   60
 #define BUFFER_OFFSET_STW_ADJ      62
-#define BUFFER_OFFSET_SEA_TEMP_ADJ 66
+#define BUFFER_OFFSET_STW_ALPHA    66
+#define BUFFER_OFFSET_SEA_TEMP_ADJ 70
+#define BUFFER_OFFSET_SEA_TEMP_ALPHA 74
 
 typedef void (*command_callback)(char command, const char* command_value);
 

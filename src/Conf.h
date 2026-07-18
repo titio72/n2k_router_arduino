@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <string>
 
-#define CONF_VERSION 0x05
+#define CONF_VERSION 0x06
 
 class N2KServices
 {

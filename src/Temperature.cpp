@@ -111,8 +111,6 @@ void WaterTemperature::loop(unsigned long now_micros, Context &ctx)
 double read_ntc(int pin, double &r, double &v)
 {
 #ifndef NATIVE
-    // read ADC value in volts
-    int i = analogRead(pin);
 #else
     int i = 512; // Mock value for testing
 #endif

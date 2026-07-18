@@ -419,7 +419,7 @@ double Configuration::get_stw_paddle_alpha() const
 
 double Configuration::get_sea_temp_adjustment() const
 {
-    return (double)(conf.sea_temp_adjustment) / 10000.0;
+    return (double)(conf.sea_temp_adjustment) / SEA_TEMP_ADJUSTMENT_SCALE;
 }
 
 double Configuration::get_stw_paddle_adjustment() const
@@ -441,7 +441,7 @@ bool Configuration::save_stw_paddle_alpha(double a)
 
 bool Configuration::save_sea_temp_adjustment(double a)
 {
-    conf.sea_temp_adjustment = (uint16_t)(a * 10000.0);
+    conf.sea_temp_adjustment = (uint16_t)(a * SEA_TEMP_ADJUSTMENT_SCALE);
     SAVE_CONF
 }
 

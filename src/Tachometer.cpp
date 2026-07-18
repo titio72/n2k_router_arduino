@@ -117,7 +117,7 @@ void Tachometer::loop(unsigned long micros, Context &ctx)
         int cnt = 0;
         // get frequency in Hz
         bool ok = speed_sensor.read_data(micros / 1000L, fr, cnt); // dT is in micros, convert to millis
-        double freq = ((double)cnt / 2.0) * 1000000.0 / (double)dT; // in Hz, cnt is divided by 2 because we count both rising and falling edges, so we have 2 transitions per cycle
+        double freq = ok ? fr : 0.0; // smoothed frequency in Hz from SpeedSensor (alpha set via BLE 'a' command)
         int rpm = (int)(ctx.conf.get_rpm_adjustment() * 60.0 * rpm_ratio * freq / poles);
         //Log::tracex(RPM_LOG_TAG, "Loop", "Ok {%d} Cnt {%d} Freq {%.3fHz} RPM {%d} D-Time {%lu} ET {%lu.%03d} Max {%d} Min {%d}", ok, cnt, freq, rpm, dT, (uint32_t)(current_engine_time / 1000), (uint16_t)(current_engine_time % 1000), speed_sensor.max, speed_sensor.min);
         current_engine_time = engine_hours_svc->get_engine_hours();
