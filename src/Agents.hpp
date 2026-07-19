@@ -50,17 +50,6 @@ bool handle_agent_enable(T &agent, bool enable, Context &ctx, unsigned short *re
 }
 
 template <typename T>
-unsigned long handle_agent_loop_simple(T &agent, Context &ctx, bool enable, unsigned short *retry, unsigned long now_micros, const char *desc = "")
-{
-  unsigned long t = NOW_MICROS;
-  if (enable)
-  {
-    agent.loop(now_micros, ctx);
-  }
-  return NOW_MICROS - t;
-}
-
-template <typename T>
 unsigned long handle_agent_loop(T &agent, Context &ctx, bool enable, unsigned short *retry, unsigned long now_micros, const char *desc = "")
 {
   unsigned long t = NOW_MICROS;

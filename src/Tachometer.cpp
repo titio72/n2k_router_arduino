@@ -9,6 +9,7 @@
 // frequency calculation
 #define PERIOD 1000000L // Period for RPM calculation
 #define PERIOD_H 2000000L // Period for sending engine hours
+#define PERIOD_ENGINE_HOURS_WRITE 60000000L // Period for writing engine hours to persistence. Every minutes, so not to hammer the EEPROM
 
 void IRAM_ATTR Tachometer::timer_callback(void *arg)
 {
@@ -18,7 +19,7 @@ void IRAM_ATTR Tachometer::timer_callback(void *arg)
 
 Tachometer::Tachometer(uint8_t _pin, EngineHours *eng, uint8_t _poles, double _rpm_ratio, double _rpm_adjustment)
     :enabled(false), poles(_poles), rpm_ratio(_rpm_ratio), current_rpm(0), engine_hours_svc(eng),
-    last_read(0), last_read_eng_h(0), is_setup(false), current_engine_time(0), speed_sensor(_pin), timer_handle(NULL)
+    last_read(0), last_read_eng_h(0), last_engine_hours_write_time(0), is_setup(false), current_engine_time(0), speed_sensor(_pin), timer_handle(NULL)
 {
 }
 
@@ -123,8 +124,11 @@ void Tachometer::loop(unsigned long micros, Context &ctx)
         current_engine_time = engine_hours_svc->get_engine_hours();
         if (is_engine_on(rpm))
         {
-            current_engine_time = current_engine_time + (uint64_t)(((double)dT / 1000.0)+0.5); // engine time in milliseconds, add 0.5 to round to the nearest millisecond
-            if (engine_hours_svc) engine_hours_svc->save_engine_hours(current_engine_time); // milliseconds
+            current_engine_time += (uint64_t)(((double)dT / 1000.0)+0.5); // engine time in milliseconds, add 0.5 to round to the nearest millisecond
+            if (check_elapsed(micros, last_engine_hours_write_time, 60000000) > 0)
+            {
+                if (engine_hours_svc) engine_hours_svc->save_engine_hours(current_engine_time); // milliseconds
+            }
         }
         ctx.data_cache.engine.rpm = rpm;
         ctx.data_cache.engine.engine_time = current_engine_time;

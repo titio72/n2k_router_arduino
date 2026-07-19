@@ -336,6 +336,20 @@ void test_command_T_negative_rpm_rejected(void)
     TEST_ASSERT_EQUAL_INT(0, conf.save_rpm_adjustment_calls);
 }
 
+void test_command_T_zero_current_rpm_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+
+    conf.save_rpm_adjustment(1.0);
+    conf.reset_call_counts();
+    data.engine.rpm = 0; // no RPM reading yet (e.g. right after boot, or engine off)
+
+    CommandHandler::on_command('T', "2000", conf, engineHours, data);
+
+    // current_rpm would be 0/adj == 0, so rpm/current_rpm would be +inf: must be rejected, not saved.
+    TEST_ASSERT_EQUAL_INT(0, conf.save_rpm_adjustment_calls);
+}
+
 void test_command_T_empty_string(void)
 {
     MOCK_CONTEXT_TEST
@@ -411,6 +425,66 @@ void test_command_lowercase_t_empty_string(void)
     CommandHandler::on_command('t', "",conf, engineHours, data);
 
     TEST_ASSERT_EQUAL_INT(0, conf.save_rpm_adjustment_calls);
+}
+
+// ============== Tests: Command 'w' (Sea Temp Adjustment) ==============
+
+void test_command_lowercase_w_sea_temp_adjustment(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('w', "250", conf, engineHours, data); // ratio 2.50
+
+    TEST_ASSERT_EQUAL_INT(1, conf.save_sea_temp_adjustment_calls);
+    TEST_ASSERT_DOUBLE_WITHIN(0.01, 2.5, conf.get_sea_temp_adjustment());
+}
+
+void test_command_lowercase_w_zero_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('w', "0", conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(0, conf.save_sea_temp_adjustment_calls);
+}
+
+void test_command_lowercase_w_negative_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('w', "-100", conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(0, conf.save_sea_temp_adjustment_calls);
+}
+
+// ============== Tests: Command 'x' (Sea Temp Alpha) ==============
+
+void test_command_lowercase_x_sea_temp_alpha(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('x', "50", conf, engineHours, data); // alpha 0.50
+
+    TEST_ASSERT_EQUAL_INT(1, conf.save_sea_temp_alpha_calls);
+    TEST_ASSERT_DOUBLE_WITHIN(0.01, 0.5, conf.get_sea_temp_alpha());
+}
+
+void test_command_lowercase_x_zero_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('x', "0", conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(0, conf.save_sea_temp_alpha_calls);
+}
+
+void test_command_lowercase_x_negative_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('x', "-50", conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(0, conf.save_sea_temp_alpha_calls);
 }
 
 // ============== Tests: Unknown Commands ==============
@@ -611,6 +685,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_command_T_calibration_halves_adjustment);
     RUN_TEST(test_command_T_calibration_doubles_adjustment);
     RUN_TEST(test_command_T_zero_rpm_rejected);
+    RUN_TEST(test_command_T_zero_current_rpm_rejected);
     RUN_TEST(test_command_T_negative_rpm_rejected);
     RUN_TEST(test_command_T_empty_string);
     RUN_TEST(test_command_T_non_numeric_string);
@@ -622,6 +697,16 @@ int main(int argc, char **argv)
     RUN_TEST(test_command_lowercase_t_zero_rejected);
     RUN_TEST(test_command_lowercase_t_negative_rejected);
     RUN_TEST(test_command_lowercase_t_empty_string);
+
+    // Command 'w' Tests
+    RUN_TEST(test_command_lowercase_w_sea_temp_adjustment);
+    RUN_TEST(test_command_lowercase_w_zero_rejected);
+    RUN_TEST(test_command_lowercase_w_negative_rejected);
+
+    // Command 'x' Tests
+    RUN_TEST(test_command_lowercase_x_sea_temp_alpha);
+    RUN_TEST(test_command_lowercase_x_zero_rejected);
+    RUN_TEST(test_command_lowercase_x_negative_rejected);
 
     // Unknown Commands Tests
     RUN_TEST(test_command_unknown_command);

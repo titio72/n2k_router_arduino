@@ -17,19 +17,20 @@
 
 static const char *CONF_LOG_TAG = "CONF";
 
-#pragma region N2KServices
+#pragma region Services
 
-#define GPS_ID 0
-#define DHT_ID 1
-#define BME_ID 2
-#define SYT_ID 3
-#define RPM_ID 4
-#define SOG2STW_ID 5
-#define VED_ID 6
-#define N2K_SRC_ID 7
-#define TMP_ID 8
-#define STW_PADDLE_ID 9
-#define MAX_CONF 10
+#define SVC_GPS_ID 0
+#define SVC_DHT_ID 1
+#define SVC_BME_ID 2
+#define SVC_SYT_ID 3
+#define SVC_RPM_ID 4
+#define SVC_SOG2STW_ID 5
+#define SVC_VED_ID 6
+#define SVC_N2K_SRC_ID 7
+#define SVC_TMP_ID 8
+#define SVC_STW_PADDLE_ID 9
+#define SVC_LOGGER_ID 10
+#define MAX_CONF 11
 
 #define SVC_ACCESSOR(name, id)                   \
     bool N2KServices::is_##name() const          \
@@ -53,16 +54,17 @@ static const char *CONF_LOG_TAG = "CONF";
 N2KServices::N2KServices()
 {
     conf =
-        DEFAULT_USE_GPS * BIT_MASK(GPS_ID) |
-        DEFAULT_USE_DHT * BIT_MASK(DHT_ID) |
-        DEFAULT_USE_BME * BIT_MASK(BME_ID) |
-        DEFAULT_USE_TIME * BIT_MASK(SYT_ID) |
-        DEFAULT_USE_TACHO * BIT_MASK(RPM_ID) |
-        DEFAULT_SOG_2_STW * BIT_MASK(SOG2STW_ID) |
-        DEFAULT_USE_VE_DIRECT * BIT_MASK(VED_ID) |
-        DEFAULT_KEEP_N2K_SRC * BIT_MASK(N2K_SRC_ID) |
-        DEFAULT_USE_TMP * BIT_MASK(TMP_ID) |
-        DEFAULT_STW_PADDLE * BIT_MASK(STW_PADDLE_ID);
+        DEFAULT_USE_GPS * BIT_MASK(SVC_GPS_ID) |
+        DEFAULT_USE_DHT * BIT_MASK(SVC_DHT_ID) |
+        DEFAULT_USE_BME * BIT_MASK(SVC_BME_ID) |
+        DEFAULT_USE_TIME * BIT_MASK(SVC_SYT_ID) |
+        DEFAULT_USE_TACHO * BIT_MASK(SVC_RPM_ID) |
+        DEFAULT_SOG_2_STW * BIT_MASK(SVC_SOG2STW_ID) |
+        DEFAULT_USE_VE_DIRECT * BIT_MASK(SVC_VED_ID) |
+        DEFAULT_KEEP_N2K_SRC * BIT_MASK(SVC_N2K_SRC_ID) |
+        DEFAULT_USE_TMP * BIT_MASK(SVC_TMP_ID) |
+        DEFAULT_STW_PADDLE * BIT_MASK(SVC_STW_PADDLE_ID) |
+        DEFAULT_USE_LOGGER * BIT_MASK(SVC_LOGGER_ID);
 }
 
 uint8_t N2KServices::size() const
@@ -115,16 +117,17 @@ bool N2KServices::to_string(char *dest, size_t len) const
     }
 }
 
-SVC_ACCESSOR(use_gps, GPS_ID)
-SVC_ACCESSOR(use_dht, DHT_ID)
-SVC_ACCESSOR(use_bme, BME_ID)
-SVC_ACCESSOR(send_time, SYT_ID)
-SVC_ACCESSOR(use_tacho, RPM_ID)
-SVC_ACCESSOR(sog_2_stw, SOG2STW_ID)
-SVC_ACCESSOR(use_vedirect, VED_ID)
-SVC_ACCESSOR(keep_n2k_src, N2K_SRC_ID)
-SVC_ACCESSOR(use_tmp, TMP_ID)
-SVC_ACCESSOR(use_stw_paddle, STW_PADDLE_ID)
+SVC_ACCESSOR(use_gps, SVC_GPS_ID)
+SVC_ACCESSOR(use_dht, SVC_DHT_ID)
+SVC_ACCESSOR(use_bme, SVC_BME_ID)
+SVC_ACCESSOR(send_time, SVC_SYT_ID)
+SVC_ACCESSOR(use_tacho, SVC_RPM_ID)
+SVC_ACCESSOR(sog_2_stw, SVC_SOG2STW_ID)
+SVC_ACCESSOR(use_vedirect, SVC_VED_ID)
+SVC_ACCESSOR(keep_n2k_src, SVC_N2K_SRC_ID)
+SVC_ACCESSOR(use_tmp, SVC_TMP_ID)
+SVC_ACCESSOR(use_stw_paddle, SVC_STW_PADDLE_ID)
+SVC_ACCESSOR(use_logger, SVC_LOGGER_ID)
 
 #pragma endregion
 

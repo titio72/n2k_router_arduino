@@ -557,6 +557,47 @@ void test_tachometer_engine_hours_continues_from_saved(void)
     delete eng;
 }
 
+void test_tachometer_engine_hours_save_throttled_while_running(void)
+{
+    // Persisting engine hours to EEPROM on every RPM-calc tick would wear out
+    // flash over hours of engine use, so writes must be throttled to at most
+    // once per PERIOD_ENGINE_HOURS_WRITE (60s), aside from the very first save.
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+
+    tacho.setup(context);
+    tacho.enable(context);
+
+    tacho.loop(0, context);
+    simulate_signal(tacho, 200);
+    tacho.loop(PERIOD + 100000, context); // ~1.1s: first-ever save happens immediately
+
+    int calls_after_first_tick = eng->save_engine_hours_calls;
+    TEST_ASSERT_EQUAL_INT(1, calls_after_first_tick);
+
+    // Step forward in ~1.1s increments, staying under the 60s throttle window: no new writes expected.
+    unsigned long t = PERIOD + 100000;
+    for (int tick = 2; tick <= 50; tick++)
+    {
+        t += (PERIOD + 100000);
+        simulate_signal(tacho, 200);
+        tacho.loop(t, context);
+    }
+    TEST_ASSERT_EQUAL_INT(calls_after_first_tick, eng->save_engine_hours_calls);
+
+    // Keep stepping until we cross the 60s throttle window: a new write must happen.
+    for (int tick = 0; tick < 10; tick++)
+    {
+        t += (PERIOD + 100000);
+        simulate_signal(tacho, 200);
+        tacho.loop(t, context);
+    }
+    TEST_ASSERT_GREATER_THAN(calls_after_first_tick, eng->save_engine_hours_calls);
+
+    delete eng;
+}
+
 #pragma endregion
 
 #pragma region N2K Transmission Tests
@@ -743,6 +784,7 @@ void setup()
     RUN_TEST(test_tachometer_engine_hours_accumulates);
     RUN_TEST(test_tachometer_engine_hours_persisted);
     RUN_TEST(test_tachometer_engine_hours_continues_from_saved);
+    RUN_TEST(test_tachometer_engine_hours_save_throttled_while_running);
 
     // N2K Transmission
     RUN_TEST(test_tachometer_sends_rpm_to_n2k);

@@ -69,8 +69,8 @@ bool N2K_router::send_it(tN2kMsg &N2kMsg)
 #ifndef NATIVE
     if (_send_queue)
     {
-        xQueueSend(_send_queue, &N2kMsg, pdMS_TO_TICKS(10));
-        return true;
+        BaseType_t res = xQueueSend(_send_queue, &N2kMsg, pdMS_TO_TICKS(10));
+        return res==pdTRUE;
     }
     return false;
 #else
@@ -251,22 +251,6 @@ bool N2KSenderAbstract::sendCabinTemp(const double temperature, unsigned char si
     return send_it(N2kMsg);
 }
 
-bool appendSatTo129540(tN2kMsg& N2kMsg, const tSatelliteInfo& SatelliteInfo) {
-  int Index = 2;
-  uint8_t NumberOfSVs=N2kMsg.GetByte(Index);
-  NumberOfSVs++;
-  Index=2;
-  N2kMsg.SetByte(NumberOfSVs, Index);  // increment the number satellites
-  // add the new satellite info
-  N2kMsg.AddByte(SatelliteInfo.PRN);
-  N2kMsg.Add2ByteDouble(SatelliteInfo.Elevation,1e-4L);
-  N2kMsg.Add2ByteUDouble(SatelliteInfo.Azimuth,1e-4L);
-  N2kMsg.Add2ByteDouble(SatelliteInfo.SNR,1e-2L);
-  N2kMsg.Add4ByteDouble(SatelliteInfo.RangeResiduals,1e-5L);
-  N2kMsg.AddByte(0xf0 | SatelliteInfo.UsageStatus);
-  return true;
-}
-
 bool appendSat(tN2kMsg& m, const sat& s)
 {
     //Log::trace("[N2K] Adding sat PRN {%d} Az {%d} El {%d} db {%d} Used {%d}\n", s.sat_id, s.az, s.elev, s.db, s.used);
@@ -298,7 +282,7 @@ bool N2KSenderAbstract::sendSatellites(const GPSData &data, unsigned char sid)
     {
         tN2kMsg m(get_source());
         SetN2kGNSSSatellitesInView(m, sid);
-        while (appendSat(m, (data.satellites[i])) && i<data.nSat)
+        while (i<data.nSat && appendSat(m, (data.satellites[i])))
         {
             i++;
             satsInMsg++;
@@ -318,14 +302,14 @@ bool N2KSenderAbstract::sendSatellites(const GPSData &data, unsigned char sid)
 }
 
 bool N2KSenderAbstract::sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance) {
-    tN2kMsg m;
+    tN2kMsg m(get_source());
     SetN2kPGN127508(m, instance,
         isnan(voltage)?N2kDoubleNA:voltage, isnan(current)?N2kDoubleNA:current, isnan(temperature)?N2kDoubleNA:(temperature + 273.15), sid);
     return send_it(m);
 }
 
 bool N2KSenderAbstract::sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance) {
-    tN2kMsg m;
+    tN2kMsg m(get_source());
     SetN2kPGN127506(m, sid, instance, tN2kDCType::N2kDCt_Battery,
         isnan(soc)?N2kDoubleNA:soc, 100, isnan(ttg)?N2kDoubleNA:ttg, N2kDoubleNA, capacity * 3600);
     return send_it(m);
@@ -333,14 +317,14 @@ bool N2KSenderAbstract::sendBatteryStatus(unsigned char sid, const double soc, c
 
 bool N2KSenderAbstract::sendEngineRPM(uint8_t instance, uint16_t rpm)
 {
-    tN2kMsg m;
+    tN2kMsg m(get_source());
     SetN2kPGN127488(m, instance, rpm);
     return send_it(m);
 }
 
 bool N2KSenderAbstract::sendEngineHours(uint8_t instance, double seconds)
 {
-    tN2kMsg m;
+    tN2kMsg m(get_source());
     SetN2kPGN127489(m, instance, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, seconds, N2kDoubleNA, N2kDoubleNA, 127, 127, 0, 0);
     return send_it(m);
 }

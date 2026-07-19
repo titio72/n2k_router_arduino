@@ -12,8 +12,11 @@
 #else
 // Mock Arduino functions for testing
 #define INPUT 0
-inline int analogReadMilliVolts(int pin) { return 1650; } // 1.65V mock value
+static int mock_millivolts = 1650; // 1.65V default mock value, overridable by tests
+inline int analogReadMilliVolts(int pin) { return mock_millivolts; }
 // inline void pinMode(int pin, int mode) {}
+
+void WaterTemperature::set_mock_millivolts(int mv) { mock_millivolts = mv; }
 #endif
 
 #define WATER_TEMP_PERIOD 1000000L // Period for temperature reading
@@ -25,11 +28,6 @@ const float NTC_NOMINAL_T = 25;     // Nominal temperature (25°C)
 const float NTC_BETA = 3950;        // Beta coefficient (typical for 10k NTC)
 const float REF_VOLTAGE = 5.0;      // Reference voltage (check the PCB!!!!)
 
-// Smoothing filter alpha
-const double DEFAULT_ALPHA = 0.67; // Smoothing factor for exponential moving average (0.0 - 1.0)
-
-// Temperature smoothing and calibration
-const double DEFAULT_ADJUSTMENT = 1.0;
 const double CELSIUS_OFFSET = 273.15;
 
 static void reset_water_temp_data(WaterData &data, uint8_t error_code = TEMP_ERROR_OK)
@@ -41,7 +39,6 @@ static void reset_water_temp_data(WaterData &data, uint8_t error_code = TEMP_ERR
 WaterTemperature::WaterTemperature(int _pin)
     : temperature(NAN),
       last_read_time(0),
-      adjustment_factor(DEFAULT_ADJUSTMENT),
       pin(_pin),
       enabled(false)
 {
@@ -148,7 +145,8 @@ void WaterTemperature::read_data(WaterData &data, Configuration &conf)
         // First reading, initialize temperature
         temperature = temp_celsius;
     }
-    temperature = DEFAULT_ALPHA * temp_celsius + (1.0 - DEFAULT_ALPHA) * temperature;
+    double alpha = conf.get_sea_temp_alpha();
+    temperature = alpha * temp_celsius + (1.0 - alpha) * temperature;
 
     // Clamp temperature to reasonable range (-10°C to 70°C)
     const double MIN_TEMP = -10.0;
@@ -163,7 +161,7 @@ void WaterTemperature::read_data(WaterData &data, Configuration &conf)
     {
         // Serial.printf("---- %f", temperature);
         //  Set temperature data
-        data.temperature = temperature * adjustment_factor;
+        data.temperature = temperature * conf.get_sea_temp_adjustment();
         data.temperature_error = TEMP_ERROR_OK;
     }
 }

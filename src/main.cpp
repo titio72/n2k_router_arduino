@@ -60,7 +60,7 @@ GPSX gps(&gpsSerial, GPS_RX_PIN, GPS_TX_PIN);
 Dummy gps;
 #endif
 
-#if (DO_VE_DIRECT == 1)
+#if DO_VE_DIRECT == 1
 #if SOC_UART_NUM > 2
 ArduinoPort<HardwareSerial> veDirectPort("VE", Serial2, VE_DIRECT_RX_PIN, VE_DIRECT_TX_PIN, false);
 #else
@@ -81,6 +81,10 @@ Leds leds;
 BLEConf bleConf(on_command);
 EnvMessenger environmentMessenger;
 #pragma endregion
+
+#ifndef DO_LOGGER
+#define DO_LOGGER 1
+#endif
 
 bool started = false;
 struct AppStats
@@ -219,17 +223,17 @@ void _loop()
 
 void _setup()
 {  
-  Serial.begin(115200);
   bool res_cpu_freq = setCpuFrequencyMhz(160);
   uint32_t f1 = getCpuFrequencyMhz();
 
-  #ifdef DEBUG
+
+  #ifdef DO_LOGGER
+  Serial.begin(115200);
+  msleep(3500);
   Log::enable();
   #else
   Log::disable();
   #endif
-
-  msleep(3500);
 
   unsigned long ver = __cplusplus;
   Log::tracex(APP_LOG_TAG, "CPU", "Freq {%d} C++ {%l}", f1, ver);

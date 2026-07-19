@@ -20,6 +20,16 @@ public:
             N2KServices c = conf.get_services();
             c.from_string(command_value);
             conf.save_services(c);
+            #ifdef DO_LOGGER
+            if (c.is_use_logger())
+            {
+                Log::enable();
+            }
+            else
+            {
+                Log::disable();
+            }
+            #endif
         }
         break;
         case 'N': // set device name
@@ -58,10 +68,21 @@ public:
             if (rpm > 0)
             {
                 double adj = conf.get_rpm_adjustment();
-                double current_rpm = data.engine.rpm / adj;
-                double new_adj = (double)rpm / current_rpm;
-                Log::tracex(CMD_LOG_TAG, "Command tachometer calibration", "RPM {%d} 2RPM {%d} Adj {%.2f} 2Adj {%.2f}", current_rpm, rpm, adj, new_adj);
-                conf.save_rpm_adjustment(new_adj);
+                if (adj <= 0.001) // check for zero or negative
+                {
+                    Log::tracex(CMD_LOG_TAG, "Error command tachometer calibration - adjustment is 0");
+                }
+                else if (data.engine.rpm == 0)
+                {
+                    Log::tracex(CMD_LOG_TAG, "Error command tachometer calibration - no current RPM reading");
+                }
+                else
+                {
+                    double current_rpm = data.engine.rpm / adj;
+                    double new_adj = (double)rpm / current_rpm;
+                    Log::tracex(CMD_LOG_TAG, "Command tachometer calibration", "RPM {%.2f} 2RPM {%d} Adj {%.2f} 2Adj {%.2f}", current_rpm, rpm, adj, new_adj);
+                    conf.save_rpm_adjustment(new_adj);
+                }
             }
         }
         break;
@@ -92,6 +113,26 @@ public:
             if (adj > 0)
             {
                 conf.save_stw_paddle_alpha(adj / STW_PADDLE_ALPHA_SCALE);
+            }
+        }
+        break;
+        case 'w': // sea temp adjustment
+        {
+            Log::tracex(CMD_LOG_TAG, "Command sea temp adjustment", "w {%s}", command_value);
+            int adj = atoi(command_value);
+            if (adj > 0)
+            {
+                conf.save_sea_temp_adjustment(adj / SEA_TEMP_ADJUSTMENT_SCALE);
+            }
+        }
+        break;
+        case 'x': // sea temp alpha
+        {
+            Log::tracex(CMD_LOG_TAG, "Command sea temp alpha", "x {%s}", command_value);
+            int adj = atoi(command_value);
+            if (adj > 0)
+            {
+                conf.save_sea_temp_alpha(adj / SEA_TEMP_ALPHA_SCALE);
             }
         }
         break;

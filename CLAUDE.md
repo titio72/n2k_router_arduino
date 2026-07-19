@@ -135,6 +135,8 @@ All pin assignments (`CAN_TX_PIN`, `ENGINE_RPM_PIN`, `DHT_PIN`, etc.) are also d
 | `t` | Tachometer adjustment factor (×100) |
 | `s` | STW paddle adjustment factor (×100) |
 | `a` | STW paddle alpha filter (×100) |
+| `w` | Sea temp adjustment factor (×100) |
+| `x` | Sea temp alpha filter (×100) |
 | `h` | Heartbeat (no-op, resets BLE inactivity timer) |
 
 BLE auto-suspends after `BLE_INACTIVITY_TIMEOUT` (30 s) with no activity.

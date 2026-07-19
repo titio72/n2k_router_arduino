@@ -7,6 +7,10 @@
 
 #define CONF_VERSION 0x06
 
+#define SVC_ACCESSOR_H(name)         \
+    bool is_##name() const;          \
+    void set_##name(bool v);
+
 class N2KServices
 {
 public:
@@ -20,27 +24,17 @@ public:
 
   N2KServices &operator=(const N2KServices &svc);
 
-  bool is_use_gps() const;
-  bool is_use_bme() const;
-  bool is_use_dht() const;
-  bool is_send_time() const;
-  bool is_sog_2_stw() const;
-  bool is_use_tacho() const;
-  bool is_use_vedirect() const;
-  bool is_keep_n2k_src() const;
-  bool is_use_tmp() const;
-  bool is_use_stw_paddle() const;
-
-  void set_use_gps(bool v);
-  void set_use_bme(bool v);
-  void set_use_dht(bool v);
-  void set_send_time(bool v);
-  void set_sog_2_stw(bool v);
-  void set_use_tacho(bool v);
-  void set_use_vedirect(bool v);
-  void set_keep_n2k_src(bool v);
-  void set_use_tmp(bool v);
-  void set_use_stw_paddle(bool v);
+  SVC_ACCESSOR_H(use_gps)
+  SVC_ACCESSOR_H(use_dht)
+  SVC_ACCESSOR_H(use_bme)
+  SVC_ACCESSOR_H(send_time)
+  SVC_ACCESSOR_H(use_tacho)
+  SVC_ACCESSOR_H(sog_2_stw)
+  SVC_ACCESSOR_H(use_vedirect)
+  SVC_ACCESSOR_H(keep_n2k_src)
+  SVC_ACCESSOR_H(use_tmp)
+  SVC_ACCESSOR_H(use_stw_paddle)
+  SVC_ACCESSOR_H(use_logger)
 
   uint8_t size() const;
 

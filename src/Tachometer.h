@@ -48,6 +48,7 @@ private:
 
     unsigned long last_read;
     unsigned long last_read_eng_h;
+    unsigned long last_engine_hours_write_time;
 
     //SpeedSensorInterrupt speed_sensor;
     SpeedSensor speed_sensor;
