@@ -46,7 +46,7 @@ void BMV712::on_complete(VEDirectObject &obj)
   bmv_vedirect.get_number_value(current, 0.001, BMV_CURRENT);     // convert in A from mA
   bmv_vedirect.get_number_value(soc, 0.001, BMV_SOC);             // convert in percentage from 1000ths
   bmv_vedirect.get_number_value(temperature, 1, BMV_TEMPERATURE); // celsius
-  // Log::trace("[BMV] Read values: SOC {%.2f%} V0 {%.2f V} V1 {%.2f V} Current {%.2f A} Temp {%.2f}\n", soc, voltage, voltage1, current, temperature);
+  // Log::tracex(VE_LOG_PREFIX, "Read values: SOC {%.2f%} V0 {%.2f V} V1 {%.2f V} Current {%.2f A} Temp {%.2f}\n", soc, voltage, voltage1, current, temperature);
   data_svc.voltage = voltage;
   data_svc.current = current;
   data_svc.soc = soc;

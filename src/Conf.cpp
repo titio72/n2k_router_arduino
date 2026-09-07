@@ -134,10 +134,12 @@ SVC_ACCESSOR(use_logger, SVC_LOGGER_ID)
 #pragma region Persistence & Logging
 void do_log(Conf &conf, const char *action, bool success)
 {
-    Log::tracex(CONF_LOG_TAG, action, "\n use_gps {%d}\n send_time {%d}\n sog_2_stw {%d}\n use_bme {%d}\n use_dht {%d}\n use_tacho {%d}\n use_vedirect {%d}\n use_tmp {%d}\n use_stw_paddle {%d}\n n2k_src {%d}\n rpm_adjustment {%d}\n device {%s}\n battery {%d}\n success {%d}",
+    Log::tracex(CONF_LOG_TAG, action, "\n use_gps {%d}\n send_time {%d}\n sog_2_stw {%d}\n use_bme {%d}\n use_dht {%d}\n use_tacho {%d}\n use_vedirect {%d}\n use_tmp {%d}\n use_stw_paddle {%d}\n n2k_src {%d}\n rpm_adjustment {%d}\n stw_alpha {%d}\n stw_adjustment {%d}\n device {%s}\n battery {%d}\n success {%d}",
                 conf.services.is_use_gps(), conf.services.is_send_time(), conf.services.is_sog_2_stw(), conf.services.is_use_bme(), conf.services.is_use_dht(),
                 conf.services.is_use_tacho(), conf.services.is_use_vedirect(),
-                conf.services.is_use_tmp(), conf.services.is_use_stw_paddle(), conf.n2k_source, conf.rpm_adjustment, conf.device_name, conf.battery_capacity_Ah, success);
+                conf.services.is_use_tmp(), conf.services.is_use_stw_paddle(), conf.n2k_source, conf.rpm_adjustment, 
+                conf.stw_paddle_alpha, conf.stw_paddle_adjustment,
+                conf.device_name, conf.battery_capacity_Ah, success);
 }
 
 static bool eee_initialized = false;

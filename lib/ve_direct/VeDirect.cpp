@@ -309,7 +309,7 @@ void VEDirectObject::reset()
     checksum = 0;
 }
 
-void VEDirectObject::print()
+void VEDirectObject::_print()
 {
     /*Log::trace("New ve.direct object\n");
     for (int i = 0; i < n_fields; i++)

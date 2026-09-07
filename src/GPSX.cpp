@@ -66,14 +66,14 @@ bool GPSX::loadSats()
         {
             data.sats[usedSats] = satellites[i].sat_id;
             usedSats++;
-            // Log::trace("Sat {%s} PRN {%d} Az {%d} Elev {%d} DB {%d}\n",
+            // Log::tracex(GPS_LOG_TAG, "Sat {%s} PRN {%d} Az {%d} Elev {%d} DB {%d}",
             //     SATS_TYPES[d->blocks[i].gnssId], satellites[i].sat_id,
             //     satellites[i].az, satellites[i].elev, satellites[i].db);
         }
     }
     data.nUsedSats = usedSats;
     data.nSat = d->header.numSvs;
-    // Log::trace("[GPS] Loaded {%d/%d} sats\n", gsv.nSat, gsa.nSat);
+    // Log::tracex(GPS_LOG_TAG, "Loaded {%d/%d} sats", data.nUsedSats, data.nSat);
     return true;
 }
 

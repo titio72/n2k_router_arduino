@@ -31,7 +31,7 @@ void BLEConf::on_write(int handle, const char *value)
 
   last_activity = _micros();
   
-  //Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
+  Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
   if (handle == ble_conf_handle)
   {
     const char command = 'S';
@@ -59,8 +59,15 @@ void BLEConf::setup(Context &ctx)
     return;
 
   initialized = true;
-  Log::tracex(BLE_LOG_TAG, "Setup", "Initializing BLE {%s}", ctx.conf.get_device_name());
-  ble.set_device_name(ctx.conf.get_device_name());
+  char device_name[32];
+  copy_from_conf(ctx.conf, device_name, sizeof(device_name));
+  if (strlen(device_name) == 0)
+  {
+    snprintf(device_name, sizeof(device_name), "N2KRouter-%04X", ctx.conf.get_n2k_source());
+  }
+
+  Log::tracex(BLE_LOG_TAG, "Setup", "Initializing BLE {%s}", device_name);
+  ble.set_device_name(device_name);
   ble.add_field("data", BLE_DATA_UUID);
   ble_conf_handle = ble.add_setting("conf", BLE_CONF_UUID);
   ble_settings_handle = ble.add_setting("command", BLE_COMMAND_UUID);

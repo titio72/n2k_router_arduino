@@ -37,7 +37,7 @@ void EVODisplay::setup(Context &ctx)
         #else
         init = true;
         #endif
-        Log::trace("[DS] Setup {%d}\n", init);
+        Log::tracex("DS", "Setup", "Success {%d}", init);
     }
 }
 

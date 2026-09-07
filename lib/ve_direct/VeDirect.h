@@ -170,7 +170,7 @@ public:
 
     bool is_valid() const;
 
-    void print();
+    void _print();
 
     void on_line_read(const char *line);
     void on_partial(const char *line, int len);

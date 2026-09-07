@@ -46,7 +46,7 @@ void Leds::setup(Context &ctx)
     if (!init)
     {
         init = true;
-        Log::trace("[LED] Setup {%d}\n", init);
+        Log::tracex("LED", "Setup", "Success {%d}", init);
 
         for (int led = 0; led < 3; led++)
         {

@@ -221,7 +221,6 @@ bool N2KSenderAbstract::sendSeaTemperature(const double temp, unsigned char sid)
 
 bool N2KSenderAbstract::sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature)
 {
-    //Log::trace("[N2K] Send {%f} {%f} {%f}\n", CToKelvin(temperature), humidity, pressure);
     tN2kMsg N2kMsg(get_source());
     SetN2kEnvironmentalParameters(N2kMsg, 1,
         tN2kTempSource::N2kts_OutsideTemperature, CToKelvin(temperature),
@@ -253,7 +252,6 @@ bool N2KSenderAbstract::sendCabinTemp(const double temperature, unsigned char si
 
 bool appendSat(tN2kMsg& m, const sat& s)
 {
-    //Log::trace("[N2K] Adding sat PRN {%d} Az {%d} El {%d} db {%d} Used {%d}\n", s.sat_id, s.az, s.elev, s.db, s.used);
     tSatelliteInfo info;
     info.PRN = s.sat_id;
     info.Azimuth = DegToRad(s.az);
@@ -275,7 +273,6 @@ bool appendSat(tN2kMsg& m, const sat& s)
 
 bool N2KSenderAbstract::sendSatellites(const GPSData &data, unsigned char sid)
 {
-    //Log::trace("[N2K] Sending sats {%d/%d} %ud\n", gsa.nSat, n, sid);
     int satsInMsg = 0;
     int i = 0;
     while (i<data.nSat)
@@ -289,12 +286,7 @@ bool N2KSenderAbstract::sendSatellites(const GPSData &data, unsigned char sid)
         }
         if (!send_it(m))
         {
-            //Log::trace("[N2K] Failed sending sats {%d/%d/%d} %ud\n", satsInMsg, i, data.nSat, sid);
             return false;
-        }
-        else
-        {
-            //Log::trace("[N2K] Sent sats {%d/%d/%d} %ud\n", satsInMsg, i, data.nSat, sid);
         }
         satsInMsg = 0;
     }
