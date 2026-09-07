@@ -1,11 +1,13 @@
 .pio
 .vscode
-
+.superpowers
+.claude
+.tokensave
 *fp-info-cache*
 _autosave*
 ~*
 *-backups
 *.zip
-
+pcb/n2k_meteo_gps_s3_tht/stuff
 n2k_router_arduino.code-workspace
 nmea.log
