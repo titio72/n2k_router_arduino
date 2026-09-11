@@ -2406,7 +2406,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Interface_CAN_LIN:MCP2562-E-P"
+		(symbol "Interface_CAN_LIN:MCP2562-E-SN"
 			(pin_names
 				(offset 1.016)
 			)
@@ -2422,7 +2422,7 @@
 					(justify left)
 				)
 			)
-			(property "Value" "MCP2562-E-P"
+			(property "Value" "MCP2562-E-SN"
 				(at 2.54 8.89 0)
 				(effects
 					(font
@@ -2431,7 +2431,7 @@
 					(justify left)
 				)
 			)
-			(property "Footprint" "Package_DIP:DIP-8_W7.62mm"
+			(property "Footprint" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
 				(at 0 -12.7 0)
 				(effects
 					(font
@@ -2450,7 +2450,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "High-Speed CAN Transceiver, 1Mbps, 5V supply, Vio pin, -40C to +125C, DIP-8"
+			(property "Description" "High-Speed CAN Transceiver, 1Mbps, 5V supply, Vio pin, -40C to +125C, SOIC-8"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2468,7 +2468,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_fp_filters" "DIP*W7.62mm*"
+			(property "ki_fp_filters" "SOIC*3.9x4.9mm*P1.27mm*"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2477,7 +2477,7 @@
 					(hide yes)
 				)
 			)
-			(symbol "MCP2562-E-P_0_1"
+			(symbol "MCP2562-E-SN_0_1"
 				(rectangle
 					(start -10.16 7.62)
 					(end 10.16 -7.62)
@@ -2490,7 +2490,7 @@
 					)
 				)
 			)
-			(symbol "MCP2562-E-P_1_1"
+			(symbol "MCP2562-E-SN_1_1"
 				(pin input line
 					(at -12.7 5.08 0)
 					(length 2.54)
@@ -4074,12 +4074,6 @@
 		(uuid "8ee4b0ea-9962-4d02-a202-1a69d73d9d35")
 	)
 	(junction
-		(at 190.5 45.72)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "a10fdb36-b93c-483b-939c-6c36af10257e")
-	)
-	(junction
 		(at 143.51 85.09)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -4102,6 +4096,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "b8c9b369-974b-4500-9c44-44324693cf58")
+	)
+	(junction
+		(at 193.04 45.72)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "bd779447-4c6d-4282-8e94-204d137a3bde")
 	)
 	(junction
 		(at 120.65 154.94)
@@ -4138,6 +4138,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "eb30d185-4917-4ba3-8c8e-ca87f6dd68e5")
+	)
+	(junction
+		(at 190.5 53.34)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "f3d34a62-3126-47cf-b3f5-560712511086")
 	)
 	(junction
 		(at 139.7 154.94)
@@ -4286,16 +4292,6 @@
 			(type default)
 		)
 		(uuid "0be09e4a-8f87-49b1-9725-5ca3638f846a")
-	)
-	(wire
-		(pts
-			(xy 190.5 45.72) (xy 219.71 45.72)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0d9fa281-def8-43f0-b987-3959d4e0c4da")
 	)
 	(wire
 		(pts
@@ -4459,16 +4455,6 @@
 	)
 	(wire
 		(pts
-			(xy 190.5 36.83) (xy 190.5 45.72)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1ffa00e0-6b27-4ab9-92a2-d4a232ce0b8c")
-	)
-	(wire
-		(pts
 			(xy 139.7 173.99) (xy 147.32 173.99)
 		)
 		(stroke
@@ -4516,6 +4502,16 @@
 			(type default)
 		)
 		(uuid "272d563e-601d-4258-b5d0-13cd40882bec")
+	)
+	(wire
+		(pts
+			(xy 200.66 53.34) (xy 190.5 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2757a572-dc4a-4245-81f8-5edaa65627fd")
 	)
 	(wire
 		(pts
@@ -4639,6 +4635,16 @@
 	)
 	(wire
 		(pts
+			(xy 219.71 50.8) (xy 200.66 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3aa9aaca-7d04-4c23-9833-a0b24952333f")
+	)
+	(wire
+		(pts
 			(xy 127 78.74) (xy 52.07 78.74)
 		)
 		(stroke
@@ -4676,6 +4682,16 @@
 			(type default)
 		)
 		(uuid "3eb9b0ab-945b-4a2b-9fde-0fad40cbd445")
+	)
+	(wire
+		(pts
+			(xy 193.04 45.72) (xy 219.71 45.72)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "402ff847-b35e-4011-9d90-eb18b86844ad")
 	)
 	(wire
 		(pts
@@ -4759,7 +4775,7 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 39.37) (xy 193.04 50.8)
+			(xy 193.04 39.37) (xy 193.04 45.72)
 		)
 		(stroke
 			(width 0)
@@ -4839,6 +4855,16 @@
 	)
 	(wire
 		(pts
+			(xy 200.66 50.8) (xy 200.66 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "57c7125d-9a91-454f-b770-ba6ba7bbec68")
+	)
+	(wire
+		(pts
 			(xy 31.75 93.98) (xy 31.75 104.14)
 		)
 		(stroke
@@ -4906,16 +4932,6 @@
 			(type default)
 		)
 		(uuid "63e05d7b-168d-4154-b059-79c26ab86e63")
-	)
-	(wire
-		(pts
-			(xy 193.04 50.8) (xy 219.71 50.8)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "63ecdc14-5661-4164-93fa-96010efbb5b0")
 	)
 	(wire
 		(pts
@@ -5309,6 +5325,16 @@
 	)
 	(wire
 		(pts
+			(xy 190.5 53.34) (xy 190.5 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9c07526e-f131-46f6-bc1a-7be0a3f747c5")
+	)
+	(wire
+		(pts
 			(xy 45.72 119.38) (xy 45.72 111.76)
 		)
 		(stroke
@@ -5319,7 +5345,7 @@
 	)
 	(wire
 		(pts
-			(xy 190.5 45.72) (xy 190.5 55.88)
+			(xy 190.5 36.83) (xy 190.5 53.34)
 		)
 		(stroke
 			(width 0)
@@ -5466,6 +5492,16 @@
 			(type default)
 		)
 		(uuid "b6a74e50-9c89-487b-a614-568903e6a640")
+	)
+	(wire
+		(pts
+			(xy 193.04 45.72) (xy 193.04 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bba50bc1-218e-4a45-a677-312d1ea3376c")
 	)
 	(wire
 		(pts
@@ -8144,6 +8180,95 @@
 		)
 	)
 	(symbol
+		(lib_id "Interface_CAN_LIN:MCP2562-E-SN")
+		(at 166.37 53.34 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5a04b23e-c8eb-499d-a72b-a0005a07ec5a")
+		(property "Reference" "U7"
+			(at 168.5133 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MCP2562-E-SN"
+			(at 168.5133 43.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+			(at 166.37 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://ww1.microchip.com/downloads/en/DeviceDoc/25167A.pdf"
+			(at 166.37 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "High-Speed CAN Transceiver, 1Mbps, 5V supply, Vio pin, -40C to +125C, SOIC-8"
+			(at 166.37 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "7"
+			(uuid "98f8268f-0a2f-490f-8d7a-689931cacc0b")
+		)
+		(pin "6"
+			(uuid "e0243c76-7ebd-40be-9477-a867c594e514")
+		)
+		(pin "1"
+			(uuid "5d9d5894-a85a-4a25-a54f-618e31d63459")
+		)
+		(pin "8"
+			(uuid "318461f6-f130-4234-b423-0d09084e0ec0")
+		)
+		(pin "5"
+			(uuid "ffbc3e12-ec6f-454d-9f14-037f2249f673")
+		)
+		(pin "4"
+			(uuid "c5028622-43ca-4d5a-b569-e7dd1a6436e7")
+		)
+		(pin "2"
+			(uuid "3855e1ab-80f5-4923-bcbe-fe67b04fba7c")
+		)
+		(pin "3"
+			(uuid "5cad053b-8945-4996-99c5-7a74272ab92e")
+		)
+		(instances
+			(project ""
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "U7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "1267:1267")
 		(at 157.48 173.99 0)
 		(unit 1)
@@ -10763,7 +10888,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D4.5mm_P5.00mm"
+		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D5.0mm_P2.50mm"
 			(at 195.58 77.1652 0)
 			(effects
 				(font
@@ -11221,7 +11346,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D4.5mm_P5.00mm"
+		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D5.0mm_P2.50mm"
 			(at 85.3948 41.91 0)
 			(effects
 				(font
@@ -11462,95 +11587,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Interface_CAN_LIN:MCP2562-E-P")
-		(at 166.37 53.34 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "efdb9447-55e5-40b9-855a-aaab6d217393")
-		(property "Reference" "U1"
-			(at 168.5133 40.64 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "MCP2562-E-P"
-			(at 168.5133 43.18 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Package_DIP:DIP-8_W7.62mm"
-			(at 166.37 66.04 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "http://ww1.microchip.com/downloads/en/DeviceDoc/25167A.pdf"
-			(at 166.37 53.34 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "High-Speed CAN Transceiver, 1Mbps, 5V supply, Vio pin, -40C to +125C, DIP-8"
-			(at 166.37 53.34 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "7"
-			(uuid "6b9b9b9f-0870-46c5-8704-c4f486399f47")
-		)
-		(pin "2"
-			(uuid "6b341661-9823-47a1-9688-5e64a81a8bc9")
-		)
-		(pin "6"
-			(uuid "a20576ad-58fd-4440-807b-8a2a414c82cc")
-		)
-		(pin "5"
-			(uuid "a077b576-dcca-4f89-8379-174b05d87278")
-		)
-		(pin "3"
-			(uuid "21a0ad8e-90b3-4b1e-b914-5f0cbfeb73fe")
-		)
-		(pin "8"
-			(uuid "ba09ddb6-172a-488d-85e4-5e36c3a598cf")
-		)
-		(pin "1"
-			(uuid "7644ded5-a6ec-46b8-9307-2c5d7e661d22")
-		)
-		(pin "4"
-			(uuid "0ec36db2-c4f5-4f13-ade7-76180342ed09")
-		)
-		(instances
-			(project ""
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "U1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Connector_Generic:Conn_01x04")
 		(at 24.13 96.52 0)
 		(mirror y)
@@ -11721,7 +11757,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D4.5mm_P5.00mm"
+		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D5.0mm_P2.50mm"
 			(at 120.9548 39.37 0)
 			(effects
 				(font
