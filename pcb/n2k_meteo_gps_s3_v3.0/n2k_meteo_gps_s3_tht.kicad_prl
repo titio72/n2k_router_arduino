@@ -1,6 +1,6 @@
 {
   "board": {
-    "active_layer": 2,
+    "active_layer": 0,
     "active_layer_preset": "",
     "auto_track_width": true,
     "hidden_netclasses": [],
@@ -59,7 +59,7 @@
     "ssh_key": ""
   },
   "meta": {
-    "filename": "n2k_meteo_gps.kicad_prl",
+    "filename": "n2k_meteo_gps_s3_tht.kicad_prl",
     "version": 5
   },
   "net_inspector_panel": {
