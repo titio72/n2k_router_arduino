@@ -8,6 +8,15 @@
 #include <time.h>
 #include <math.h>
 
+
+inline double to_n2k(double value)
+{
+  if (isnan(value))
+    return N2kDoubleNA;
+  else
+    return value;
+}
+
 #pragma region N2K_Router
 N2K_router::N2K_router(n2k_source_change_handler sh)
     : n2k(*N2K::get_instance(nullptr, sh))
@@ -18,6 +27,7 @@ N2K_router::N2K_router(n2k_source_change_handler sh)
     n2k.add_pgn(129029); // GNSS Position Data
     n2k.add_pgn(129539); // GNSS DOPs
     n2k.add_pgn(130311); // Environmental Parameters
+    n2k.add_pgn(130310); // Outside Environmental Parameters
     n2k.add_pgn(130312); // Temperature
     n2k.add_pgn(130313); // Humidity
     n2k.add_pgn(130314); // Actual Pressure
@@ -166,12 +176,10 @@ bool N2KSenderAbstract::sendMagneticVariation(double variation, uint16_t days_si
 {
     if (isnan(variation))
         return false;
-    else
-    {
-        tN2kMsg N2kMsg(get_source());
-        SetN2kMagneticVariation(N2kMsg, 0, tN2kMagneticVariation::N2kmagvar_WMM2025, days_since_1970, DegToRad(variation));
-        return send_it(N2kMsg);
-    }
+
+    tN2kMsg N2kMsg(get_source());
+    SetN2kMagneticVariation(N2kMsg, 0, tN2kMagneticVariation::N2kmagvar_WMM2025, days_since_1970, DegToRad(variation));
+    return send_it(N2kMsg);
 }
 
 bool N2KSenderAbstract::sendSystemTime(uint32_t _now, unsigned char sid, uint16_t _now_ms)
@@ -187,16 +195,17 @@ bool N2KSenderAbstract::sendPosition(double lat, double lon)
 {
     if (isnan(lat) || isnan(lon))
         return false;
-    else
-    {
-        tN2kMsg N2kMsg(get_source());
-        SetN2kPGN129025(N2kMsg, lat, lon);
-        return send_it(N2kMsg);
-    }
+
+    tN2kMsg N2kMsg(get_source());
+    SetN2kPGN129025(N2kMsg, lat, lon);
+    return send_it(N2kMsg);
 }
 
 bool N2KSenderAbstract::sendElectronicTemperature(const double temp, unsigned char sid)
 {
+    if (isnan(temp))
+        return false;
+
     tN2kMsg m(get_source());
     m.SetPGN(130312L);
     m.Priority = 5;
@@ -221,16 +230,41 @@ bool N2KSenderAbstract::sendSeaTemperature(const double temp, unsigned char sid)
 
 bool N2KSenderAbstract::sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature)
 {
+    if (isnan(pressure) && isnan(humidity) && isnan(temperature))
+        return false;
+
+    double _pressure = to_n2k(pressure);
+    double _humidity = to_n2k(humidity);
+    double _temperature = to_n2k(temperature);
+
     tN2kMsg N2kMsg(get_source());
     SetN2kEnvironmentalParameters(N2kMsg, 1,
-        tN2kTempSource::N2kts_OutsideTemperature, CToKelvin(temperature),
-        tN2kHumiditySource::N2khs_OutsideHumidity, humidity,
-        pressure);
+        tN2kTempSource::N2kts_OutsideTemperature, CToKelvin(_temperature),
+        tN2kHumiditySource::N2khs_OutsideHumidity, _humidity,
+        _pressure);
+
+    return send_it(N2kMsg);
+}
+
+bool N2KSenderAbstract::sendOutsideEnvironmentXRaymarine(const double pressure, const double temperature, double sea_temperature)
+{
+    if (isnan(pressure) && isnan(temperature) && isnan(sea_temperature))
+        return false;
+    
+    double _pressure = to_n2k(pressure);
+    double _temperature = to_n2k(temperature);
+    double _sea_temperature = to_n2k(sea_temperature);
+
+    tN2kMsg N2kMsg(get_source());
+    SetN2kOutsideEnvironmentalParameters(N2kMsg, 1, CToKelvin(_sea_temperature), CToKelvin(_temperature), _pressure);
     return send_it(N2kMsg);
 }
 
 bool N2KSenderAbstract::sendPressure(const double pressurePA, unsigned char sid)
 {
+    if (isnan(pressurePA))
+        return false;
+
     tN2kMsg N2kMsg(get_source());
     SetN2kPressure(N2kMsg, sid, 0, tN2kPressureSource::N2kps_Atmospheric, pressurePA);
     return send_it(N2kMsg);
@@ -238,6 +272,9 @@ bool N2KSenderAbstract::sendPressure(const double pressurePA, unsigned char sid)
 
 bool N2KSenderAbstract::sendHumidity(const double humidity, unsigned char sid)
 {
+    if (isnan(humidity) || humidity < 0.0 || humidity > 100.0)
+        return false;
+
     tN2kMsg N2kMsg(get_source());
     SetN2kHumidity(N2kMsg, sid, 0, tN2kHumiditySource::N2khs_InsideHumidity, humidity);
     return send_it(N2kMsg);
@@ -245,6 +282,9 @@ bool N2KSenderAbstract::sendHumidity(const double humidity, unsigned char sid)
 
 bool N2KSenderAbstract::sendCabinTemp(const double temperature, unsigned char sid)
 {
+    if (isnan(temperature))
+        return false;
+
     tN2kMsg N2kMsg(get_source());
     SetN2kTemperature(N2kMsg, sid, 0, tN2kTempSource::N2kts_MainCabinTemperature, CToKelvin(temperature));
     return send_it(N2kMsg);
@@ -294,21 +334,32 @@ bool N2KSenderAbstract::sendSatellites(const GPSData &data, unsigned char sid)
 }
 
 bool N2KSenderAbstract::sendBattery(unsigned char sid, const double voltage, const double current, const double temperature, const unsigned char instance) {
+    if (isnan(voltage) && isnan(current) && isnan(temperature))
+        return false;
+
     tN2kMsg m(get_source());
     SetN2kPGN127508(m, instance,
-        isnan(voltage)?N2kDoubleNA:voltage, isnan(current)?N2kDoubleNA:current, isnan(temperature)?N2kDoubleNA:(temperature + 273.15), sid);
+        to_n2k(voltage), to_n2k(current), CToKelvin(to_n2k(temperature)), sid);
     return send_it(m);
 }
 
 bool N2KSenderAbstract::sendBatteryStatus(unsigned char sid, const double soc, const double capacity, const double ttg, const unsigned char instance) {
+    if (isnan(soc) && isnan(capacity) && isnan(ttg))
+        return false;
+
+    double capacity_wh = capacity * 3600;
+
     tN2kMsg m(get_source());
     SetN2kPGN127506(m, sid, instance, tN2kDCType::N2kDCt_Battery,
-        isnan(soc)?N2kDoubleNA:soc, 100, isnan(ttg)?N2kDoubleNA:ttg, N2kDoubleNA, capacity * 3600);
+        to_n2k(soc), 100, to_n2k(ttg), N2kDoubleNA, to_n2k(capacity_wh));
     return send_it(m);
 }
 
 bool N2KSenderAbstract::sendEngineRPM(uint8_t instance, uint16_t rpm)
 {
+    if (isnan(rpm))
+        return false;
+
     tN2kMsg m(get_source());
     SetN2kPGN127488(m, instance, rpm);
     return send_it(m);
@@ -316,6 +367,9 @@ bool N2KSenderAbstract::sendEngineRPM(uint8_t instance, uint16_t rpm)
 
 bool N2KSenderAbstract::sendEngineHours(uint8_t instance, double seconds)
 {
+    if (isnan(seconds))
+        return false;
+        
     tN2kMsg m(get_source());
     SetN2kPGN127489(m, instance, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, N2kDoubleNA, seconds, N2kDoubleNA, N2kDoubleNA, 127, 127, 0, 0);
     return send_it(m);

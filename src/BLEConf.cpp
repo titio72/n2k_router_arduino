@@ -10,7 +10,7 @@ static const char *BLE_LOG_TAG = "BLX";
 
 BLEConf::BLEConf(command_callback cback, InternalBLEState *internalState)
     : enabled(false), ble(BLE_SERVICE_UUID, BLE_DEFAULT_SERVICE_NAME, this, internalState), last_sent(0),
-      c_back(cback), ble_settings_handle(-1), ble_conf_handle(-1), initialized(false), services_buffer(128),
+      c_back(cback), ble_settings_handle(-1), ble_conf_handle(-1), ble_heartbeat_handle(-1), initialized(false), services_buffer(128),
       last_activity(0)
 {
 }
@@ -32,7 +32,11 @@ void BLEConf::on_write(int handle, const char *value)
   last_activity = _micros();
   
   Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
-  if (handle == ble_conf_handle)
+  if (handle == ble_heartbeat_handle)
+  {
+    // keep-alive only: writable without pairing, never dispatched as a command
+  }
+  else if (handle == ble_conf_handle)
   {
     const char command = 'S';
     if (c_back)
@@ -68,9 +72,12 @@ void BLEConf::setup(Context &ctx)
 
   Log::tracex(BLE_LOG_TAG, "Setup", "Initializing BLE {%s}", device_name);
   ble.set_device_name(device_name);
+  // pairing requires the device passkey (0 = open access); must be set before ble.setup()
+  ble.set_passkey(ctx.conf.get_ble_passkey());
   ble.add_field("data", BLE_DATA_UUID);
   ble_conf_handle = ble.add_setting("conf", BLE_CONF_UUID);
   ble_settings_handle = ble.add_setting("command", BLE_COMMAND_UUID);
+  ble_heartbeat_handle = ble.add_setting("heartbeat", BLE_HEARTBEAT_UUID, false);
   ble.setup();
 
   const N2KServices &c = ctx.conf.get_services();

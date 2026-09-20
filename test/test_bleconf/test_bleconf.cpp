@@ -20,6 +20,12 @@ public:
     MeteoSource temperature_source = METEO_BME;
     MeteoSource temperature_el_source = METEO_BME;
     MeteoSource humidity_source = METEO_BME;
+    uint32_t passkey = 0;
+
+    virtual uint32_t get_ble_passkey() const override
+    {
+        return passkey;
+    }
 
     virtual MeteoSource get_pressure_source() const override
     {
@@ -47,6 +53,8 @@ public:
     ABBLEWriteCallback *clientWriteCallback = nullptr;
     std::string name;
     std::string uuid;
+    uint32_t passkey = 0;
+    std::vector<ABBLESetting> settings;
 
     MockInternalBLEStateImpl()
     {
@@ -69,6 +77,11 @@ public:
         this->name = name;
         this->uuid = uuid;
         this->clientWriteCallback = c;
+    }
+
+    void set_passkey(uint32_t pk) override
+    {
+        passkey = pk;
     }
 
     void begin()
@@ -132,6 +145,7 @@ public:
     void setup(const std::vector<ABBLEField> &fields, const std::vector<ABBLESetting> &settings)
     {
         Log::tracex("BLE_NULL", "Setup", "device {%s}", name.c_str());
+        this->settings = settings;
     }
 
     void change_device_name(const char *n)
@@ -227,6 +241,25 @@ void test_setup_initializes_device_name() {
     TEST_ASSERT_EQUAL_STRING("TestDevice", ble.get_device_name());
 }
 
+void test_setup_without_passkey_leaves_ble_open() {
+    MOCK_CONTEXT_X
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+
+    TEST_ASSERT_EQUAL_UINT32(0, mockBLEInternalImpl->passkey);
+}
+
+void test_setup_passes_conf_passkey_to_ble() {
+    MOCK_CONTEXT_X
+    mockConf.passkey = 246810;
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+
+    TEST_ASSERT_EQUAL_UINT32(246810, mockBLEInternalImpl->passkey);
+}
+
 void test_setup_copies_device_name_truncated_to_buffer_size() {
     MOCK_CONTEXT_X
     mockConf.save_device_name("VeryLongDeviceNameThatExceeds16Chars");
@@ -246,6 +279,43 @@ void test_setup_with_empty_device_name() {
     ble.setup(context);
     
     TEST_ASSERT_EQUAL_CHAR(0, ble.get_device_name()[0]);
+}
+
+// ==================== Tests: Heartbeat ====================
+void test_heartbeat_setting_is_writable_without_pairing() {
+    MOCK_CONTEXT_X
+    mockConf.passkey = 135790;
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+
+    // the library only lets a client write to secured settings once paired: conf and command
+    // are secured, the heartbeat is the one setting an unpaired client may write
+    TEST_ASSERT_EQUAL_INT(3, (int)mockBLEInternalImpl->settings.size());
+    TEST_ASSERT_TRUE(mockBLEInternalImpl->settings[0].secured);
+    TEST_ASSERT_TRUE(mockBLEInternalImpl->settings[1].secured);
+    TEST_ASSERT_FALSE(mockBLEInternalImpl->settings[2].secured);
+    TEST_ASSERT_EQUAL_STRING(BLE_HEARTBEAT_UUID, mockBLEInternalImpl->settings[2].c_uuid.c_str());
+}
+
+void test_heartbeat_write_is_not_dispatched_as_command() {
+    MOCK_CONTEXT_X
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+
+    mockBLEInternalImpl->onWrite(2, "h");
+
+    TEST_ASSERT_EQUAL_INT(0, callback_tracker.call_count);
+}
+
+void test_heartbeat_command_on_command_setting_still_works() {
+    MOCK_CONTEXT_X
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+
+    mockBLEInternalImpl->onWrite(1, "h");
+
+    TEST_ASSERT_EQUAL_INT(1, callback_tracker.call_count);
+    TEST_ASSERT_EQUAL_CHAR('h', callback_tracker.last_command);
 }
 
 // ==================== Tests: Enable/Disable ====================
@@ -1176,6 +1246,11 @@ int main(int argc, char** argv) {
     RUN_TEST(test_constructor_with_callback);
     RUN_TEST(test_constructor_with_null_callback);
     RUN_TEST(test_setup_initializes_device_name);
+    RUN_TEST(test_setup_without_passkey_leaves_ble_open);
+    RUN_TEST(test_setup_passes_conf_passkey_to_ble);
+    RUN_TEST(test_heartbeat_setting_is_writable_without_pairing);
+    RUN_TEST(test_heartbeat_write_is_not_dispatched_as_command);
+    RUN_TEST(test_heartbeat_command_on_command_setting_still_works);
     RUN_TEST(test_setup_copies_device_name_truncated_to_buffer_size);
     RUN_TEST(test_setup_with_empty_device_name);
     

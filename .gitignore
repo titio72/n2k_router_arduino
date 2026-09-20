@@ -11,3 +11,4 @@ _autosave*
 pcb/n2k_meteo_gps_s3_tht/stuff
 n2k_router_arduino.code-workspace
 nmea.log
+ble_passkeys.log

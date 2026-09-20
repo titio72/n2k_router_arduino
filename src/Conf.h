@@ -115,6 +115,12 @@ public:
   virtual const N2KServices &get_services() const;
   virtual uint16_t get_batter_capacity() const;
 
+  /**
+   * 6-digit BLE pairing passkey baked into the firmware at flash time (see tools/ble_passkey.py).
+   * 0 means no passkey: BLE writes are open.
+   */
+  virtual uint32_t get_ble_passkey() const;
+
   virtual MeteoSource get_pressure_source() const;
   virtual MeteoSource get_temperature_source() const;
   virtual MeteoSource get_temperature_el_source() const;

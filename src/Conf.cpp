@@ -13,6 +13,14 @@
 #include <Log.h>
 #include "Conf.h"
 
+#if __has_include("ble_passkey.h")
+#include "ble_passkey.h" // generated at build time by tools/ble_passkey.py
+#endif
+
+#ifdef BLE_PASSKEY
+static_assert(BLE_PASSKEY >= 100000 && BLE_PASSKEY <= 999999, "BLE_PASSKEY must be 6 digits and not start with 0");
+#endif
+
 #define NO_CONF 0xFF
 
 static const char *CONF_LOG_TAG = "CONF";
@@ -404,6 +412,15 @@ bool Configuration::save_device_name(const char *name)
 uint16_t Configuration::get_batter_capacity() const
 {
     return conf.battery_capacity_Ah;
+}
+
+uint32_t Configuration::get_ble_passkey() const
+{
+#ifdef BLE_PASSKEY
+    return BLE_PASSKEY;
+#else
+    return 0;
+#endif
 }
 
 bool Configuration::save_battery_capacity(uint16_t c)

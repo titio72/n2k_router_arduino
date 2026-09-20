@@ -139,6 +139,8 @@ All pin assignments (`CAN_TX_PIN`, `ENGINE_RPM_PIN`, `DHT_PIN`, etc.) are also d
 | `x` | Sea temp alpha filter (×100) |
 | `h` | Heartbeat (no-op, resets BLE inactivity timer) |
 
+Pairing: each device has a 6-digit passkey baked into the firmware at flash time by `tools/ble_passkey.py` (a random one on `pio run --target upload`, or `BLE_PASSKEY=123456 pio run ...` to reuse a code). It is printed before and after the upload and appended to `ble_passkeys.log` (git-ignored); `Configuration::get_ble_passkey()` returns it (0 = no passkey, BLE writes open, e.g. tests). Writing to the `conf`/`command` characteristics requires an encrypted, MITM-authenticated (passkey) link; reads stay open. Heartbeats go to a separate `heartbeat` characteristic (`BLE_HEARTBEAT_UUID`) that is writable without pairing and only resets the inactivity timer (`h` on `command` still works for paired clients). Any number of clients can pair (`CONFIG_BT_NIMBLE_MAX_BONDS=10`).
+
 BLE auto-suspends after `BLE_INACTIVITY_TIMEOUT` (30 s) with no activity.
 
 ## Testing Conventions

@@ -84,6 +84,7 @@ static unsigned char UART_SPEED_115200 = 5;
 #define BLE_CONF_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define BLE_DATA_UUID "55da66c7-801f-498d-b652-c57cb3f1b590"
 #define BLE_COMMAND_UUID "68ad1094-0989-4e22-9f21-4df7ef390803"
+#define BLE_HEARTBEAT_UUID "31a627d4-90cd-43df-8c0d-460e77fd294b" // writable without pairing
 #define BLE_INACTIVITY_TIMEOUT 30000000UL  // microseconds
 
 //ble values

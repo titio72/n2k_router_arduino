@@ -25,6 +25,7 @@ public:
     virtual bool sendPosition(double latitude, double longitude) = 0;
     virtual bool sendCabinTemp(const double temperature, unsigned char sid = 0xFF) = 0;
     virtual bool sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature) = 0;
+    virtual bool sendOutsideEnvironmentXRaymarine(const double pressure, const double temperature, double sea_temperature) = 0;
     virtual bool sendHumidity(const double humidity, unsigned char sid = 0xFF) = 0;
     virtual bool sendPressure(const double pressure, unsigned char sid = 0xFF) = 0;
     virtual bool sendElectronicTemperature(const double temp, unsigned char sid = 0xFF) = 0;
@@ -55,6 +56,7 @@ public:
     virtual bool sendPosition(double latitude, double longitude) override;
     virtual bool sendCabinTemp(const double temperature, unsigned char sid = 0xFF) override;
     virtual bool sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature) override;
+    virtual bool sendOutsideEnvironmentXRaymarine(const double pressure, const double temperature, double sea_temperature) override;
     virtual bool sendHumidity(const double humidity, unsigned char sid = 0xFF) override;
     virtual bool sendPressure(const double pressure, unsigned char sid = 0xFF) override;
     virtual bool sendElectronicTemperature(const double temp, unsigned char sid = 0xFF) override;
@@ -150,6 +152,11 @@ public:
         return true;
     }
     virtual bool sendEnvironmentXRaymarine(const double pressure, const double humidity, const double temperature) override
+    {
+        stats.sent++;
+        return true;
+    }
+    virtual bool sendOutsideEnvironmentXRaymarine(const double pressure, const double temperature, double sea_temperature) override
     {
         stats.sent++;
         return true;

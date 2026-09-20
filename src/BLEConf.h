@@ -68,6 +68,7 @@ private:
     ByteBuffer services_buffer;
     int ble_settings_handle;
     int ble_conf_handle;
+    int ble_heartbeat_handle;
     unsigned long last_activity;
 };
 

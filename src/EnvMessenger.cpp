@@ -34,12 +34,16 @@ void EnvMessenger::loop(unsigned long ms, Context &ctx)
     double h = ctx.data_cache.get_humidity(ctx.conf);
     double t = ctx.data_cache.get_temperature(ctx.conf);
     double t_el = ctx.data_cache.get_temperature_el(ctx.conf);
+    double t_sea = ctx.data_cache.water_data.temperature;
 
     if (!isnan(p)) ctx.n2k.sendPressure(p);
     if (!isnan(t)) ctx.n2k.sendCabinTemp(t);
     if (!isnan(h)) ctx.n2k.sendHumidity(h);
     if (!isnan(t_el)) ctx.n2k.sendElectronicTemperature(t_el);
 
-    if (!(isnan(p) && isnan(t) && isnan(h))) ctx.n2k.sendEnvironmentXRaymarine(to_n2k(p), to_n2k(h), to_n2k(t));
+    // Send environment data to N2K network via Raymarine-specific PGNs
+    // Raymarine uses deprecated environment PGNs in the various instruments, so we need to send this stuff to have it shown correctly on their displays
+    if (!(isnan(p) && isnan(t) && isnan(h))) ctx.n2k.sendEnvironmentXRaymarine(p, h, t);
+    if (!(isnan(p) && isnan(t) && isnan(t_sea))) ctx.n2k.sendOutsideEnvironmentXRaymarine(p, t, t_sea);
   }
 }

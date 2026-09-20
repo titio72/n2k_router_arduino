@@ -694,6 +694,13 @@ void test_configuration_overwrite_values(void)
     TEST_ASSERT_DOUBLE_WITHIN(0.0001, -1.0, conf.get_rpm_adjustment());
 }
 
+void test_configuration_ble_passkey_disabled_without_build_flag(void)
+{
+    // the native test build has no generated ble_passkey.h, so BLE stays open
+    Configuration conf;
+    TEST_ASSERT_EQUAL_UINT32(0, conf.get_ble_passkey());
+}
+
 #pragma endregion
 
 // Test runner
@@ -763,5 +770,6 @@ void run_configuration_tests(void)
     RUN_TEST(test_configuration_persistence_roundtrip);
     RUN_TEST(test_configuration_independent_instances);
     RUN_TEST(test_configuration_overwrite_values);
+    RUN_TEST(test_configuration_ble_passkey_disabled_without_build_flag);
 }
 #endif
