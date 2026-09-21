@@ -54,7 +54,7 @@ void SpeedThroughWater::loop(unsigned long micros, Context &ctx)
   double frequency = 0.0;
   int cnt = 0;
   speed_sensor.set_alpha(conf.get_stw_paddle_alpha());
-  if (speed_sensor.read_data(micros/1000, frequency, cnt))
+  if (speed_sensor.read_data(ms_clock.update(micros), frequency, cnt))
   {
     //Log::tracex("STW", "Reading speed sensor data", "alpha {%.2f} freq {%.2f} cnt {%d}", conf.get_stw_paddle_alpha(), frequency, cnt);
     data.frequency = frequency;

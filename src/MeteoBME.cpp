@@ -71,7 +71,7 @@ MeteoBME::MeteoBME(int _address, uint8_t ix, BME280Internal *impl)
 
 MeteoBME::~MeteoBME()
 {
-  if (bme)
+  if (bme && internalStateOwned) // an injected implementation belongs to the caller
     delete bme;
 }
 

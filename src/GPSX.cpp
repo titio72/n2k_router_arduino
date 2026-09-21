@@ -20,7 +20,9 @@ const int NAVIGATION_DATA_FREQUENCY = 10; // Hz
 
 const int GPS_SERIAL_SPEED = 57600; // Default speed for GPS serial port
 
-const int GPS_SERIAL_FALLBACK_SPEEDS[] = {9600, 57600}; // Fallback speed for GPS serial port if default fails
+// Speeds tried, one per attempt, when the module does not answer at GPS_SERIAL_SPEED (u-blox factory default is 9600)
+const int GPS_SERIAL_FALLBACK_SPEEDS[] = {9600, 115200, 38400};
+const int GPS_SERIAL_FALLBACK_COUNT = sizeof(GPS_SERIAL_FALLBACK_SPEEDS) / sizeof(GPS_SERIAL_FALLBACK_SPEEDS[0]);
 
 const char* GPS_LOG_TAG = "GPS";
 
@@ -108,10 +110,11 @@ bool GPSX::loadPVT()
 
     if (myGNSS.getGnssFixOk())
     {
-        data.latitude_signed = myGNSS.getLatitude() / 10000000.0f;
-        data.longitude_signed = myGNSS.getLongitude() / 10000000.0f;
-        data.cog = myGNSS.getHeading() / 100000.0f;                         // headVeh is deg*1e-05
-        data.sog = (myGNSS.getGroundSpeed() / 1000.0f) * 3600.0f / 1852.0f; // gSpeed is mm/s
+        // doubles: a float has 24 bits of mantissa, i.e. only ~0.5 m of resolution on a longitude of 12.xxxxxx
+        data.latitude_signed = myGNSS.getLatitude() / 10000000.0;
+        data.longitude_signed = myGNSS.getLongitude() / 10000000.0;
+        data.cog = myGNSS.getHeading() / 100000.0;                         // headVeh is deg*1e-05
+        data.sog = (myGNSS.getGroundSpeed() / 1000.0) * 3600.0 / 1852.0; // gSpeed is mm/s
         data.fix = myGNSS.getFixType();
     }
     else
@@ -159,14 +162,19 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
         static N2KSid _sid;
         unsigned char sid = _sid.getNew();
         ctx.n2k.sendGNSSPosition(data, sid);
-        float variation = myDeclination.magneticDeclination(data.latitude_signed, data.longitude_signed,
-                                                            data.year - 2000, data.month, data.day);
-        ctx.n2k.sendMagneticVariation(variation, data.gps_unix_time / 86400);
+        ctx.n2k.sendGNNSStatus(data, sid); // GNSS DOPs (PGN 129539), declared in the transmit list
+        // without a fix the position and date are NAN/0: don't broadcast a bogus variation or a 1970 clock
+        if (data.isValid() && data.gps_unix_time != 0)
+        {
+            float variation = myDeclination.magneticDeclination(data.latitude_signed, data.longitude_signed,
+                                                                data.year - 2000, data.month, data.day);
+            ctx.n2k.sendMagneticVariation(variation, data.gps_unix_time / 86400);
+        }
         if (ctx.conf.get_services().is_sog_2_stw())
         {
             ctx.n2k.sendSTW(data.sog);
         }
-        if (ctx.conf.get_services().is_send_time())
+        if (ctx.conf.get_services().is_send_time() && data.gps_unix_time != 0)
         {
             ctx.n2k.sendSystemTime(data.gps_unix_time, sid, data.gps_unix_time_ms);
         }
@@ -244,7 +252,7 @@ void GPSX::enable(Context &ctx)
             Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "Serial");
             bool _enabled = false;
             int retry_count = 0;
-            while (retry_count < 3)
+            while (retry_count < GPS_SERIAL_FALLBACK_COUNT)
             {
                 Log::tracex(GPS_LOG_TAG, "Enabling", "Trying %d baud", GPS_SERIAL_SPEED);
                 serial_port->end();
@@ -257,9 +265,9 @@ void GPSX::enable(Context &ctx)
                 }
                 else
                 {
-                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connection failed at %d baud, trying %d\n", GPS_SERIAL_SPEED, GPS_SERIAL_FALLBACK_SPEEDS[retry_count % 2]);
+                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connection failed at %d baud, trying %d\n", GPS_SERIAL_SPEED, GPS_SERIAL_FALLBACK_SPEEDS[retry_count % GPS_SERIAL_FALLBACK_COUNT]);
                     serial_port->end();
-                    serial_port->begin(GPS_SERIAL_FALLBACK_SPEEDS[retry_count % 2], SERIAL_8N1, rx_pin, tx_pin);
+                    serial_port->begin(GPS_SERIAL_FALLBACK_SPEEDS[retry_count % GPS_SERIAL_FALLBACK_COUNT], SERIAL_8N1, rx_pin, tx_pin);
                     if (myGNSS.begin(*serial_port))
                     {
                         myGNSS.setSerialRate(GPS_SERIAL_SPEED); // Set the serial port to 57600 baud)

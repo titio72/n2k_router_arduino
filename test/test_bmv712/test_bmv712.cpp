@@ -1,5 +1,7 @@
 #include <unity.h>
 #include <string.h>
+#include <string>
+#include <math.h>
 #include "BMV712.h"
 #include "MockPort.hpp"
 #include "Conf.h"
@@ -128,6 +130,118 @@ void test_bmv712_read_valid_message_split_in_two(void)
 }
 #pragma endregion
 
+#pragma region BMV712 Missing Data Tests
+
+// Builds a VE.Direct text frame: "\r\n<line>" for every line, then a checksum line whose byte makes the
+// sum of all bytes 0 mod 256. A dummy field is added if the checksum byte would be \0, \r or \n.
+static std::string ve_frame(std::initializer_list<const char *> lines)
+{
+    for (int pad = 0;; pad++)
+    {
+        std::string f;
+        for (const char *l : lines)
+        {
+            f += "\r\n";
+            f += l;
+        }
+        f += "\r\nX\t" + std::to_string(pad);
+        f += "\r\nChecksum\t";
+        unsigned sum = 0;
+        for (unsigned char c : f) sum += c;
+        unsigned char chk = (unsigned char)((256 - (sum & 0xFF)) & 0xFF);
+        if (chk != 0 && chk != '\r' && chk != '\n')
+        {
+            f += (char)chk;
+            return f;
+        }
+    }
+}
+
+void test_bmv712_absent_fields_are_not_available(void)
+{
+    // no VS (starter voltage) and no T (temperature) in the frame: they must come out as NaN, not garbage
+    MOCK_CONTEXT
+    MockPort mock_port("BMV_PORT");
+    BMV712 bmv(mock_port);
+    bmv.setup(context);
+    bmv.enable(context);
+
+    unsigned long t = 1250000000;
+    bmv.loop(t, context);
+    std::string f = ve_frame({"PID\t0xA381", "V\t13406", "I\t-1290", "SOC\t689", "TTG\t-1"});
+    mock_port.simulate_data(f.c_str());
+    bmv.loop(t + 500000, context);
+
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 13.406, context.data_cache.battery_svc.voltage);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, -1.29, context.data_cache.battery_svc.current);
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_eng.voltage));
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_svc.temperature));
+}
+
+void test_bmv712_dashes_mean_not_available(void)
+{
+    MOCK_CONTEXT
+    MockPort mock_port("BMV_PORT");
+    BMV712 bmv(mock_port);
+    bmv.setup(context);
+    bmv.enable(context);
+
+    unsigned long t = 1250000000;
+    bmv.loop(t, context);
+    std::string f = ve_frame({"PID\t0xA381", "V\t13406", "VS\t---", "I\t0", "SOC\t---", "T\t---"});
+    mock_port.simulate_data(f.c_str());
+    bmv.loop(t + 500000, context);
+
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 13.406, context.data_cache.battery_svc.voltage);
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_eng.voltage)); // was 0.0 V
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_svc.soc));     // was 0 %
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_svc.temperature));
+}
+
+void test_bmv712_temperature_when_present(void)
+{
+    MOCK_CONTEXT
+    MockPort mock_port("BMV_PORT");
+    BMV712 bmv(mock_port);
+    bmv.setup(context);
+    bmv.enable(context);
+
+    unsigned long t = 1250000000;
+    bmv.loop(t, context);
+    std::string f = ve_frame({"PID\t0xA381", "V\t13406", "VS\t13152", "T\t22"});
+    mock_port.simulate_data(f.c_str());
+    bmv.loop(t + 500000, context);
+
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 22.0, context.data_cache.battery_svc.temperature);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 13.152, context.data_cache.battery_eng.voltage);
+}
+
+void test_bmv712_shared_cache_cleared_after_link_loss(void)
+{
+    MOCK_CONTEXT
+    MockPort mock_port("BMV_PORT");
+    BMV712 bmv(mock_port);
+    bmv.setup(context);
+    bmv.enable(context);
+
+    unsigned long t = 1250000000;
+    bmv.loop(t, context);
+    std::string f = ve_frame({"PID\t0xA381", "V\t13406", "VS\t13152", "I\t0", "SOC\t689"});
+    mock_port.simulate_data(f.c_str());
+    bmv.loop(t + 500000, context);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 13.406, context.data_cache.battery_svc.voltage);
+
+    bmv.loop(t + 5000000, context); // still within the 10 s window
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 13.406, context.data_cache.battery_svc.voltage);
+
+    bmv.loop(t + 12000000, context); // nothing received for > 10 s
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_svc.voltage));
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_svc.soc));
+    TEST_ASSERT_TRUE(isnan(context.data_cache.battery_eng.voltage));
+}
+
+#pragma endregion
+
 void run_bmv712_tests(void)
 {
     // Construction tests
@@ -137,6 +251,12 @@ void run_bmv712_tests(void)
     // Listener tests
     RUN_TEST(test_bmv712_read_valid_message);
     RUN_TEST(test_bmv712_read_valid_message_split_in_two);
+
+    // Missing data
+    RUN_TEST(test_bmv712_absent_fields_are_not_available);
+    RUN_TEST(test_bmv712_dashes_mean_not_available);
+    RUN_TEST(test_bmv712_temperature_when_present);
+    RUN_TEST(test_bmv712_shared_cache_cleared_after_link_loss);
 }
 
 void setup()

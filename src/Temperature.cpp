@@ -107,10 +107,6 @@ void WaterTemperature::loop(unsigned long now_micros, Context &ctx)
 
 double read_ntc(int pin, double &r, double &v)
 {
-#ifndef NATIVE
-#else
-    int i = 512; // Mock value for testing
-#endif
     v = (double)analogReadMilliVolts(pin) / 1000.0; // in volts
 
     // Calculate NTC resistance using voltage divider formula
@@ -132,9 +128,15 @@ void WaterTemperature::read_data(WaterData &data, Configuration &conf)
     double voltage;
     double temp_celsius = read_ntc(pin, r_thermistor, voltage);
     // Log::tracex("WTT", "Reading temperature", "Pin {%d} Voltage {%.2f} Ohms {%.2f} Temp {%.2f}", pin, voltage, r_thermistor, temp_celsius);
-    if (isnan(temp_celsius))
+    // Valid range of a sample (-10°C to 70°C). A sample outside it (sensor unplugged or shorted reads about
+    // -273°C) must never reach the smoothing filter: with alpha < 1 it would drag the filtered value out of
+    // range for many seconds even after the sensor is back, so the filter is restarted instead.
+    const double MIN_TEMP = -10.0;
+    const double MAX_TEMP = 70.0;
+
+    if (isnan(temp_celsius) || temp_celsius < MIN_TEMP || temp_celsius > MAX_TEMP)
     {
-        // Reading failed
+        temperature = NAN; // restart the filter with the next good sample
         reset_water_temp_data(data, TEMP_ERROR_NO_SIGNAL);
         return;
     }
@@ -148,20 +150,6 @@ void WaterTemperature::read_data(WaterData &data, Configuration &conf)
     double alpha = conf.get_sea_temp_alpha();
     temperature = alpha * temp_celsius + (1.0 - alpha) * temperature;
 
-    // Clamp temperature to reasonable range (-10°C to 70°C)
-    const double MIN_TEMP = -10.0;
-    const double MAX_TEMP = 70.0;
-
-    if (temperature < MIN_TEMP || temperature > MAX_TEMP)
-    {
-        // Temperature out of valid range
-        reset_water_temp_data(data, TEMP_ERROR_NO_SIGNAL);
-    }
-    else
-    {
-        // Serial.printf("---- %f", temperature);
-        //  Set temperature data
-        data.temperature = temperature * conf.get_sea_temp_adjustment();
-        data.temperature_error = TEMP_ERROR_OK;
-    }
+    data.temperature = temperature * conf.get_sea_temp_adjustment();
+    data.temperature_error = TEMP_ERROR_OK;
 }

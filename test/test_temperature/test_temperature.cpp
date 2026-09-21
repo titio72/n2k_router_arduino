@@ -81,12 +81,57 @@ void test_water_temperature_applies_configured_alpha(void)
 
 #pragma endregion
 
+#pragma region Sensor fault tests
+
+void test_water_temperature_fault_does_not_poison_the_filter(void)
+{
+    // A disconnected sensor reads ~-273 C. With a smoothing alpha < 1 that sample used to enter the filter and
+    // keep the output out of range for a long time after the sensor came back.
+    MockConfiguration conf;
+    conf.save_sea_temp_alpha(0.1);
+    WaterTemperature wt(WATER_TEMP_PIN);
+    WaterData data;
+
+    WaterTemperature::set_mock_millivolts(1650);
+    wt.read_data(data, conf);
+    TEST_ASSERT_EQUAL_INT(TEMP_ERROR_OK, data.temperature_error);
+    double good = data.temperature;
+
+    WaterTemperature::set_mock_millivolts(0); // unplugged: floating input reads 0 V
+    wt.read_data(data, conf);
+    TEST_ASSERT_EQUAL_INT(TEMP_ERROR_NO_SIGNAL, data.temperature_error);
+    TEST_ASSERT_TRUE(isnan(data.temperature));
+
+    WaterTemperature::set_mock_millivolts(1650); // plugged back in: first sample must be trusted straight away
+    wt.read_data(data, conf);
+    TEST_ASSERT_EQUAL_INT(TEMP_ERROR_OK, data.temperature_error);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, good, data.temperature);
+
+    WaterTemperature::set_mock_millivolts(1650);
+}
+
+void test_water_temperature_out_of_range_sample_is_rejected(void)
+{
+    MockConfiguration conf;
+    WaterTemperature wt(WATER_TEMP_PIN);
+    WaterData data;
+    WaterTemperature::set_mock_millivolts(4900); // r ~ 100 ohm: far hotter than 70 C
+    wt.read_data(data, conf);
+    TEST_ASSERT_EQUAL_INT(TEMP_ERROR_NO_SIGNAL, data.temperature_error);
+    TEST_ASSERT_TRUE(isnan(data.temperature));
+    WaterTemperature::set_mock_millivolts(1650);
+}
+
+#pragma endregion
+
 int main()
 {
     UNITY_BEGIN();
 
     RUN_TEST(test_water_temperature_applies_configured_adjustment);
     RUN_TEST(test_water_temperature_applies_configured_alpha);
+    RUN_TEST(test_water_temperature_fault_does_not_poison_the_filter);
+    RUN_TEST(test_water_temperature_out_of_range_sample_is_rejected);
 
     return UNITY_END();
 }

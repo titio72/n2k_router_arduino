@@ -655,6 +655,25 @@ void test_meteo_bme_read_different_addresses(void)
 #pragma endregion
 
 // Test runner
+// An injected implementation belongs to the caller: MeteoBME must not delete it (a stack object would crash)
+class DtorCountingBME : public MockBME280
+{
+public:
+    int *destroyed;
+    DtorCountingBME(int *d) : destroyed(d) {}
+    virtual ~DtorCountingBME() { (*destroyed)++; }
+};
+
+void test_meteo_bme_does_not_delete_injected_implementation(void)
+{
+    int destroyed = 0;
+    DtorCountingBME impl(&destroyed); // on the stack: deleting it would be undefined behaviour
+    {
+        MeteoBME bme(0x76, 0, &impl);
+    }
+    TEST_ASSERT_EQUAL_INT(0, destroyed);
+}
+
 void run_meteo_bme_tests()
 {
     UNITY_BEGIN();
@@ -705,6 +724,7 @@ void run_meteo_bme_tests()
     RUN_TEST(test_meteo_bme_multiple_instances_independent);
     RUN_TEST(test_meteo_bme_rapid_enable_disable_cycles);
     RUN_TEST(test_meteo_bme_read_different_addresses);
+    RUN_TEST(test_meteo_bme_does_not_delete_injected_implementation);
 
     UNITY_END();
 }

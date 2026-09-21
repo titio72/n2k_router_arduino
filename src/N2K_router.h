@@ -89,6 +89,9 @@ public:
 
     N2KStats getStats() override;
 
+    /** Minimum free stack of the N2K task since it started, in bytes (0 on desktop builds) */
+    unsigned int get_task_stack_free();
+
 protected:
     virtual bool send_it(tN2kMsg &N2kMsg);
 

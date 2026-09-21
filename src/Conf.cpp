@@ -11,7 +11,13 @@
 #endif
 #endif
 #include <Log.h>
+#include <math.h>
+#include <string.h>
+#include <limits>
 #include "Conf.h"
+#ifndef NATIVE
+#include <Preferences.h>
+#endif
 
 #if __has_include("ble_passkey.h")
 #include "ble_passkey.h" // generated at build time by tools/ble_passkey.py
@@ -154,8 +160,8 @@ static bool eee_initialized = false;
 
 static bool _init_persistence()
 {
-    bool res = EEE.begin(sizeof(Conf) + sizeof(uint64_t)); // extra space for engine hours
-    Log::tracex(CONF_LOG_TAG, "Init Persistence", "Size {%d} success {%d}", sizeof(Conf) + sizeof(uint64_t), res ? 1 : 0);
+    bool res = EEE.begin(sizeof(Conf)); // engine hours are not stored here, see EngineHoursPersistenceNVS
+    Log::tracex(CONF_LOG_TAG, "Init Persistence", "Size {%d} success {%d}", sizeof(Conf), res ? 1 : 0);
     eee_initialized = res;
     return res;
 }
@@ -189,39 +195,71 @@ public:
 
 static ConfigurationPersistenceEEPROM configurationPersistenceEEPROM;
 
-class EngineHoursPersistenceEEPROM : public EngineHoursPersistence
+#ifndef NATIVE
+/**
+ * Engine hours live in NVS, under their own key, rather than after the Conf struct in the EEPROM buffer:
+ *  - the location no longer depends on sizeof(Conf), so Conf can grow without moving/corrupting the hours
+ *  - a missing key reads as 0 (an erased EEPROM area reads back as 0xFF..., i.e. absurd hours)
+ *  - NVS spreads the once-a-minute writes over its pages instead of erasing the same flash sector each time
+ */
+class EngineHoursPersistenceNVS : public EngineHoursPersistence
 {
 public:
     virtual bool init_persistence() override
     {
-        return _init_persistence();
+        if (!open)
+        {
+            open = prefs.begin(NVS_NAMESPACE, false);
+            Log::tracex(CONF_LOG_TAG, "Init NVS", "Namespace {%s} success {%d}", NVS_NAMESPACE, open ? 1 : 0);
+        }
+        return open;
     }
 
     virtual bool save_engine_hours(uint64_t milliseconds) override
     {
-        size_t r = EEE.writeULong64(sizeof(Conf) /* write at the end of the configuration */, milliseconds);
-        bool res = (r != 0) && EEE.commit();
-        //Log::tracex(CONF_LOG_TAG, "Write", "engine time {%lu-%d} success {%d}", (uint32_t)(milliseconds / 1000), (uint16_t)(milliseconds % 1000), res?1:0);
-        return r;
+        return open && prefs.putULong64(NVS_KEY, milliseconds) == sizeof(uint64_t);
     }
 
     virtual uint64_t load_engine_hours() override
     {
-        uint64_t hh = EEE.readULong64(/* read at the end of the configuration */ sizeof(Conf));
-        return hh;
+        return open ? prefs.getULong64(NVS_KEY, 0) : 0;
     }
+
+private:
+    static constexpr const char *NVS_NAMESPACE = "n2krouter";
+    static constexpr const char *NVS_KEY = "engine_ms";
+    Preferences prefs;
+    bool open = false;
 };
 
-static EngineHoursPersistenceEEPROM engineHoursPersistenceEEPROM;
+static EngineHoursPersistenceNVS engineHoursPersistenceDefault;
+#else
+// desktop builds have no NVS: keep the value in memory
+class EngineHoursPersistenceMemory : public EngineHoursPersistence
+{
+public:
+    virtual bool init_persistence() override { return true; }
+    virtual bool save_engine_hours(uint64_t milliseconds) override { value = milliseconds; return true; }
+    virtual uint64_t load_engine_hours() override { return value; }
+
+private:
+    uint64_t value = 0;
+};
+
+static EngineHoursPersistenceMemory engineHoursPersistenceDefault;
+#endif
 #pragma endregion
 
 #pragma region EngineHours
+// 100 000 hours: anything above is corrupted storage, not a real engine
+static const uint64_t MAX_PLAUSIBLE_ENGINE_HOURS_MS = 100000ULL * 3600ULL * 1000ULL;
+
 EngineHours::EngineHours(EngineHoursPersistence *persistence)
     : engine_hours(0),
       initialized(false)
 {
     if (persistence == nullptr)
-        persistence = &engineHoursPersistenceEEPROM;
+        persistence = &engineHoursPersistenceDefault;
     this->persistence = persistence;
 }
 
@@ -234,6 +272,11 @@ int EngineHours::init()
     {
         Log::tracex(CONF_LOG_TAG, "Init", "Persistence initialized, loading engine hours");
         engine_hours = persistence->load_engine_hours();
+        if (engine_hours > MAX_PLAUSIBLE_ENGINE_HOURS_MS)
+        {
+            Log::tracex(CONF_LOG_TAG, "Init", "Implausible engine hours {%lu} - starting from 0", (uint32_t)(engine_hours / 1000));
+            engine_hours = 0;
+        }
         Log::tracex(CONF_LOG_TAG, "Init", "Loaded engine hours {%lu-%d}", (uint32_t)(engine_hours / 1000), (uint16_t)(engine_hours % 1000));
         initialized = true;
         return CONFIG_RES_OK;
@@ -260,6 +303,23 @@ bool EngineHours::save_engine_hours(uint64_t h)
 #pragma region Configuration
 
 #define SAVE_CONF return persistence->save_configuration(conf);
+
+/**
+ * Convert a real value to its fixed-point storage form: rounds to nearest (plain truncation turns
+ * 0.29 * 100 into 28) and clamps to the range of T (an out-of-range float-to-int cast is undefined).
+ */
+template <typename T>
+static T to_fixed(double value, double scale)
+{
+    double v = round(value * scale);
+    if (isnan(v))
+        return 0;
+    if (v < (double)std::numeric_limits<T>::min())
+        return std::numeric_limits<T>::min();
+    if (v > (double)std::numeric_limits<T>::max())
+        return std::numeric_limits<T>::max();
+    return (T)v;
+}
 
 Configuration::Configuration(ConfigurationPersistence *persistence)
     : initialized(false)
@@ -393,7 +453,7 @@ double Configuration::get_rpm_adjustment() const
 
 bool Configuration::save_rpm_adjustment(double d)
 {
-    conf.rpm_adjustment = (int16_t)(d * RPM_ADJUSTMENT_SCALE);
+    conf.rpm_adjustment = to_fixed<int16_t>(d, RPM_ADJUSTMENT_SCALE);
     SAVE_CONF
 }
 
@@ -431,7 +491,7 @@ bool Configuration::save_battery_capacity(uint16_t c)
 
 double Configuration::get_sea_temp_alpha() const
 {
-    return (double)(conf.sea_temp_alpha) / 100.0;
+    return (double)(conf.sea_temp_alpha) / SEA_TEMP_ALPHA_SCALE;
 }
 
 double Configuration::get_stw_paddle_alpha() const
@@ -451,25 +511,25 @@ double Configuration::get_stw_paddle_adjustment() const
 
 bool Configuration::save_sea_temp_alpha(double a)
 {
-    conf.sea_temp_alpha = (uint8_t)(a * 100.0);
+    conf.sea_temp_alpha = to_fixed<uint8_t>(a, SEA_TEMP_ALPHA_SCALE);
     SAVE_CONF
 }
 
 bool Configuration::save_stw_paddle_alpha(double a)
 {
-    conf.stw_paddle_alpha = (uint8_t)(a * STW_PADDLE_ALPHA_SCALE);
+    conf.stw_paddle_alpha = to_fixed<uint8_t>(a, STW_PADDLE_ALPHA_SCALE);
     SAVE_CONF
 }
 
 bool Configuration::save_sea_temp_adjustment(double a)
 {
-    conf.sea_temp_adjustment = (uint16_t)(a * SEA_TEMP_ADJUSTMENT_SCALE);
+    conf.sea_temp_adjustment = to_fixed<uint16_t>(a, SEA_TEMP_ADJUSTMENT_SCALE);
     SAVE_CONF
 }
 
 bool Configuration::save_stw_paddle_adjustment(double a)
 {
-    conf.stw_paddle_adjustment = (uint16_t)(a * STW_PADDLE_ADJUSTMENT_SCALE);
+    conf.stw_paddle_adjustment = to_fixed<uint16_t>(a, STW_PADDLE_ADJUSTMENT_SCALE);
     SAVE_CONF
 }
 

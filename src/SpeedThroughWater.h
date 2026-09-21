@@ -1,12 +1,10 @@
 #ifndef _SPEED_THROUGH_WATER_H
 #define _SPEED_THROUGH_WATER_H
 
-struct water_data;
-struct configuration;
-
 #include <SpeedSensorInterrupt.h>
 #include <SpeedSensor.h>
 #include "Agents.hpp"
+#include "MsClock.h"
 #ifndef NATIVE
 #include <esp_timer.h>
 #else
@@ -39,6 +37,7 @@ private:
     bool enabled;
     double adjustment_factor = 1.0;
     unsigned long last_read = 0;
+    MsClock ms_clock;
 
     esp_timer_handle_t timer_handle = NULL;
     static void IRAM_ATTR timer_callback(void *arg);

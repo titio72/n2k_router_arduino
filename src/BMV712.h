@@ -29,12 +29,9 @@ private:
     bool read;
 
     bool enabled;
-    time_t delta_time;
     VEDirectObject bmv_vedirect;
 
     unsigned long last_read_time;
-
-    int checksum;
 
     N2KSid n2ksid;
 };

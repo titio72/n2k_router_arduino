@@ -7,6 +7,8 @@
 class DHTInternal
 {
 public:
+    virtual ~DHTInternal() {}
+
     virtual bool setup() = 0;
     virtual void getTempAndHumidity(double &temp, double &humidity) = 0;
     virtual unsigned long getMinimumSamplingPeriod() = 0;

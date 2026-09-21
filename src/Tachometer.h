@@ -3,6 +3,7 @@
 
 #include "Utils.h"
 #include "Agents.hpp"
+#include "MsClock.h"
 #include <SpeedSensorInterrupt.h>
 #include <SpeedSensor.h>
 #ifndef NATIVE
@@ -27,6 +28,14 @@ public:
 
     void dumpStats();
 
+    /**
+     * Write the engine time to the EngineHours service if it has advanced since the last save.
+     * Loop task only (it writes flash). Call before anything that stops the firmware (restart) or the agent.
+     * @param min_unsaved_ms skip the write unless at least this much time is unsaved
+     * @return true if something was written
+     */
+    bool flush(uint64_t min_unsaved_ms = 0);
+
     // Used for testing only! The signal is normally captured by interrupts in the SpeedSensorInterrupt class
     void read_signal();
 
@@ -45,8 +54,11 @@ private:
 
     int current_rpm;
     uint64_t current_engine_time;
+    bool engine_was_on;
+    uint64_t last_persisted_engine_time; // last value written to / loaded from the EngineHours service
 
     unsigned long last_read;
+    MsClock ms_clock;
     unsigned long last_read_eng_h;
     unsigned long last_engine_hours_write_time;
 

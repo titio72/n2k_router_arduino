@@ -18,14 +18,6 @@ bool EnvMessenger::is_enabled() { return enabled; }
 void EnvMessenger::setup(Context& ctx) {}
 
 
-inline double to_n2k(double value)
-{
-  if (isnan(value))
-    return N2kDoubleNA;
-  else
-    return value;
-}
-
 void EnvMessenger::loop(unsigned long ms, Context &ctx)
 {
   if (enabled && check_elapsed(ms, t0, PERIOD_MICROS_ENV))

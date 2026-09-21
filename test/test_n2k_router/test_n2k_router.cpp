@@ -110,6 +110,98 @@ void test_send_satellites_does_not_overread_past_nsat(void)
 
 #pragma endregion
 
+#pragma region Not-available encoding
+
+// PGN 129026 COG&SOG rapid: byte 0 SID, byte 1 reference, bytes 2-3 COG (0.0001 rad), bytes 4-5 SOG (0.01 m/s)
+static bool is_na16(const tN2kMsg &m, int index)
+{
+    return m.Data[index] == 0xFF && m.Data[index + 1] == 0xFF;
+}
+
+void test_cogsog_nan_cog_is_not_available_not_zero_degrees(void)
+{
+    CapturingN2KSender sender;
+    sender.sendCOGSOG(5.0, NAN, 0);
+    TEST_ASSERT_EQUAL(1, sender.sent_messages.size());
+    TEST_ASSERT_TRUE(is_na16(sender.sent_messages[0], 2));  // COG
+    TEST_ASSERT_FALSE(is_na16(sender.sent_messages[0], 4)); // SOG is real
+}
+
+void test_cogsog_nan_sog_is_not_available(void)
+{
+    CapturingN2KSender sender;
+    sender.sendCOGSOG(NAN, 90.0, 0);
+    TEST_ASSERT_EQUAL(1, sender.sent_messages.size());
+    TEST_ASSERT_TRUE(is_na16(sender.sent_messages[0], 4));  // SOG
+    TEST_ASSERT_FALSE(is_na16(sender.sent_messages[0], 2)); // COG is real
+}
+
+void test_cogsog_both_valid_and_zero_cog_is_a_real_value(void)
+{
+    CapturingN2KSender sender;
+    sender.sendCOGSOG(5.0, 0.0, 0); // heading due north is a legitimate COG
+    TEST_ASSERT_FALSE(is_na16(sender.sent_messages[0], 2));
+    TEST_ASSERT_FALSE(is_na16(sender.sent_messages[0], 4));
+    TEST_ASSERT_EQUAL_UINT8(0, sender.sent_messages[0].Data[2]);
+    TEST_ASSERT_EQUAL_UINT8(0, sender.sent_messages[0].Data[3]);
+}
+
+void test_cogsog_both_nan_sends_nothing(void)
+{
+    CapturingN2KSender sender;
+    TEST_ASSERT_FALSE(sender.sendCOGSOG(NAN, NAN, 0));
+    TEST_ASSERT_EQUAL(0, sender.sent_messages.size());
+}
+
+// PGN 128259 boat speed: byte 0 SID, bytes 1-2 water referenced, bytes 3-4 ground referenced (0.01 m/s)
+void test_stw_has_no_ground_referenced_speed(void)
+{
+    CapturingN2KSender sender;
+    sender.sendSTW(5.0);
+    TEST_ASSERT_EQUAL(1, sender.sent_messages.size());
+    const tN2kMsg &m = sender.sent_messages[0];
+    TEST_ASSERT_FALSE(is_na16(m, 1)); // water speed is real: 5 kn = 2.57 m/s
+    TEST_ASSERT_EQUAL_UINT16(257, m.Data[1] | (m.Data[2] << 8));
+    TEST_ASSERT_TRUE(is_na16(m, 3));  // ground speed: not available
+}
+
+// PGN 129539 DOPs are signed 16-bit (0.01): "not available" is 0x7FFF
+static bool is_na_s16(const tN2kMsg &m, int index)
+{
+    return m.Data[index] == 0xFF && m.Data[index + 1] == 0x7F;
+}
+
+void test_gnss_status_with_nan_dops_is_not_available(void)
+{
+    CapturingN2KSender sender;
+    GPSData gps;
+    gps.fix = 3; // hdop/vdop/tdop stay NaN
+    sender.sendGNNSStatus(gps, 0);
+    TEST_ASSERT_EQUAL(1, sender.sent_messages.size());
+    const tN2kMsg &m = sender.sent_messages[0];
+    // byte 0 SID, byte 1 modes, bytes 2-3 HDOP, 4-5 VDOP, 6-7 TDOP
+    TEST_ASSERT_TRUE(is_na_s16(m, 2));
+    TEST_ASSERT_TRUE(is_na_s16(m, 4));
+    TEST_ASSERT_TRUE(is_na_s16(m, 6));
+}
+
+void test_gnss_status_with_real_dops_is_sent_as_values(void)
+{
+    CapturingN2KSender sender;
+    GPSData gps;
+    gps.fix = 3;
+    gps.hdop = 1.25;
+    gps.vdop = 2.0;
+    gps.tdop = NAN;
+    sender.sendGNNSStatus(gps, 0);
+    const tN2kMsg &m = sender.sent_messages[0];
+    TEST_ASSERT_EQUAL_INT16(125, (int16_t)(m.Data[2] | (m.Data[3] << 8)));
+    TEST_ASSERT_EQUAL_INT16(200, (int16_t)(m.Data[4] | (m.Data[5] << 8)));
+    TEST_ASSERT_TRUE(is_na_s16(m, 6));
+}
+
+#pragma endregion
+
 int main()
 {
     UNITY_BEGIN();
@@ -120,6 +212,14 @@ int main()
     RUN_TEST(test_send_battery_status_uses_claimed_source);
 
     RUN_TEST(test_send_satellites_does_not_overread_past_nsat);
+
+    RUN_TEST(test_cogsog_nan_cog_is_not_available_not_zero_degrees);
+    RUN_TEST(test_cogsog_nan_sog_is_not_available);
+    RUN_TEST(test_cogsog_both_valid_and_zero_cog_is_a_real_value);
+    RUN_TEST(test_cogsog_both_nan_sends_nothing);
+    RUN_TEST(test_stw_has_no_ground_referenced_speed);
+    RUN_TEST(test_gnss_status_with_nan_dops_is_not_available);
+    RUN_TEST(test_gnss_status_with_real_dops_is_sent_as_values);
 
     return UNITY_END();
 }

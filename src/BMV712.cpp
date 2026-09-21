@@ -1,24 +1,22 @@
 #include "BMV712.h"
 #include "Utils.h"
 #include "N2K_router.h"
+#include "Conf.h"
 #include "Data.h"
 #include <Log.h>
 
-#define CAPACITY 280.0
 #define INSTANCE 0
 #define INSTANCE_E 1
 
 #define VE_LOG_PREFIX "VE"
 
-BMV712::BMV712(Port &_p) : p(_p), enabled(false), delta_time(0), bmv_vedirect(), last_read_time(0), checksum(0), read(false)
+BMV712::BMV712(Port &_p) : p(_p), read(false), enabled(false), bmv_vedirect(), last_read_time(0)
 {
 }
 
 BMV712::~BMV712()
 {
 }
-
-static const double N2K_NAN = -1e9;
 
 void reset_cache(BatteryData *data)
 {
@@ -78,6 +76,8 @@ void BMV712::loop(unsigned long micros, Context &ctx)
     Log::tracex(VE_LOG_PREFIX, "Reset cache", "No activity detected for 10 seconds");
     reset_cache(&data_eng);
     reset_cache(&data_svc);
+    reset_cache(&ctx.data_cache.battery_eng); // the shared cache too, or BLE keeps showing the last values
+    reset_cache(&ctx.data_cache.battery_svc);
     bmv_vedirect.reset();
     last_read_time = micros;
   }
@@ -94,7 +94,7 @@ void BMV712::loop(unsigned long micros, Context &ctx)
       if (!isnan(data_eng.voltage))
         ctx.n2k.sendBattery(sid, data_eng.voltage, N2kDoubleNA, N2kDoubleNA, INSTANCE_E);
       if (!isnan(data_svc.soc))
-        ctx.n2k.sendBatteryStatus(sid, data_svc.soc * 100.0, CAPACITY, data_svc.ttg, INSTANCE);
+        ctx.n2k.sendBatteryStatus(sid, data_svc.soc * 100.0, (double)ctx.conf.get_batter_capacity(), data_svc.ttg, INSTANCE);
       ctx.data_cache.battery_svc = data_svc;
       ctx.data_cache.battery_eng = data_eng;
     }

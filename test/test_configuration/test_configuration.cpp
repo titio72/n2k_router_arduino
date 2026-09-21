@@ -703,9 +703,98 @@ void test_configuration_ble_passkey_disabled_without_build_flag(void)
 
 #pragma endregion
 
+#pragma region EngineHours persistence
+
+// Persistence stub: returns a fixed stored value and remembers what was saved
+class StubEngineHoursPersistence : public EngineHoursPersistence
+{
+public:
+    uint64_t stored;
+    bool init_ok = true;
+    int saves = 0;
+    StubEngineHoursPersistence(uint64_t v) : stored(v) {}
+    virtual bool init_persistence() override { return init_ok; }
+    virtual bool save_engine_hours(uint64_t h) override { stored = h; saves++; return true; }
+    virtual uint64_t load_engine_hours() override { return stored; }
+};
+
+void test_engine_hours_loads_stored_value(void)
+{
+    StubEngineHoursPersistence p(5ULL * 3600 * 1000 + 250); // 5 h and 250 ms
+    EngineHours eh(&p);
+    TEST_ASSERT_EQUAL_INT(CONFIG_RES_OK, eh.init());
+    TEST_ASSERT_EQUAL_UINT64(5ULL * 3600 * 1000 + 250, eh.get_engine_hours());
+}
+
+void test_engine_hours_erased_storage_reads_as_zero(void)
+{
+    // erased flash reads back as all ones
+    StubEngineHoursPersistence p(0xFFFFFFFFFFFFFFFFULL);
+    EngineHours eh(&p);
+    eh.init();
+    TEST_ASSERT_EQUAL_UINT64(0, eh.get_engine_hours());
+}
+
+void test_engine_hours_implausible_value_reads_as_zero(void)
+{
+    StubEngineHoursPersistence p(100001ULL * 3600 * 1000); // just over 100 000 h
+    EngineHours eh(&p);
+    eh.init();
+    TEST_ASSERT_EQUAL_UINT64(0, eh.get_engine_hours());
+
+    StubEngineHoursPersistence ok(100000ULL * 3600 * 1000); // right at the limit is accepted
+    EngineHours eh2(&ok);
+    eh2.init();
+    TEST_ASSERT_EQUAL_UINT64(100000ULL * 3600 * 1000, eh2.get_engine_hours());
+}
+
+void test_engine_hours_save_goes_to_persistence(void)
+{
+    StubEngineHoursPersistence p(0);
+    EngineHours eh(&p);
+    eh.init();
+    TEST_ASSERT_TRUE(eh.save_engine_hours(123456));
+    TEST_ASSERT_EQUAL_UINT64(123456, eh.get_engine_hours());
+    TEST_ASSERT_EQUAL_UINT64(123456, p.stored);
+    TEST_ASSERT_EQUAL_INT(1, p.saves);
+}
+
+void test_engine_hours_init_fails_when_persistence_fails(void)
+{
+    StubEngineHoursPersistence p(42);
+    p.init_ok = false;
+    EngineHours eh(&p);
+    TEST_ASSERT_EQUAL_INT(CONFIG_RES_EEPROM_FAIL, eh.init());
+    TEST_ASSERT_FALSE(eh.is_initialized());
+}
+
+void test_engine_hours_independent_of_configuration_storage(void)
+{
+    // saving/growing the configuration must not touch the engine hours
+    StubEngineHoursPersistence p(7777);
+    EngineHours eh(&p);
+    eh.init();
+    MockConfiguration conf;
+    conf.init();
+    conf.save_device_name("Boat");
+    conf.save_rpm_adjustment(1.23);
+    TEST_ASSERT_EQUAL_UINT64(7777, eh.get_engine_hours());
+    TEST_ASSERT_EQUAL_INT(0, p.saves);
+}
+
+#pragma endregion
+
 // Test runner
 void run_configuration_tests(void)
 {
+    // Engine hours persistence
+    RUN_TEST(test_engine_hours_loads_stored_value);
+    RUN_TEST(test_engine_hours_erased_storage_reads_as_zero);
+    RUN_TEST(test_engine_hours_implausible_value_reads_as_zero);
+    RUN_TEST(test_engine_hours_save_goes_to_persistence);
+    RUN_TEST(test_engine_hours_init_fails_when_persistence_fails);
+    RUN_TEST(test_engine_hours_independent_of_configuration_storage);
+
     // Initialization
     RUN_TEST(test_configuration_constructor);
     RUN_TEST(test_configuration_init_sets_initialized_flag);

@@ -1021,6 +1021,43 @@ void test_vedirect_checksum_printable_characters(void)
 #pragma endregion
 
 // Test runner
+void test_vedirect_unreceived_field_is_not_reported(void)
+{
+    VEDirectObject obj;
+    obj.init(BMV_FIELDS, BMV_N_FIELDS);
+    double v = 123.0;
+    int i = 123;
+    TEST_ASSERT_FALSE(obj.get_number_value(v, 0.001, BMV_VOLTAGE));
+    TEST_ASSERT_FALSE(obj.get_number_value(i, BMV_VOLTAGE));
+    TEST_ASSERT_EQUAL_DOUBLE(123.0, v); // untouched
+
+    obj.load_VEDirect_key_value("V\t13406", 0);
+    TEST_ASSERT_TRUE(obj.get_number_value(v, 0.001, BMV_VOLTAGE));
+    TEST_ASSERT_DOUBLE_WITHIN(0.0001, 13.406, v);
+}
+
+void test_vedirect_dashes_leave_number_unset(void)
+{
+    VEDirectObject obj;
+    obj.init(BMV_FIELDS, BMV_N_FIELDS);
+    obj.load_VEDirect_key_value("T\t22", 0);
+    double t = NAN;
+    TEST_ASSERT_TRUE(obj.get_number_value(t, 1.0, BMV_TEMPERATURE));
+
+    obj.load_VEDirect_key_value("T\t---", 0); // sensor unplugged
+    t = 99.0;
+    TEST_ASSERT_FALSE(obj.get_number_value(t, 1.0, BMV_TEMPERATURE));
+    TEST_ASSERT_EQUAL_DOUBLE(99.0, t);
+}
+
+void test_vedirect_number_index_out_of_range(void)
+{
+    VEDirectObject obj;
+    obj.init(BMV_FIELDS, BMV_N_FIELDS);
+    int i = 0;
+    TEST_ASSERT_FALSE(obj.get_number_value(i, BMV_N_FIELDS)); // one past the end
+}
+
 void run_vedirect_tests(void)
 {
     // VEDirectField tests
@@ -1096,6 +1133,10 @@ void run_vedirect_tests(void)
     RUN_TEST(test_vedirect_checksum_masked_to_8bit);
     RUN_TEST(test_vedirect_checksum_empty_message);
     RUN_TEST(test_vedirect_checksum_printable_characters);
+
+    RUN_TEST(test_vedirect_unreceived_field_is_not_reported);
+    RUN_TEST(test_vedirect_dashes_leave_number_unset);
+    RUN_TEST(test_vedirect_number_index_out_of_range);
 }
 
 void setup()

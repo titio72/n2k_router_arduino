@@ -748,6 +748,68 @@ void test_agent_loop_microsecond_precision(void)
 #pragma endregion
 
 // Test runner
+void test_handle_agent_enable_retries_again_after_cooldown(void)
+{
+    MockAgent agent;
+    agent.should_fail_enable = true;
+    unsigned short retry = 0;
+    unsigned long retry_at = 0;
+    MOCK_CONTEXT
+    unsigned long t = 1000000;
+
+    for (int i = 0; i < 10; i++)
+        handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+    TEST_ASSERT_EQUAL_INT(MAX_RETRY, agent.enable_call_count); // quick retries only
+    TEST_ASSERT_NOT_EQUAL(0, retry_at);
+
+    t += AGENT_RETRY_COOLDOWN_USEC - 1000; // cooldown not over yet
+    handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+    TEST_ASSERT_EQUAL_INT(MAX_RETRY, agent.enable_call_count);
+
+    t += 2000; // cooldown over: exactly one more attempt
+    handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+    handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+    TEST_ASSERT_EQUAL_INT(MAX_RETRY + 1, agent.enable_call_count);
+
+    // and the next one is another cooldown away; success clears the state
+    t += AGENT_RETRY_COOLDOWN_USEC + 1000;
+    agent.should_fail_enable = false;
+    bool ok = handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+    TEST_ASSERT_TRUE(ok);
+    TEST_ASSERT_EQUAL_INT(0, retry);
+    TEST_ASSERT_EQUAL_UINT32(0, retry_at);
+}
+
+void test_handle_agent_enable_cooldown_survives_micros_wrap(void)
+{
+    MockAgent agent;
+    agent.should_fail_enable = true;
+    unsigned short retry = 0;
+    unsigned long retry_at = 0;
+    MOCK_CONTEXT
+    unsigned long t = 4294967295UL - 1000000UL; // ~1 s before a 32-bit micros() wrap
+    if (sizeof(unsigned long) == 4)
+    {
+        for (int i = 0; i < 5; i++)
+            handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+        t += AGENT_RETRY_COOLDOWN_USEC + 10; // wraps
+        handle_agent_enable(agent, true, context, &retry, "A", t, &retry_at);
+        TEST_ASSERT_EQUAL_INT(MAX_RETRY + 1, agent.enable_call_count);
+    }
+}
+
+void test_handle_agent_loop_disable_clears_cooldown(void)
+{
+    MockAgent agent;
+    agent.enabled = true;
+    unsigned short retry = MAX_RETRY;
+    unsigned long retry_at = 12345;
+    MOCK_CONTEXT
+    handle_agent_loop(agent, context, false, &retry, 1000, "A", &retry_at);
+    TEST_ASSERT_EQUAL_INT(0, retry);
+    TEST_ASSERT_EQUAL_UINT32(0, retry_at);
+}
+
 void run_agent_tests(void)
 {
     // handle_agent_enable tests
@@ -757,6 +819,9 @@ void run_agent_tests(void)
     RUN_TEST(test_handle_agent_enable_retries_on_failure);
     RUN_TEST(test_handle_agent_enable_respects_max_retry);
     RUN_TEST(test_handle_agent_enable_stops_after_max_retry);
+    RUN_TEST(test_handle_agent_enable_retries_again_after_cooldown);
+    RUN_TEST(test_handle_agent_enable_cooldown_survives_micros_wrap);
+    RUN_TEST(test_handle_agent_loop_disable_clears_cooldown);
     RUN_TEST(test_handle_agent_enable_resets_retry_on_success);
     RUN_TEST(test_handle_agent_enable_without_retry_pointer);
     RUN_TEST(test_handle_agent_enable_without_description);

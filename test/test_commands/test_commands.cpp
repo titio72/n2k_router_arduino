@@ -94,9 +94,14 @@ void test_command_S_empty_string(void)
 {
     MOCK_CONTEXT_TEST
 
+    conf.reset_call_counts();
+    N2KServices before = conf.get_services();
+
     CommandHandler::on_command('S', "", conf, engineHours, data);
 
-    TEST_ASSERT_EQUAL_INT(1, conf.save_services_calls);
+    // an empty payload must not switch every service off
+    TEST_ASSERT_EQUAL_INT(0, conf.save_services_calls);
+    TEST_ASSERT_TRUE(before == conf.get_services());
 }
 
 // ============== Tests: Command 'N' (Set Device Name) ==============
@@ -641,6 +646,60 @@ void test_command_S_service_parsing_index_6(void)
 
 // ============== Main Test Runner ==============
 
+// ============== Tests: scaling, rounding and range checks ==============
+
+void test_alpha_commands_roundtrip_every_valid_value(void)
+{
+    // 0.29 * 100 used to truncate to 28
+    MOCK_CONTEXT_TEST
+    for (int v = 1; v <= 100; v++)
+    {
+        char s[8];
+        snprintf(s, sizeof(s), "%d", v);
+        CommandHandler::on_command('x', s, conf, engineHours, data);
+        TEST_ASSERT_EQUAL_INT(v, (int)(conf.get_sea_temp_alpha() * 100.0 + 0.5));
+        CommandHandler::on_command('a', s, conf, engineHours, data);
+        TEST_ASSERT_EQUAL_INT(v, (int)(conf.get_stw_paddle_alpha() * 100.0 + 0.5));
+    }
+}
+
+void test_alpha_above_one_is_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+    conf.reset_call_counts();
+    CommandHandler::on_command('x', "101", conf, engineHours, data);
+    CommandHandler::on_command('a', "300", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_INT(0, conf.save_sea_temp_alpha_calls);
+    TEST_ASSERT_EQUAL_INT(0, conf.save_stw_paddle_alpha_calls);
+}
+
+void test_adjustment_saves_clamp_instead_of_overflowing(void)
+{
+    MOCK_CONTEXT_TEST
+    // rpm adjustment is int16 x100, the others uint16 x100
+    conf.save_rpm_adjustment(1.0e6);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 327.67, conf.get_rpm_adjustment());
+    conf.save_rpm_adjustment(-1.0e6);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, -327.68, conf.get_rpm_adjustment());
+    conf.save_stw_paddle_adjustment(1.0e6);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 655.35, conf.get_stw_paddle_adjustment());
+    conf.save_sea_temp_adjustment(-5.0);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 0.0, conf.get_sea_temp_adjustment());
+    conf.save_sea_temp_alpha(9.99);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 2.55, conf.get_sea_temp_alpha());
+    conf.save_sea_temp_alpha(NAN);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 0.0, conf.get_sea_temp_alpha());
+}
+
+void test_command_B_battery_capacity_range(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('B', "300", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_UINT16(300, conf.get_batter_capacity());
+    CommandHandler::on_command('B', "70000", conf, engineHours, data); // does not fit in 16 bits
+    TEST_ASSERT_EQUAL_UINT16(300, conf.get_batter_capacity());
+}
+
 int main(int argc, char **argv)
 {
     Log::enable();
@@ -654,6 +713,10 @@ int main(int argc, char **argv)
     RUN_TEST(test_command_S_all_services_disabled);
     RUN_TEST(test_command_S_mixed_services);
     RUN_TEST(test_command_S_empty_string);
+    RUN_TEST(test_alpha_commands_roundtrip_every_valid_value);
+    RUN_TEST(test_alpha_above_one_is_rejected);
+    RUN_TEST(test_adjustment_saves_clamp_instead_of_overflowing);
+    RUN_TEST(test_command_B_battery_capacity_range);
     RUN_TEST(test_command_S_service_parsing_index_0);
     RUN_TEST(test_command_S_service_parsing_index_6);
 

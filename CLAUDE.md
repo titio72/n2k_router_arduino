@@ -9,12 +9,12 @@ An NMEA2000 (N2K) gateway for ESP32. Reads marine sensors (GPS, barometer, humid
 ## Build & Flash Commands
 
 ```bash
-# Build for production ESP32-S3
-pio run -e esp32-s3-prod
+# Build for the current ESP32-S3 board (PCB v3.0, I2C GPS)
+pio run -e esp32-s3-3-0
 
 # Flash and monitor
-pio run -e esp32-s3-prod --target upload
-pio device monitor -e esp32-s3-prod
+pio run -e esp32-s3-3-0 --target upload
+pio device monitor -e esp32-s3-3-0
 
 # Run all unit tests (native/desktop)
 pio test -e test
@@ -28,13 +28,25 @@ pio test -e test --filter test_bleconf
 pio test -e test --filter test_commands
 pio test -e test --filter test_meteo
 pio test -e test --filter test_ve_direct
+pio test -e test --filter test_deferred
+pio test -e test --filter test_reset_button
+pio test -e test --filter test_temperature
+pio test -e test --filter test_n2k_router
 ```
 
-Available build environments: `esp32-s3-prod`, `esp32-s3-gps-uart`, `esp32-c3`, `az-delivery-devkit-v4-PROD`, `az-delivery-devkit-v4-UART-GPS`, `az-delivery-devkit-v4-DUMMY-GPS`, `az-delivery-devkit-v4-I2C-GPS`, `test`.
+Available build environments (see `platformio.ini`):
+
+| Env | Board / GPS |
+|-----|-------------|
+| `esp32-s3-3-0` | PCB v3.0, I2C GPS (release) |
+| `esp32-s3-1-0` | PCB v1.0, I2C GPS, OLED display (release) |
+| `esp32-s3-gps-uart-2-0` | PCB v2.0, UART GPS, reset button (debug) |
+| `esp32-s3-gps-uart-3-0` | PCB v3.0, UART GPS (release) |
+| `test` | native/desktop unit tests |
 
 ### Crash Debugging
 
-`decodestacktrace.sh` + `EspStackTraceDecoder.class` decode ESP32 panic backtraces from the serial monitor output.
+`pio device monitor` decodes ESP32 panic backtraces automatically (`monitor_filters = esp32_exception_decoder` in `platformio.ini`).
 
 ## Architecture
 
@@ -50,7 +62,7 @@ bool is_enabled();
 void loop(unsigned long time_micros, Context &ctx);
 ```
 
-`main.cpp` drives every agent via the `handle_agent_loop()` template, which handles enable/disable and retry logic (up to `MAX_RETRY=3` attempts). Agents are always passed a `Context` reference.
+`main.cpp` drives every agent via the `handle_agent_loop()` template, which handles enable/disable and retry logic: up to `MAX_RETRY=3` quick attempts, then (when the caller passes a `retry_at` timestamp, as `main.cpp` does) one more attempt every `AGENT_RETRY_COOLDOWN_USEC` (30 s). Agents are always passed a `Context` reference. Hardware that is compiled out (`GPS_TYPE=0`, `DO_VE_DIRECT=0`, `DO_TACHOMETER=0`, no `RESET_PIN`) is replaced by a `Dummy` agent (`src/Dummy.h`).
 
 Whether an agent is enabled at runtime is controlled by the `N2KServices` bitfield stored in `Configuration` (e.g. `conf.get_services().is_use_tacho()`). This is separate from the compile-time `DO_TACHOMETER` flag: the compile-time flag controls whether the agent is compiled in; the runtime flag controls whether `handle_agent_loop()` calls `enable()` on it each cycle.
 
@@ -70,7 +82,7 @@ Tests use the `MOCK_CONTEXT` macro (defined in `Context.h`) to instantiate `Null
 
 ### EngineHours (src/Conf.h)
 
-`EngineHours` is a separate class from `Configuration` and is **not** part of `Context`. It stores cumulative engine time in milliseconds and is passed directly to `Tachometer` at construction in `main.cpp`. Tests use `MockEngineHours`, which counts `save_engine_hours()` calls and is defined in `Conf.h` behind `#ifdef PIO_UNIT_TESTING`.
+`EngineHours` is a separate class from `Configuration` and is **not** part of `Context`. It stores cumulative engine time in milliseconds, persisted in NVS (`Preferences`, namespace `n2krouter`, key `engine_ms`) rather than in the `Conf` EEPROM buffer, so the `Conf` layout can change without moving it; a stored value above 100 000 h is treated as corrupted and read as 0 (desktop/test builds use an in-memory default). The instance is passed directly to `Tachometer` at construction in `main.cpp`. Tests use `MockEngineHours`, which counts `save_engine_hours()` calls and is defined in `Conf.h` behind `#ifdef PIO_UNIT_TESTING`.
 
 ### Data Cache (src/Data.h)
 
@@ -88,6 +100,10 @@ Tests use the `MOCK_CONTEXT` macro (defined in `Context.h`) to instantiate `Null
 
 `Data::get_pressure()`, `get_humidity()`, `get_temperature()`, and `get_temperature_el()` use `Configuration::get_*_source()` (returning `MeteoSource` enum: `METEO_BME=0`, `METEO_DHT=1`, `METEO_NONE=2`) to select which meteo sub-struct to read.
 
+### Threading (src/DeferredEvents.h)
+
+Several tasks run at once: the Arduino loop task (all agents), the N2K task (core 0, NMEA2000 stack), the NimBLE host task (BLE callbacks) and `esp_timer` tasks (pulse sampling). **`Configuration`, `EngineHours` and the `Data` cache are only read/written by the loop task**, and all EEPROM/NVS writes happen there. Callbacks on other tasks must not touch them (or log): they only post to `DeferredEvents` (`post_command`, `post_source_claim`, `post_n2k_activity`) and `_loop()` applies them via `process_deferred_*`. BLE commands therefore take effect within one loop iteration (~5 ms), not inside the BLE callback. Note `Log::tracex` (n2k_tools_libs) uses one shared buffer and is not thread-safe, so avoid logging from non-loop tasks in this repo's code.
+
 ### Data Flow
 
 1. Sensor agents (GPS, MeteoBME, MeteoDHT, BMV712, Tachometer, etc.) read hardware and write to `ctx.data_cache`.
@@ -103,7 +119,7 @@ Tests use the `MOCK_CONTEXT` macro (defined in `Context.h`) to instantiate `Null
 
 ### Configuration (src/Conf.h)
 
-Persisted to EEPROM as a versioned `Conf` struct (`CONF_VERSION = 0x05`). Feature flags are stored as bitfields in `N2KServices` (serialized as `uint16_t`). All `save_*()` methods write through to EEPROM immediately.
+Persisted to EEPROM as a versioned `Conf` struct (`CONF_VERSION = 0x06`). Feature flags are stored as bitfields in `N2KServices` (serialized as `uint16_t`). All `save_*()` methods write through to EEPROM immediately.
 
 `Configuration` and `EngineHours` accept an optional `*Persistence` pointer, defaulting to the real EEPROM implementation. For tests, `MockConfiguration` / `MockEngineHours` are defined inside `#ifdef PIO_UNIT_TESTING` blocks in `Conf.h`.
 
@@ -117,6 +133,8 @@ Hardware features are selected via preprocessor defines set per environment in `
 | `DO_TACHOMETER` | 0/1 | Engine RPM via alternator signal |
 | `DO_VE_DIRECT` | 0/1 | Victron BMV712 battery monitor |
 | `DO_DISPLAY` | 0/1 | SSD1306 OLED |
+| `DO_LOGGER` | 0/1 (default 1) | Serial logging compiled in; the `use_logger` service flag switches it on/off at runtime (also applied at boot: a stored "off" silences the device until re-enabled with the `S` command) |
+| `RESET_PIN` | GPIO / -1 (default) | Push button to GND, hold `RESET_HOLD_USEC` (2 s) to reboot (`ResetButton`) |
 | `NATIVE` | defined | Desktop build (suppresses Arduino/ESP32 headers) |
 
 All pin assignments (`CAN_TX_PIN`, `ENGINE_RPM_PIN`, `DHT_PIN`, etc.) are also defines, never hardcoded in source.

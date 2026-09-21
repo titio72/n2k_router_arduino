@@ -6,6 +6,8 @@
 class BME280Internal
 {
 public:
+    virtual ~BME280Internal() {}
+
     virtual bool start() = 0;
     virtual void stop() = 0;
     

@@ -482,30 +482,183 @@ void test_tachometer_engine_hours_updated_when_rpm_above_threshold(void)
     delete eng;
 }
 
+// Runs the tachometer 1 s at a time (~680 RPM, engine on) and returns the last timestamp used
+static unsigned long run_engine_seconds(Tachometer &tacho, Context &context, unsigned long t, int seconds)
+{
+    for (int i = 0; i < seconds; i++)
+    {
+        t += PERIOD;
+        simulate_signal(tacho, 90);
+        tacho.loop(t, context);
+    }
+    return t;
+}
+
 void test_tachometer_engine_hours_accumulates(void)
 {
-    // Engine hours accumulation is tested implicitly in:
-    // - test_tachometer_engine_hours_updated_when_rpm_above_threshold
-    // - test_tachometer_engine_hours_continues_from_saved
-    // This test verifies that the engine hours service is called for persistence
-    
+    // Regression: engine time used to be re-read from the (once-a-minute) persisted value every tick,
+    // so it advanced about 1 s per minute of running instead of in real time.
     MockEngineHours *eng = new MockEngineHours();
-    eng->save_engine_hours(5000);  // Pre-set some initial hours
-    
+    eng->save_engine_hours(5000);
     Tachometer tacho(25, eng, 12, 1.5, 1.0);
     MOCK_CONTEXT
 
     tacho.setup(context);
-    
-    // Verify initial engine time is loaded
-    TEST_ASSERT_EQUAL_UINT64(5000, context.data_cache.engine.engine_time);
-    
-    // The accumulation mechanism works through:
-    // 1. Each loop period, if RPM > 200, engine time is incremented by dT/1000
-    // 2. Engine hours service is called to persist the value
-    
+    tacho.enable(context);
+    tacho.loop(0, context);
+    run_engine_seconds(tacho, context, 0, 300);
+
+    TEST_ASSERT_GREATER_THAN(200, context.data_cache.engine.rpm);
+    TEST_ASSERT_UINT64_WITHIN(2000, 5000 + 300000, context.data_cache.engine.engine_time);
+
     delete eng;
 }
+
+void test_tachometer_engine_hours_adopts_external_change(void)
+{
+    // The BLE 'H' command rewrites the hours through the EngineHours service while the engine runs
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+
+    tacho.setup(context);
+    tacho.enable(context);
+    tacho.loop(0, context);
+    unsigned long t = run_engine_seconds(tacho, context, 0, 10);
+
+    eng->save_engine_hours(3600000); // 1 hour
+    t = run_engine_seconds(tacho, context, t, 10);
+
+    TEST_ASSERT_UINT64_WITHIN(2000, 3600000 + 10000, context.data_cache.engine.engine_time);
+
+    delete eng;
+}
+
+#pragma region Engine hours flush
+
+void test_tachometer_flush_saves_unsaved_time_once(void)
+{
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    tacho.enable(context);
+    tacho.loop(0, context);
+    run_engine_seconds(tacho, context, 0, 30);
+
+    // only the first-ever tick has been persisted so far (periodic saves are 60 s apart)
+    TEST_ASSERT_LESS_THAN_UINT64(5000, eng->get_engine_hours());
+    int saves = eng->save_engine_hours_calls;
+
+    TEST_ASSERT_TRUE(tacho.flush());
+    TEST_ASSERT_EQUAL_UINT64(context.data_cache.engine.engine_time, eng->get_engine_hours());
+    TEST_ASSERT_EQUAL_INT(saves + 1, eng->save_engine_hours_calls);
+
+    TEST_ASSERT_FALSE(tacho.flush()); // nothing new since
+    TEST_ASSERT_EQUAL_INT(saves + 1, eng->save_engine_hours_calls);
+    delete eng;
+}
+
+void test_tachometer_flush_with_nothing_running_writes_nothing(void)
+{
+    MockEngineHours *eng = new MockEngineHours();
+    eng->save_engine_hours(5000);
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    int saves = eng->save_engine_hours_calls;
+    TEST_ASSERT_FALSE(tacho.flush());
+    TEST_ASSERT_EQUAL_INT(saves, eng->save_engine_hours_calls);
+    delete eng;
+}
+
+void test_tachometer_flush_without_service_is_safe(void)
+{
+    Tachometer tacho(25, nullptr, 12, 1.5, 1.0);
+    TEST_ASSERT_FALSE(tacho.flush());
+}
+
+void test_tachometer_disable_flushes(void)
+{
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    tacho.enable(context);
+    tacho.loop(0, context);
+    run_engine_seconds(tacho, context, 0, 30);
+    uint64_t running = context.data_cache.engine.engine_time;
+    TEST_ASSERT_GREATER_THAN_UINT64(20000, running);
+
+    tacho.disable(context);
+
+    TEST_ASSERT_EQUAL_UINT64(running, eng->get_engine_hours());
+    delete eng;
+}
+
+void test_tachometer_engine_stop_persists_immediately(void)
+{
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    tacho.enable(context);
+    tacho.loop(0, context);
+    unsigned long t = run_engine_seconds(tacho, context, 0, 30);
+    int saves = eng->save_engine_hours_calls;
+    uint64_t running = context.data_cache.engine.engine_time;
+
+    t += PERIOD; // no pulses this second: the engine has stopped
+    tacho.loop(t, context);
+
+    TEST_ASSERT_EQUAL_INT(0, context.data_cache.engine.rpm);
+    TEST_ASSERT_EQUAL_INT(saves + 1, eng->save_engine_hours_calls);
+    TEST_ASSERT_EQUAL_UINT64(running, eng->get_engine_hours()); // nothing lost to a power cut now
+
+    // and it stays quiet while the engine stays off
+    t += PERIOD;
+    tacho.loop(t, context);
+    TEST_ASSERT_EQUAL_INT(saves + 1, eng->save_engine_hours_calls);
+    delete eng;
+}
+
+void test_tachometer_engine_stop_ignores_tiny_unsaved_time(void)
+{
+    // an RPM hovering around the on/off threshold must not become a flash write per second
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    tacho.enable(context);
+    tacho.loop(0, context);
+    unsigned long t = run_engine_seconds(tacho, context, 0, 3); // first tick is saved, ~2 s stays unsaved
+    int saves = eng->save_engine_hours_calls;
+
+    t += PERIOD; // stops
+    tacho.loop(t, context);
+
+    TEST_ASSERT_EQUAL_INT(saves, eng->save_engine_hours_calls);
+    delete eng;
+}
+
+void test_tachometer_flush_does_not_overwrite_external_change(void)
+{
+    // the BLE 'H' command rewrote the hours; a flush before the loop adopted it must not put the old value back
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    tacho.enable(context);
+    tacho.loop(0, context);
+    run_engine_seconds(tacho, context, 0, 30);
+
+    eng->save_engine_hours(3600000);
+    TEST_ASSERT_FALSE(tacho.flush());
+    TEST_ASSERT_EQUAL_UINT64(3600000, eng->get_engine_hours());
+    delete eng;
+}
+
+#pragma endregion
 
 void test_tachometer_engine_hours_persisted(void)
 {
@@ -743,6 +896,48 @@ void test_tachometer_dump_stats_no_crash(void)
 #pragma endregion
 
 // Test runner
+void test_ms_clock_is_continuous_across_micros_wrap(void)
+{
+    // micros() / 1000 jumps backwards at the 32-bit wrap; MsClock must not
+    MsClock c;
+    uint32_t start = 4294967295U - 500000U; // 0.5 s before the wrap
+    uint32_t a = c.update(start);
+    uint32_t b = c.update(start + 1000000U); // wraps
+    TEST_ASSERT_EQUAL_UINT32(1000, b - a);
+    uint32_t d = c.update(start + 2500000U);
+    TEST_ASSERT_EQUAL_UINT32(1500, d - b);
+}
+
+void test_ms_clock_carries_sub_millisecond_remainder(void)
+{
+    MsClock c;
+    uint32_t first = c.update(1000);
+    uint32_t ms = first;
+    for (int i = 1; i <= 10; i++)
+        ms = c.update(1000 + i * 400); // 400 us steps: 4000 us in total
+    TEST_ASSERT_EQUAL_UINT32(4, ms - first);
+}
+
+void test_tachometer_rpm_survives_micros_wrap(void)
+{
+    // the RPM used to drop to 0 for one sample every 71.6 minutes
+    MockEngineHours *eng = new MockEngineHours();
+    Tachometer tacho(25, eng, 12, 1.5, 1.0);
+    MOCK_CONTEXT
+    tacho.setup(context);
+    tacho.enable(context);
+    uint32_t t = 4294967295U - 3000000U;
+    tacho.loop(t, context);
+    for (int i = 0; i < 6; i++)
+    {
+        t += 1000000U; // crosses the wrap on the 4th tick
+        simulate_signal(tacho, 90);
+        tacho.loop(t, context);
+        TEST_ASSERT_GREATER_THAN(200, context.data_cache.engine.rpm);
+    }
+    delete eng;
+}
+
 void setup()
 {
     UNITY_BEGIN();
@@ -782,6 +977,17 @@ void setup()
     RUN_TEST(test_tachometer_engine_hours_not_updated_when_rpm_low);
     RUN_TEST(test_tachometer_engine_hours_updated_when_rpm_above_threshold);
     RUN_TEST(test_tachometer_engine_hours_accumulates);
+    RUN_TEST(test_ms_clock_is_continuous_across_micros_wrap);
+    RUN_TEST(test_ms_clock_carries_sub_millisecond_remainder);
+    RUN_TEST(test_tachometer_rpm_survives_micros_wrap);
+    RUN_TEST(test_tachometer_engine_hours_adopts_external_change);
+    RUN_TEST(test_tachometer_flush_saves_unsaved_time_once);
+    RUN_TEST(test_tachometer_flush_with_nothing_running_writes_nothing);
+    RUN_TEST(test_tachometer_flush_without_service_is_safe);
+    RUN_TEST(test_tachometer_disable_flushes);
+    RUN_TEST(test_tachometer_engine_stop_persists_immediately);
+    RUN_TEST(test_tachometer_engine_stop_ignores_tiny_unsaved_time);
+    RUN_TEST(test_tachometer_flush_does_not_overwrite_external_change);
     RUN_TEST(test_tachometer_engine_hours_persisted);
     RUN_TEST(test_tachometer_engine_hours_continues_from_saved);
     RUN_TEST(test_tachometer_engine_hours_save_throttled_while_running);

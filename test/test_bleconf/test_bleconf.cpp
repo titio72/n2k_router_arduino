@@ -274,11 +274,55 @@ void test_setup_copies_device_name_truncated_to_buffer_size() {
 void test_setup_with_empty_device_name() {
     MOCK_CONTEXT_X
     mockConf.save_device_name("");
-    
+
     BLEConf ble(mock_command_callback, mockBLEInternalImpl);
     ble.setup(context);
-    
-    TEST_ASSERT_EQUAL_CHAR(0, ble.get_device_name()[0]);
+
+    // falls back to N2KRouter-<n2k source>
+    char expected[32];
+    snprintf(expected, sizeof(expected), "N2KRouter-%04X", mockConf.get_n2k_source());
+    TEST_ASSERT_EQUAL_STRING(expected, ble.get_device_name());
+}
+
+void test_default_device_name_survives_loop() {
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("");
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    char expected[32];
+    snprintf(expected, sizeof(expected), "N2KRouter-%04X", mockConf.get_n2k_source());
+
+    ble.enable(context);
+    ble.loop(2000000, context);
+    ble.loop(4000000, context);
+
+    TEST_ASSERT_EQUAL_STRING(expected, ble.get_device_name());
+}
+
+void test_loop_applies_renamed_device() {
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("");
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    mockConf.save_device_name("Boat");
+    ble.loop(2000000, context);
+
+    TEST_ASSERT_EQUAL_STRING("Boat", ble.get_device_name());
+}
+
+void test_empty_command_write_is_ignored() {
+    MOCK_CONTEXT_X
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    callback_tracker.reset();
+
+    mockBLEInternalImpl->onWrite(1, ""); // "command" characteristic, nothing written
+
+    // there is no command byte and nothing valid after it: don't dispatch and don't read past the terminator
+    TEST_ASSERT_EQUAL_INT(0, callback_tracker.call_count);
 }
 
 // ==================== Tests: Heartbeat ====================
@@ -1253,6 +1297,9 @@ int main(int argc, char** argv) {
     RUN_TEST(test_heartbeat_command_on_command_setting_still_works);
     RUN_TEST(test_setup_copies_device_name_truncated_to_buffer_size);
     RUN_TEST(test_setup_with_empty_device_name);
+    RUN_TEST(test_default_device_name_survives_loop);
+    RUN_TEST(test_loop_applies_renamed_device);
+    RUN_TEST(test_empty_command_write_is_ignored);
     
     // Enable/Disable
     RUN_TEST(test_enable_without_setup);

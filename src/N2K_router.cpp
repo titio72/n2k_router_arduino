@@ -18,6 +18,10 @@ inline double to_n2k(double value)
 }
 
 #pragma region N2K_Router
+
+// The N2K task no longer writes flash or config (see DeferredEvents.h), but runs the whole NMEA2000 stack
+// and its logging; the free stack is reported in the periodic stats so this can be trimmed with real data.
+#define N2K_TASK_STACK_SIZE 6144
 N2K_router::N2K_router(n2k_source_change_handler sh)
     : n2k(*N2K::get_instance(nullptr, sh))
 {
@@ -26,6 +30,11 @@ N2K_router::N2K_router(n2k_source_change_handler sh)
     n2k.add_pgn(129026); // COG & SOG
     n2k.add_pgn(129029); // GNSS Position Data
     n2k.add_pgn(129539); // GNSS DOPs
+    n2k.add_pgn(129540); // GNSS Satellites in View
+    n2k.add_pgn(127258); // Magnetic Variation
+    n2k.add_pgn(128259); // Speed (through water)
+    n2k.add_pgn(127506); // DC Detailed Status (battery state of charge)
+    n2k.add_pgn(127508); // Battery Status
     n2k.add_pgn(130311); // Environmental Parameters
     n2k.add_pgn(130310); // Outside Environmental Parameters
     n2k.add_pgn(130312); // Temperature
@@ -53,9 +62,9 @@ void N2K_router::setup(Context &ctx)
     n2k.setup(info);
 
 #ifndef NATIVE
+    Log::tracex("N2K", "Setup", "Pinning N2K task to core 0");
     _send_queue = xQueueCreate(256, sizeof(tN2kMsg));
-    xTaskCreatePinnedToCore(n2k_task_fn, "N2KTask", 4096, this, 10, &_n2k_task, 0);
-    Log::tracex("N2K", "Setup", "N2K task pinned to core 0");
+    xTaskCreatePinnedToCore(n2k_task_fn, "N2KTask", N2K_TASK_STACK_SIZE, this, 10, &_n2k_task, 0);
 #endif
 }
 
@@ -115,7 +124,8 @@ bool N2KSenderAbstract::sendSTW(double stw)
     else
     {
         tN2kMsg N2kMsg(get_source());
-        SetN2kBoatSpeed(N2kMsg, 0, stw * 1852.0 / 3600.0, stw * 1852.0 / 3600.0, tN2kSpeedWaterReferenceType::N2kSWRT_Paddle_wheel);
+        SetN2kBoatSpeed(N2kMsg, 0, stw * 1852.0 / 3600.0, N2kDoubleNA /* a paddle wheel knows nothing about speed over ground */,
+                    tN2kSpeedWaterReferenceType::N2kSWRT_Paddle_wheel);
         return send_it(N2kMsg);
     }
 }
@@ -127,7 +137,9 @@ bool N2KSenderAbstract::sendCOGSOG(double sog, double cog, unsigned char sid)
     else
     {
         tN2kMsg N2kMsg(get_source());
-        SetN2kCOGSOGRapid(N2kMsg, sid, N2khr_true, DegToRad(isnan(cog) ? 0.0 : cog), sog * 1852.0 / 3600.0);
+        SetN2kCOGSOGRapid(N2kMsg, sid, N2khr_true,
+                      isnan(cog) ? N2kDoubleNA : DegToRad(cog),
+                      isnan(sog) ? N2kDoubleNA : sog * 1852.0 / 3600.0);
         return send_it(N2kMsg);
     }
 }
@@ -152,7 +164,7 @@ bool N2KSenderAbstract::sendGNNSStatus(const GPSData &data, unsigned char sid)
         default:
             mode = tN2kGNSSDOPmode::N2kGNSSdm_Unavailable;
         }
-        SetN2kPGN129539(m, sid, tN2kGNSSDOPmode::N2kGNSSdm_2D, mode, data.hdop, data.vdop, data.tdop);
+        SetN2kPGN129539(m, sid, tN2kGNSSDOPmode::N2kGNSSdm_2D, mode, to_n2k(data.hdop), to_n2k(data.vdop), to_n2k(data.tdop));
         return send_it(m);
     }
     return false;
@@ -385,6 +397,15 @@ bool N2KSenderAbstract::sendMagneticHeading(double heading)
         SetN2kMagneticHeading(N2kMsg, 0, DegToRad(heading));
         return send_it(N2kMsg);
     }
+}
+
+unsigned int N2K_router::get_task_stack_free()
+{
+#ifndef NATIVE
+    return _n2k_task ? uxTaskGetStackHighWaterMark(_n2k_task) : 0;
+#else
+    return 0;
+#endif
 }
 
 N2KStats N2K_router::getStats()

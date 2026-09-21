@@ -190,7 +190,7 @@ void VEDirectField::unset()
     value_set = false;
 }
 
-VEDirectFieldNumber::VEDirectFieldNumber(const VEDirectValueDefinition& d): VEDirectField(d)
+VEDirectFieldNumber::VEDirectFieldNumber(const VEDirectValueDefinition& d): VEDirectField(d), value(0)
 {}
 
 int VEDirectFieldNumber::get_value()
@@ -206,6 +206,11 @@ void VEDirectFieldNumber::set_value(int v)
 
 bool VEDirectFieldNumber::parse(const char* v)
 {
+    if (strcmp("---", v) == 0)
+    {
+        unset(); // the device reports "---" for a value it doesn't have
+        return false;
+    }
     if (start_with_unsafe("0x", v))
         set_value(strtol(v, 0, 16));
     else
@@ -213,7 +218,7 @@ bool VEDirectFieldNumber::parse(const char* v)
     return true;
 }
 
-VEDirectFieldBool::VEDirectFieldBool(const VEDirectValueDefinition& d): VEDirectField(d)
+VEDirectFieldBool::VEDirectFieldBool(const VEDirectValueDefinition& d): VEDirectField(d), value(false)
 {}
 
 bool VEDirectFieldBool::get_value()
@@ -234,7 +239,9 @@ bool VEDirectFieldBool::parse(const char* v)
 }
 
 VEDirectFieldString::VEDirectFieldString(const VEDirectValueDefinition& d): VEDirectField(d)
-{}
+{
+    value[0] = '\0';
+}
 
 const char* VEDirectFieldString::get_value()
 {
@@ -286,11 +293,12 @@ void VEDirectObject::init(const VEDirectValueDefinition *definition, unsigned in
 
 VEDirectObject::~VEDirectObject()
 {
-    for (int i = 0; i < n_fields; i++)
+    if (!values) return;
+    for (unsigned int i = 0; i < n_fields; i++)
     {
         if (values[i]) delete values[i];
     }
-    delete values;
+    delete[] values;
 }
 
 void VEDirectObject::set_listener(VEDirectListener *l)
@@ -387,13 +395,13 @@ void VEDirectObject::load_VEDirect_key_value(const char *line, unsigned long tim
 
 bool VEDirectObject::get_number_value(int &value, unsigned int index) const
 {
-    if (index > n_fields)
+    if (!values || index >= n_fields)
     {
         //printf("Index %d out of range %d\n", index, n_fields);
         return 0;
     }
     VEDirectValueDefinition field = values[index]->get_definition();
-    if (field.veIndex < BMV_N_FIELDS && (field.veType==VE_NUMBER || field.veType==VE_HEX) /*&& last_time[field.veIndex]*/)
+    if (values[index]->is_set() && field.veIndex < BMV_N_FIELDS && (field.veType==VE_NUMBER || field.veType==VE_HEX))
     {
         value = ((VEDirectFieldNumber*)values[field.veIndex])->get_value();
         return 1;
@@ -406,13 +414,13 @@ bool VEDirectObject::get_number_value(int &value, unsigned int index) const
 
 bool VEDirectObject::get_number_value(double &value, double precision, unsigned int index) const
 {
-    if (index > n_fields)
+    if (!values || index >= n_fields)
     {
         //printf("Index %d out of range %d\n", index, n_fields);
         return 0;
     }
     VEDirectValueDefinition field = values[index]->get_definition();
-    if (field.veType==VE_NUMBER /*&& last_time[field.veIndex]*/)
+    if (values[index]->is_set() && field.veType==VE_NUMBER)
     {
         value = ((VEDirectFieldNumber*)values[field.veIndex])->get_value() * precision;
         return 1;
@@ -425,10 +433,10 @@ bool VEDirectObject::get_number_value(double &value, double precision, unsigned 
 
 bool VEDirectObject::get_boolean_value(bool &value, unsigned int index) const
 {
-    if (index > n_fields)
+    if (!values || index >= n_fields)
         return 0;
     VEDirectValueDefinition field = values[index]->get_definition();
-    if (field.veType==VE_BOOLEAN/* && last_time[field.veIndex]*/)
+    if (values[index]->is_set() && field.veType==VE_BOOLEAN)
     {
         value = ((VEDirectFieldBool*)values[field.veIndex])->get_value();
         return 1;
@@ -441,10 +449,10 @@ bool VEDirectObject::get_boolean_value(bool &value, unsigned int index) const
 
 bool VEDirectObject::get_string_value(char *value, unsigned int index) const
 {
-    if (index > n_fields)
+    if (!values || index >= n_fields)
         return 0;
     VEDirectValueDefinition field = values[index]->get_definition();
-    if (field.veType==VE_STRING/* && last_time[field.veIndex]*/)
+    if (values[index]->is_set() && field.veType==VE_STRING)
     {
         strcpy(value, ((VEDirectFieldString*)values[field.veIndex])->get_value());
         return 1;
@@ -457,7 +465,7 @@ bool VEDirectObject::get_string_value(char *value, unsigned int index) const
 
 unsigned long VEDirectObject::get_last_timestamp(unsigned int index) const
 {
-    if (index > n_fields)
+    if (!values || index >= n_fields)
         return 0;
     return values[index]->get_last_time();
 }

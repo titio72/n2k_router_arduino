@@ -2,7 +2,7 @@
 #define _TEMPERATURE_H
 
 struct WaterData;
-struct Configuration;
+class Configuration;
 
 #include "SpeedSensor.h"
 #include "Agents.hpp"

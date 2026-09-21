@@ -31,7 +31,6 @@ void BLEConf::on_write(int handle, const char *value)
 
   last_activity = _micros();
   
-  Log::tracex(BLE_LOG_TAG, "Command", "Handle {%d} Command {%s}", handle, value);
   if (handle == ble_heartbeat_handle)
   {
     // keep-alive only: writable without pairing, never dispatched as a command
@@ -45,16 +44,24 @@ void BLEConf::on_write(int handle, const char *value)
   else if (handle == ble_settings_handle)
   {
     const char command = value[0];
+    if (command == '\0')
+      return; // empty write: there is no command and no payload after the terminator to read
     const char *command_value = (value + sizeof(char));
     if (c_back)
       c_back(command, command_value);
   }
 }
 
-void copy_from_conf(Configuration &conf, char *device_name, size_t l)
+// The advertised name: the configured one, or N2KRouter-<n2k source> when none is configured.
+// Shared by setup() and loop() so the loop doesn't overwrite the default with the (empty) configured name.
+static void resolve_device_name(Configuration &conf, char *device_name, size_t l)
 {
   strncpy(device_name, conf.get_device_name(), l - 1);
   device_name[l - 1] = '\0';
+  if (strlen(device_name) == 0)
+  {
+    snprintf(device_name, l, "N2KRouter-%04X", conf.get_n2k_source());
+  }
 }
 
 void BLEConf::setup(Context &ctx)
@@ -64,11 +71,7 @@ void BLEConf::setup(Context &ctx)
 
   initialized = true;
   char device_name[32];
-  copy_from_conf(ctx.conf, device_name, sizeof(device_name));
-  if (strlen(device_name) == 0)
-  {
-    snprintf(device_name, sizeof(device_name), "N2KRouter-%04X", ctx.conf.get_n2k_source());
-  }
+  resolve_device_name(ctx.conf, device_name, sizeof(device_name));
 
   Log::tracex(BLE_LOG_TAG, "Setup", "Initializing BLE {%s}", device_name);
   ble.set_device_name(device_name);
@@ -168,9 +171,12 @@ void BLEConf::loop(unsigned long ms, Context &ctx)
 {
   if (enabled && check_elapsed(ms, last_sent, BLE_UPDATE_PERIOD))
   {
-    if (strcmp(ble.get_device_name(), ctx.conf.get_device_name()))
+    char device_name[32];
+    resolve_device_name(ctx.conf, device_name, sizeof(device_name));
+    // the BLE layer truncates names to 15 chars, compare on the same footing
+    if (strncmp(ble.get_device_name(), device_name, 15))
     {
-      ble.set_device_name(ctx.conf.get_device_name());
+      ble.set_device_name(device_name);
     }
     if (last_activity==0 || ((ms-last_activity) < BLE_INACTIVITY_TIMEOUT))
     {

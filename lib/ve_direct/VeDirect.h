@@ -50,6 +50,7 @@ class VEDirectField
 {
 public:
     VEDirectField(const VEDirectValueDefinition& def);
+    virtual ~VEDirectField() {}
 
     const VEDirectValueDefinition& get_definition();
 

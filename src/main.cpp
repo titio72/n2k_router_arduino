@@ -22,6 +22,7 @@
 #include "MeteoDHT.h"
 #include "Display.h"
 #include "Leds.h"
+#include "ResetButton.h"
 
 #if DO_VE_DIRECT == 1
 #include "BMV712.h"
@@ -32,6 +33,7 @@
 #include "EnvMessenger.h"
 #include "BLEConf.h"
 #include "CommandHandler.hpp"
+#include "DeferredEvents.h"
 #include "Agents.hpp"
 
 void on_source_claim(const unsigned char old_source, const unsigned char new_source);
@@ -54,8 +56,7 @@ Context context(n2k, conf, cache);
 #if GPS_TYPE == 1
 GPSX gps;
 #elif GPS_TYPE == 2
-HardwareSerial gpsSerial(Serial1);
-GPSX gps(&gpsSerial, GPS_RX_PIN, GPS_TX_PIN);
+GPSX gps(&Serial1, GPS_RX_PIN, GPS_TX_PIN);
 #else
 Dummy gps;
 #endif
@@ -72,34 +73,49 @@ Dummy bmv712;
 #endif
 
 EVODisplay display;
+#if DO_TACHOMETER == 1
 Tachometer tacho(ENGINE_RPM_PIN, &engineHours, TACHO_POLES, TACHO_RPM_RATIO, TACHO_RPM_ADJUSTMENT);
+#else
+Dummy tacho;
+#endif
 MeteoDHT dht(DHT_PIN, MeteoDHT::DHT_MODEL::DHT_TYPE, 1);
 MeteoBME bme(BME_ADDRESS, 0);
 WaterTemperature waterTemp(WATER_TEMP_PIN);
 SpeedThroughWater speedThroughWater(STW_PADDLE_PIN);
 Leds leds;
+#if RESET_PIN != -1
+ResetButton resetButton(RESET_PIN);
+#else
+Dummy resetButton;
+#endif
 BLEConf bleConf(on_command);
 EnvMessenger environmentMessenger;
 #pragma endregion
-
-#ifndef DO_LOGGER
-#define DO_LOGGER 1
-#endif
 
 bool started = false;
 struct AppStats
 {
   unsigned long cycles = 0;
   unsigned short retry_gps = 0;
+  unsigned long retry_at_gps = 0;
   unsigned short retry_dht = 0;
+  unsigned long retry_at_dht = 0;
   unsigned short retry_bme = 0;
+  unsigned long retry_at_bme = 0;
   unsigned short retry_bmv712 = 0;
+  unsigned long retry_at_bmv712 = 0;
   unsigned short retry_tacho = 0;
+  unsigned long retry_at_tacho = 0;
   unsigned short retry_display = 0;
+  unsigned long retry_at_display = 0;
   unsigned short retry_leds = 0;
+  unsigned long retry_at_leds = 0;
   unsigned short retry_environment_messenger = 0;
+  unsigned long retry_at_environment_messenger = 0;
   unsigned short retry_water_temp = 0;
+  unsigned long retry_at_water_temp = 0;
   unsigned short retry_stw_paddle = 0;
+  unsigned long retry_at_stw_paddle = 0;
 
   unsigned long n2k_loop_time = 0;
   unsigned long gps_loop_time = 0;
@@ -131,19 +147,18 @@ struct AppStats
   }
 } app_stats;
 
+// Callbacks that run on other tasks (N2K task, NimBLE host task) only post to `deferred`;
+// _loop() applies them on the main task. See DeferredEvents.h for the threading rule.
+DeferredEvents deferred;
+
 void on_source_claim(const unsigned char old_source, const unsigned char new_source)
 {
-  if (!conf.get_services().is_keep_n2k_src())
-  {
-    conf.save_n2k_source(new_source);
-  }
-  Log::tracex(APP_LOG_TAG, "New claimed n2k source", " New Source {%d} Old Source {%d} Save {%d}", 
-    new_source, old_source, conf.get_services().is_keep_n2k_src() ? 1 : 0);
+  deferred.post_source_claim(old_source, new_source);
 }
 
 void on_message_sent(const tN2kMsg &N2kMsg, bool success)
 {
-  leds.blink(LED_N2K, micros(), N2K_BLINK_USEC, !success);
+  deferred.post_n2k_activity(success);
 }
 
 void handle_display(unsigned long ms)
@@ -151,8 +166,17 @@ void handle_display(unsigned long ms)
   static unsigned long t0 = 0;
   if (check_elapsed(ms, t0, 1000000))
   {
+#if DO_DISPLAY == 1
     // display.draw_text("GPS %d\nSATS %d/%d", cache.gsa.fix, cache.gsa.nSat, cache.gsv.nSat);
-    display.draw_text("%.1fmB\n%d%% %.1fC", cache.get_pressure(conf) / 100.0f, (int)cache.get_humidity(conf), cache.get_temperature(conf));
+    double p = cache.get_pressure(conf) / 100.0; // Pa -> hPa (mbar)
+    double h = cache.get_humidity(conf);
+    double t = cache.get_temperature(conf);
+    char ps[12] = "--", hs[8] = "--", ts[12] = "--"; // "--" when the value is not available
+    if (!isnan(p)) snprintf(ps, sizeof(ps), "%.1f", p);
+    if (!isnan(h)) snprintf(hs, sizeof(hs), "%d", (int)h);
+    if (!isnan(t)) snprintf(ts, sizeof(ts), "%.1f", t);
+    display.draw_text("%smB\n%s%% %sC", ps, hs, ts);
+#endif
   }
 }
 
@@ -191,6 +215,7 @@ void report_stats(unsigned long ms)
     gps.dumpStats();
     tacho.dumpStats();
     n2k.getStats().dump();
+    Log::tracex(APP_LOG_TAG, "Stats", "N2K task stack free {%u} bytes", n2k.get_task_stack_free());
     dump_process_stats();
 
     app_stats.cycles = 0;
@@ -203,16 +228,24 @@ void _loop()
   unsigned long t = micros();
   if (started)
   {
-    app_stats.leds_loop_time += handle_agent_loop(leds, context, true, &app_stats.retry_leds, t, "Leds");
-    app_stats.display_loop_time += handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display");
-    app_stats.gps_loop_time += handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS");
-    app_stats.bme_loop_time += handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BMP");
-    app_stats.dht_loop_time += handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT");
-    app_stats.bmv712_loop_time += handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712");
-    app_stats.tacho_loop_time += handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO");
-    app_stats.stw_paddle_loop_time += handle_agent_loop(speedThroughWater, context, conf.get_services().is_use_stw_paddle(), &app_stats.retry_stw_paddle, t, "STW");
-    app_stats.water_temp_loop_time += handle_agent_loop(waterTemp, context, conf.get_services().is_use_tmp(), &app_stats.retry_water_temp, t, "WTRTEMP");
-    app_stats.environment_messenger_loop_time += handle_agent_loop(environmentMessenger, context, true, &app_stats.retry_environment_messenger, t, "ENV");
+    process_deferred_commands(deferred, conf, engineHours, cache);
+    process_deferred_source_claim(deferred, conf);
+    unsigned int n2k_activity = deferred.take_n2k_activity();
+    if (n2k_activity)
+    {
+      leds.blink(LED_N2K, t, N2K_BLINK_USEC, (n2k_activity & DeferredEvents::ACTIVITY_FAILED) != 0);
+    }
+    app_stats.leds_loop_time += handle_agent_loop(leds, context, true, &app_stats.retry_leds, t, "Leds", &app_stats.retry_at_leds);
+    handle_agent_loop(resetButton, context, true, NULL, t, "RESET");
+    app_stats.display_loop_time += handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display", &app_stats.retry_at_display);
+    app_stats.gps_loop_time += handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS", &app_stats.retry_at_gps);
+    app_stats.bme_loop_time += handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BMP", &app_stats.retry_at_bme);
+    app_stats.dht_loop_time += handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT", &app_stats.retry_at_dht);
+    app_stats.bmv712_loop_time += handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712", &app_stats.retry_at_bmv712);
+    app_stats.tacho_loop_time += handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO", &app_stats.retry_at_tacho);
+    app_stats.stw_paddle_loop_time += handle_agent_loop(speedThroughWater, context, conf.get_services().is_use_stw_paddle(), &app_stats.retry_stw_paddle, t, "STW", &app_stats.retry_at_stw_paddle);
+    app_stats.water_temp_loop_time += handle_agent_loop(waterTemp, context, conf.get_services().is_use_tmp(), &app_stats.retry_water_temp, t, "WTRTEMP", &app_stats.retry_at_water_temp);
+    app_stats.environment_messenger_loop_time += handle_agent_loop(environmentMessenger, context, true, &app_stats.retry_environment_messenger, t, "ENV", &app_stats.retry_at_environment_messenger);
     app_stats.bleConf_loop_time += handle_agent_loop(bleConf, context, true, NULL, t, "BLE");
     handle_display(t);
     handle_leds(t);
@@ -221,13 +254,26 @@ void _loop()
   delay(5);
 }
 
+#if RESET_PIN != -1
+// runs on the loop task (the reset button is an agent) just before the board restarts
+static void flush_before_restart()
+{
+#if DO_TACHOMETER == 1
+  if (tacho.flush())
+  {
+    Log::tracex(APP_LOG_TAG, "Restart", "Engine hours saved");
+  }
+#endif
+}
+#endif
+
 void _setup()
 {  
-  bool res_cpu_freq = setCpuFrequencyMhz(160);
+  setCpuFrequencyMhz(160);
   uint32_t f1 = getCpuFrequencyMhz();
 
 
-  #ifdef DO_LOGGER
+  #if DO_LOGGER == 1
   Serial.begin(115200);
   msleep(3500);
   Log::enable();
@@ -238,6 +284,12 @@ void _setup()
   unsigned long ver = __cplusplus;
   Log::tracex(APP_LOG_TAG, "CPU", "Freq {%d} C++ {%l}", f1, ver);
   conf.init();
+  #if DO_LOGGER == 1
+  if (!conf.get_services().is_use_logger())
+  {
+    Log::disable();
+  }
+  #endif
   engineHours.init();
   Log::tracex(APP_LOG_TAG, "Engine Hours", "Loaded engine time {%lu.%03d}", 
     (uint32_t)(engineHours.get_engine_hours() / 1000L), (uint16_t)(engineHours.get_engine_hours() % 1000L));
@@ -248,6 +300,10 @@ void _setup()
   msleep(500);
   display.setup(context);
   leds.setup(context);
+  resetButton.setup(context);
+#if RESET_PIN != -1
+  resetButton.set_before_restart(flush_before_restart);
+#endif
   gps.setup(context);
   dht.setup(context);
   bme.setup(context);
@@ -265,7 +321,9 @@ void _setup()
 
 void on_command(char command, const char *command_value)
 {
-  CommandHandler::on_command(command, command_value, conf, engineHours, cache);
+  if (command == 'h')
+    return; // heartbeat: BLEConf already reset its inactivity timer, nothing to apply
+  deferred.post_command(command, command_value);
 }
 
 #ifndef PIO_UNIT_TESTING
