@@ -1123,8 +1123,27 @@ void test_services_buffer_total_length_is_58_bytes() {
     // version(1) + fix(1) + atmo(4) + temp(2) + hum(2) + lat(4) + lon(4) +
     // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) +
     // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1) +
-    // stw(2) + water_temp(2) + stw_adjustment(4) + stw_alpha(4) + sea_temp_adjustment(4) + sea_temp_alpha(4) = 78
-    TEST_ASSERT_EQUAL_INT(78, buf.length());
+    // stw(2) + water_temp(2) + stw_adjustment(4) + stw_alpha(4) + sea_temp_adjustment(4) + sea_temp_alpha(4) +
+    // battery_capacity(2) = 80
+    TEST_ASSERT_EQUAL_INT(80, buf.length());
+}
+
+void test_services_buffer_contains_battery_capacity() {
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    mockConf.save_battery_capacity(560);
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+
+    ble.loop(10000000, context);
+
+    ByteBuffer buf = ble.get_services_buffer();
+    uint8_t* buf_data = buf.data();
+
+    uint16_t capacity_val = *((uint16_t*)(buf_data + BUFFER_OFFSET_BATTERY_CAPACITY));
+    TEST_ASSERT_EQUAL_UINT16(560, capacity_val);
 }
 
 void test_data_characteristic_value() {
@@ -1162,8 +1181,8 @@ void test_data_characteristic_value() {
     
     ByteBuffer buf = ble.get_services_buffer();
     ByteBuffer char_value = ble.get_field_value_buffer(0);
-    // 78 bytes: same layout as test_services_buffer_total_length_is_58_bytes
-    TEST_ASSERT_EQUAL_INT(78, char_value.length());
+    // 80 bytes: same layout as test_services_buffer_total_length_is_58_bytes
+    TEST_ASSERT_EQUAL_INT(80, char_value.length());
     TEST_ASSERT_TRUE(buf==char_value);
 }
 
@@ -1356,6 +1375,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_services_buffer_contains_voltage);
     RUN_TEST(test_services_buffer_contains_current);
     RUN_TEST(test_services_buffer_contains_soc);
+    RUN_TEST(test_services_buffer_contains_battery_capacity);
     RUN_TEST(test_services_buffer_total_length_is_58_bytes);
     RUN_TEST(test_services_buffer_resets_on_loop_call);
     RUN_TEST(test_services_buffer_nan_values_become_invalid_sentinel);

@@ -135,6 +135,7 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
   const uint32_t _stw_alpha = to_int(conf.get_stw_paddle_alpha(), 100.0, INVALID_U32);
   const uint32_t _sea_temp_adjustment = to_int(conf.get_sea_temp_adjustment(), 100.0, INVALID_U32);
   const uint32_t _sea_temp_alpha = to_int(conf.get_sea_temp_alpha(), 100.0, INVALID_U32);
+  const uint16_t _battery_capacity = conf.get_batter_capacity();
 
   buffer.reset()
       << (uint8_t)BUFFER_LAYOUT_VERSION   // version
@@ -164,7 +165,8 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
       << _stw_adjustment      // 4 66
       << _stw_alpha           // 4 70
       << _sea_temp_adjustment // 4 74
-      << _sea_temp_alpha;     // 4 78 plenty of room in 128 byte buffer
+      << _sea_temp_alpha      // 4 78 
+      << _battery_capacity;   // 2 80 plenty of room in 128 byte buffer
 }
 
 void BLEConf::loop(unsigned long ms, Context &ctx)

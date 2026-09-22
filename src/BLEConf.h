@@ -33,6 +33,7 @@
 #define BUFFER_OFFSET_STW_ALPHA    66
 #define BUFFER_OFFSET_SEA_TEMP_ADJ 70
 #define BUFFER_OFFSET_SEA_TEMP_ALPHA 74
+#define BUFFER_OFFSET_BATTERY_CAPACITY 78
 
 typedef void (*command_callback)(char command, const char* command_value);
 
