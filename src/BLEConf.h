@@ -34,6 +34,7 @@
 #define BUFFER_OFFSET_SEA_TEMP_ADJ 70
 #define BUFFER_OFFSET_SEA_TEMP_ALPHA 74
 #define BUFFER_OFFSET_BATTERY_CAPACITY 78
+#define BUFFER_OFFSET_BLE_PASSKEY_DEFAULT 80
 
 typedef void (*command_callback)(char command, const char* command_value);
 
@@ -71,6 +72,7 @@ private:
     int ble_conf_handle;
     int ble_heartbeat_handle;
     unsigned long last_activity;
+    uint32_t last_passkey;
 };
 
 #endif

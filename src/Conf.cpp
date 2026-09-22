@@ -19,14 +19,6 @@
 #include <Preferences.h>
 #endif
 
-#if __has_include("ble_passkey.h")
-#include "ble_passkey.h" // generated at build time by tools/ble_passkey.py
-#endif
-
-#ifdef BLE_PASSKEY
-static_assert(BLE_PASSKEY >= 100000 && BLE_PASSKEY <= 999999, "BLE_PASSKEY must be 6 digits and not start with 0");
-#endif
-
 #define NO_CONF 0xFF
 
 static const char *CONF_LOG_TAG = "CONF";
@@ -248,6 +240,59 @@ private:
 
 static EngineHoursPersistenceMemory engineHoursPersistenceDefault;
 #endif
+
+#ifndef NATIVE
+/**
+ * The BLE pairing passkey lives in NVS, under its own key, same rationale as engine hours above:
+ * independent of the Conf EEPROM layout, and a missing key reads as the factory default rather than
+ * an erased-flash garbage value.
+ */
+class BlePasskeyPersistenceNVS : public BlePasskeyPersistence
+{
+public:
+    virtual bool init_persistence() override
+    {
+        if (!open)
+        {
+            open = prefs.begin(NVS_NAMESPACE, false);
+            Log::tracex(CONF_LOG_TAG, "Init NVS", "Namespace {%s} success {%d}", NVS_NAMESPACE, open ? 1 : 0);
+        }
+        return open;
+    }
+
+    virtual bool save_ble_passkey(uint32_t passkey) override
+    {
+        return open && prefs.putUInt(NVS_KEY, passkey) == sizeof(uint32_t);
+    }
+
+    virtual uint32_t load_ble_passkey() override
+    {
+        return open ? prefs.getUInt(NVS_KEY, BLE_PASSKEY_FACTORY_DEFAULT) : BLE_PASSKEY_FACTORY_DEFAULT;
+    }
+
+private:
+    static constexpr const char *NVS_NAMESPACE = "n2krouter";
+    static constexpr const char *NVS_KEY = "ble_pk";
+    Preferences prefs;
+    bool open = false;
+};
+
+static BlePasskeyPersistenceNVS blePasskeyPersistenceDefault;
+#else
+// desktop builds have no NVS: keep the value in memory, defaulting to 0 (open access) for tests
+class BlePasskeyPersistenceMemory : public BlePasskeyPersistence
+{
+public:
+    virtual bool init_persistence() override { return true; }
+    virtual bool save_ble_passkey(uint32_t passkey) override { value = passkey; return true; }
+    virtual uint32_t load_ble_passkey() override { return value; }
+
+private:
+    uint32_t value = 0;
+};
+
+static BlePasskeyPersistenceMemory blePasskeyPersistenceDefault;
+#endif
 #pragma endregion
 
 #pragma region EngineHours
@@ -321,18 +366,30 @@ static T to_fixed(double value, double scale)
     return (T)v;
 }
 
-Configuration::Configuration(ConfigurationPersistence *persistence)
+Configuration::Configuration(ConfigurationPersistence *persistence, BlePasskeyPersistence *ble_passkey_persistence)
     : initialized(false)
 {
     if (persistence == nullptr)
         persistence = &configurationPersistenceEEPROM;
     this->persistence = persistence;
+    if (ble_passkey_persistence == nullptr)
+        ble_passkey_persistence = &blePasskeyPersistenceDefault;
+    this->ble_passkey_persistence = ble_passkey_persistence;
 }
 
 int Configuration::init()
 {
     if (initialized)
         return CONFIG_RES_ALREADY_INITIALIZED;
+
+    if (ble_passkey_persistence->init_persistence())
+    {
+        ble_passkey = ble_passkey_persistence->load_ble_passkey();
+    }
+    else
+    {
+        Log::tracex(CONF_LOG_TAG, "Init", "Failed to init BLE passkey persistence - defaulting to open access");
+    }
 
     if (!persistence->init_persistence())
     {
@@ -476,11 +533,18 @@ uint16_t Configuration::get_batter_capacity() const
 
 uint32_t Configuration::get_ble_passkey() const
 {
-#ifdef BLE_PASSKEY
-    return BLE_PASSKEY;
-#else
-    return 0;
-#endif
+    return ble_passkey;
+}
+
+bool Configuration::is_ble_passkey_default() const
+{
+    return get_ble_passkey() == BLE_PASSKEY_FACTORY_DEFAULT;
+}
+
+bool Configuration::save_ble_passkey(uint32_t pk)
+{
+    ble_passkey = pk;
+    return ble_passkey_persistence->save_ble_passkey(pk);
 }
 
 bool Configuration::save_battery_capacity(uint16_t c)
@@ -576,9 +640,28 @@ public:
     }
 } dummyEngineHoursPersistence;
 
+class DummyBlePasskeyPersistence : public BlePasskeyPersistence
+{
+public:
+    virtual bool init_persistence() override
+    {
+        return true;
+    }
+
+    virtual bool save_ble_passkey(uint32_t passkey) override
+    {
+        return true;
+    }
+
+    virtual uint32_t load_ble_passkey() override
+    {
+        return 0;
+    }
+} dummyBlePasskeyPersistence;
+
 #ifdef PIO_UNIT_TESTING
 MockConfiguration::MockConfiguration()
-    : Configuration(&dummyPersistence)
+    : Configuration(&dummyPersistence, &dummyBlePasskeyPersistence)
 {
 }
 

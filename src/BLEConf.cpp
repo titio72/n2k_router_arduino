@@ -11,7 +11,7 @@ static const char *BLE_LOG_TAG = "BLX";
 BLEConf::BLEConf(command_callback cback, InternalBLEState *internalState)
     : enabled(false), ble(BLE_SERVICE_UUID, BLE_DEFAULT_SERVICE_NAME, this, internalState), last_sent(0),
       c_back(cback), ble_settings_handle(-1), ble_conf_handle(-1), ble_heartbeat_handle(-1), initialized(false), services_buffer(128),
-      last_activity(0)
+      last_activity(0), last_passkey(0)
 {
 }
 
@@ -76,7 +76,8 @@ void BLEConf::setup(Context &ctx)
   Log::tracex(BLE_LOG_TAG, "Setup", "Initializing BLE {%s}", device_name);
   ble.set_device_name(device_name);
   // pairing requires the device passkey (0 = open access); must be set before ble.setup()
-  ble.set_passkey(ctx.conf.get_ble_passkey());
+  last_passkey = ctx.conf.get_ble_passkey();
+  ble.set_passkey(last_passkey);
   ble.add_field("data", BLE_DATA_UUID);
   ble_conf_handle = ble.add_setting("conf", BLE_CONF_UUID);
   ble_settings_handle = ble.add_setting("command", BLE_COMMAND_UUID);
@@ -100,7 +101,7 @@ static inline T to_int(double value, double factor, T invalid_value)
   return (T)(value * factor);
 }
 
-#define BUFFER_LAYOUT_VERSION 10
+#define BUFFER_LAYOUT_VERSION 11
 
 void fill_buffer(ByteBuffer &buffer, Context &ctx)
 {
@@ -136,6 +137,7 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
   const uint32_t _sea_temp_adjustment = to_int(conf.get_sea_temp_adjustment(), 100.0, INVALID_U32);
   const uint32_t _sea_temp_alpha = to_int(conf.get_sea_temp_alpha(), 100.0, INVALID_U32);
   const uint16_t _battery_capacity = conf.get_batter_capacity();
+  const uint8_t _ble_passkey_default = conf.is_ble_passkey_default() ? 1 : 0;
 
   buffer.reset()
       << (uint8_t)BUFFER_LAYOUT_VERSION   // version
@@ -166,7 +168,8 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
       << _stw_alpha           // 4 70
       << _sea_temp_adjustment // 4 74
       << _sea_temp_alpha      // 4 78 
-      << _battery_capacity;   // 2 80 plenty of room in 128 byte buffer
+      << _battery_capacity    // 2 80
+      << _ble_passkey_default; // 1 81 plenty of room in 128 byte buffer
 }
 
 void BLEConf::loop(unsigned long ms, Context &ctx)
@@ -179,6 +182,12 @@ void BLEConf::loop(unsigned long ms, Context &ctx)
     if (strncmp(ble.get_device_name(), device_name, 15))
     {
       ble.set_device_name(device_name);
+    }
+    uint32_t passkey = ctx.conf.get_ble_passkey();
+    if (passkey != last_passkey)
+    {
+      ble.change_passkey(passkey);
+      last_passkey = passkey;
     }
     if (last_activity==0 || ((ms-last_activity) < BLE_INACTIVITY_TIMEOUT))
     {

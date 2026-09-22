@@ -694,11 +694,88 @@ void test_configuration_overwrite_values(void)
     TEST_ASSERT_DOUBLE_WITHIN(0.0001, -1.0, conf.get_rpm_adjustment());
 }
 
-void test_configuration_ble_passkey_disabled_without_build_flag(void)
+void test_configuration_ble_passkey_defaults_to_zero_without_persisted_value(void)
 {
-    // the native test build has no generated ble_passkey.h, so BLE stays open
+    // native/test builds use in-memory persistence defaulting to 0 (no persisted passkey), so BLE stays open
     Configuration conf;
     TEST_ASSERT_EQUAL_UINT32(0, conf.get_ble_passkey());
+}
+
+#pragma endregion
+
+#pragma region BLE passkey persistence
+
+// Persistence stub: returns a fixed stored value and remembers what was saved
+class StubBlePasskeyPersistence : public BlePasskeyPersistence
+{
+public:
+    uint32_t stored;
+    bool init_ok = true;
+    int saves = 0;
+    StubBlePasskeyPersistence(uint32_t v) : stored(v) {}
+    virtual bool init_persistence() override { return init_ok; }
+    virtual bool save_ble_passkey(uint32_t pk) override { stored = pk; saves++; return true; }
+    virtual uint32_t load_ble_passkey() override { return stored; }
+};
+
+// Always succeeds with a fresh (matching-version) Conf, so these tests stay isolated from the
+// EEPROM version-mismatch behaviour exercised elsewhere in this file.
+class OkConfigurationPersistence : public ConfigurationPersistence
+{
+public:
+    virtual bool init_persistence() override { return true; }
+    virtual bool save_configuration(const Conf &c) override { return true; }
+    virtual bool load_configuration(Conf &c) override { c = Conf(); return true; }
+};
+
+void test_ble_passkey_loads_stored_value(void)
+{
+    OkConfigurationPersistence ok;
+    StubBlePasskeyPersistence p(246810);
+    Configuration conf(&ok, &p);
+    TEST_ASSERT_EQUAL_INT(CONFIG_RES_OK, conf.init());
+    TEST_ASSERT_EQUAL_UINT32(246810, conf.get_ble_passkey());
+}
+
+void test_ble_passkey_save_goes_to_persistence(void)
+{
+    OkConfigurationPersistence ok;
+    StubBlePasskeyPersistence p(0);
+    Configuration conf(&ok, &p);
+    conf.init();
+    TEST_ASSERT_TRUE(conf.save_ble_passkey(123456));
+    TEST_ASSERT_EQUAL_UINT32(123456, conf.get_ble_passkey());
+    TEST_ASSERT_EQUAL_UINT32(123456, p.stored);
+    TEST_ASSERT_EQUAL_INT(1, p.saves);
+}
+
+void test_ble_passkey_persistence_failure_is_non_fatal(void)
+{
+    OkConfigurationPersistence ok;
+    StubBlePasskeyPersistence p(42);
+    p.init_ok = false;
+    Configuration conf(&ok, &p);
+    TEST_ASSERT_EQUAL_INT(CONFIG_RES_OK, conf.init());
+    TEST_ASSERT_TRUE(conf.is_initialized());
+    TEST_ASSERT_EQUAL_UINT32(0, conf.get_ble_passkey());
+}
+
+void test_ble_passkey_is_default_for_factory_value(void)
+{
+    OkConfigurationPersistence ok;
+    StubBlePasskeyPersistence p(BLE_PASSKEY_FACTORY_DEFAULT);
+    Configuration conf(&ok, &p);
+    conf.init();
+    TEST_ASSERT_TRUE(conf.is_ble_passkey_default());
+}
+
+void test_ble_passkey_is_not_default_for_custom_value(void)
+{
+    OkConfigurationPersistence ok;
+    StubBlePasskeyPersistence p(123456);
+    Configuration conf(&ok, &p);
+    conf.init();
+    TEST_ASSERT_FALSE(conf.is_ble_passkey_default());
 }
 
 #pragma endregion
@@ -859,6 +936,13 @@ void run_configuration_tests(void)
     RUN_TEST(test_configuration_persistence_roundtrip);
     RUN_TEST(test_configuration_independent_instances);
     RUN_TEST(test_configuration_overwrite_values);
-    RUN_TEST(test_configuration_ble_passkey_disabled_without_build_flag);
+    RUN_TEST(test_configuration_ble_passkey_defaults_to_zero_without_persisted_value);
+
+    // BLE passkey persistence
+    RUN_TEST(test_ble_passkey_loads_stored_value);
+    RUN_TEST(test_ble_passkey_save_goes_to_persistence);
+    RUN_TEST(test_ble_passkey_persistence_failure_is_non_fatal);
+    RUN_TEST(test_ble_passkey_is_default_for_factory_value);
+    RUN_TEST(test_ble_passkey_is_not_default_for_custom_value);
 }
 #endif

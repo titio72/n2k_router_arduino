@@ -12,6 +12,7 @@ static const char* CMD_LOG_TAG = "CMD";
 static const char COMMAND_SWITCH_SERVICES = 'S';
 static const char COMMAND_SET_DEVICE_NAME = 'N';
 static const char COMMAND_SET_BATTERY_CAPACITY = 'B';
+static const char COMMAND_SET_BLE_PASSKEY = 'P';
 static const char COMMAND_SET_ENGINE_HOURS = 'H';
 static const char COMMAND_TACHOMETER_CALIBRATION = 'T';
 static const char COMMAND_TACHOMETER_ADJUSTMENT = 't';
@@ -66,6 +67,16 @@ public:
             if (c > 0 && c <= 0xFFFF)
             {
                 conf.save_battery_capacity(c);
+            }
+        }
+        break;
+        case COMMAND_SET_BLE_PASSKEY: // change BLE pairing passkey
+        {
+            Log::tracex(CMD_LOG_TAG, "Command set BLE passkey", "P {%s}", command_value);
+            long pk = atol(command_value);
+            if (pk >= 100000 && pk <= 999999)
+            {
+                conf.save_ble_passkey((uint32_t)pk);
             }
         }
         break;

@@ -96,10 +96,22 @@ public:
   virtual uint64_t load_engine_hours() = 0;
 };
 
+class BlePasskeyPersistence
+{
+public:
+  virtual bool init_persistence() = 0;
+  virtual bool save_ble_passkey(uint32_t passkey) = 0;
+  virtual uint32_t load_ble_passkey() = 0;
+};
+
+// Factory-default BLE pairing passkey (Victron-style: same known value on every device,
+// the app should prompt the user to change it the first time they connect).
+const uint32_t BLE_PASSKEY_FACTORY_DEFAULT = 666666;
+
 class Configuration
 {
 public:
-  Configuration(ConfigurationPersistence *persistence = nullptr);
+  Configuration(ConfigurationPersistence *persistence = nullptr, BlePasskeyPersistence *ble_passkey_persistence = nullptr);
   virtual ~Configuration() {}
 
   int init();
@@ -116,10 +128,13 @@ public:
   virtual uint16_t get_batter_capacity() const;
 
   /**
-   * 6-digit BLE pairing passkey baked into the firmware at flash time (see tools/ble_passkey.py).
-   * 0 means no passkey: BLE writes are open.
+   * 6-digit BLE pairing passkey, persisted in NVS and changeable via the 'P' command.
+   * 0 means no passkey: BLE writes are open (native/test builds only).
    */
   virtual uint32_t get_ble_passkey() const;
+
+  /** True when the passkey is still the factory default - the UI should prompt to change it. */
+  virtual bool is_ble_passkey_default() const;
 
   virtual MeteoSource get_pressure_source() const;
   virtual MeteoSource get_temperature_source() const;
@@ -135,11 +150,14 @@ public:
   virtual bool save_n2k_source(unsigned char src);
   virtual bool save_services(N2KServices &s);
   virtual bool save_battery_capacity(uint16_t c);
+  virtual bool save_ble_passkey(uint32_t pk);
 
 protected:
   Conf conf;
   bool initialized = false;
   ConfigurationPersistence* persistence;
+  BlePasskeyPersistence* ble_passkey_persistence;
+  uint32_t ble_passkey = 0;
 };
 
 class EngineHours
@@ -241,6 +259,12 @@ public:
     return Configuration::save_stw_paddle_adjustment(a);
   }
 
+  virtual bool save_ble_passkey(uint32_t pk) override
+  {
+    save_ble_passkey_calls++;
+    return Configuration::save_ble_passkey(pk);
+  }
+
   int save_rpm_adjustment_calls = 0;
   int save_device_name_calls = 0;
   int save_services_calls = 0;
@@ -251,6 +275,7 @@ public:
   int save_stw_paddle_alpha_calls = 0;
   int save_sea_temp_adjustment_calls = 0;
   int save_stw_paddle_adjustment_calls = 0;
+  int save_ble_passkey_calls = 0;
 
   void reset_call_counts()
   {
@@ -264,6 +289,7 @@ public:
     save_stw_paddle_alpha_calls = 0;
     save_sea_temp_adjustment_calls = 0;
     save_stw_paddle_adjustment_calls = 0;
+    save_ble_passkey_calls = 0;
   }
 };
 #endif

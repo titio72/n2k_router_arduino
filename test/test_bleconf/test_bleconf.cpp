@@ -84,6 +84,15 @@ public:
         passkey = pk;
     }
 
+    uint32_t changed_passkey = 0;
+    int change_passkey_calls = 0;
+
+    void change_passkey(uint32_t pk) override
+    {
+        changed_passkey = pk;
+        change_passkey_calls++;
+    }
+
     void begin()
     {
         Log::tracex("BLE_ULL", "Starting BLE", "device {%s}", name.c_str());
@@ -258,6 +267,36 @@ void test_setup_passes_conf_passkey_to_ble() {
     ble.setup(context);
 
     TEST_ASSERT_EQUAL_UINT32(246810, mockBLEInternalImpl->passkey);
+}
+
+void test_loop_applies_changed_passkey_to_ble() {
+    MOCK_CONTEXT_X
+    mockConf.passkey = 111111;
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    ble.loop(10000000, context);
+    TEST_ASSERT_EQUAL_INT(0, mockBLEInternalImpl->change_passkey_calls);
+
+    mockConf.passkey = 222222;
+    ble.loop(20000000, context);
+
+    TEST_ASSERT_EQUAL_INT(1, mockBLEInternalImpl->change_passkey_calls);
+    TEST_ASSERT_EQUAL_UINT32(222222, mockBLEInternalImpl->changed_passkey);
+}
+
+void test_loop_does_not_call_change_passkey_when_unchanged() {
+    MOCK_CONTEXT_X
+    mockConf.passkey = 111111;
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    ble.loop(10000000, context);
+    ble.loop(20000000, context);
+
+    TEST_ASSERT_EQUAL_INT(0, mockBLEInternalImpl->change_passkey_calls);
 }
 
 void test_setup_copies_device_name_truncated_to_buffer_size() {
@@ -1124,8 +1163,8 @@ void test_services_buffer_total_length_is_58_bytes() {
     // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) +
     // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1) +
     // stw(2) + water_temp(2) + stw_adjustment(4) + stw_alpha(4) + sea_temp_adjustment(4) + sea_temp_alpha(4) +
-    // battery_capacity(2) = 80
-    TEST_ASSERT_EQUAL_INT(80, buf.length());
+    // battery_capacity(2) + ble_passkey_default(1) = 81
+    TEST_ASSERT_EQUAL_INT(81, buf.length());
 }
 
 void test_services_buffer_contains_battery_capacity() {
@@ -1144,6 +1183,27 @@ void test_services_buffer_contains_battery_capacity() {
 
     uint16_t capacity_val = *((uint16_t*)(buf_data + BUFFER_OFFSET_BATTERY_CAPACITY));
     TEST_ASSERT_EQUAL_UINT16(560, capacity_val);
+}
+
+void test_services_buffer_contains_ble_passkey_default_flag() {
+    MOCK_CONTEXT_X
+    mockConf.passkey = BLE_PASSKEY_FACTORY_DEFAULT;
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    ble.loop(10000000, context);
+
+    ByteBuffer buf = ble.get_services_buffer();
+    uint8_t* buf_data = buf.data();
+    TEST_ASSERT_EQUAL_UINT8(1, buf_data[BUFFER_OFFSET_BLE_PASSKEY_DEFAULT]);
+
+    mockConf.passkey = 123456;
+    ble.loop(20000000, context);
+
+    buf = ble.get_services_buffer();
+    buf_data = buf.data();
+    TEST_ASSERT_EQUAL_UINT8(0, buf_data[BUFFER_OFFSET_BLE_PASSKEY_DEFAULT]);
 }
 
 void test_data_characteristic_value() {
@@ -1181,8 +1241,8 @@ void test_data_characteristic_value() {
     
     ByteBuffer buf = ble.get_services_buffer();
     ByteBuffer char_value = ble.get_field_value_buffer(0);
-    // 80 bytes: same layout as test_services_buffer_total_length_is_58_bytes
-    TEST_ASSERT_EQUAL_INT(80, char_value.length());
+    // 81 bytes: same layout as test_services_buffer_total_length_is_58_bytes
+    TEST_ASSERT_EQUAL_INT(81, char_value.length());
     TEST_ASSERT_TRUE(buf==char_value);
 }
 
@@ -1311,6 +1371,8 @@ int main(int argc, char** argv) {
     RUN_TEST(test_setup_initializes_device_name);
     RUN_TEST(test_setup_without_passkey_leaves_ble_open);
     RUN_TEST(test_setup_passes_conf_passkey_to_ble);
+    RUN_TEST(test_loop_applies_changed_passkey_to_ble);
+    RUN_TEST(test_loop_does_not_call_change_passkey_when_unchanged);
     RUN_TEST(test_heartbeat_setting_is_writable_without_pairing);
     RUN_TEST(test_heartbeat_write_is_not_dispatched_as_command);
     RUN_TEST(test_heartbeat_command_on_command_setting_still_works);
@@ -1376,6 +1438,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_services_buffer_contains_current);
     RUN_TEST(test_services_buffer_contains_soc);
     RUN_TEST(test_services_buffer_contains_battery_capacity);
+    RUN_TEST(test_services_buffer_contains_ble_passkey_default_flag);
     RUN_TEST(test_services_buffer_total_length_is_58_bytes);
     RUN_TEST(test_services_buffer_resets_on_loop_call);
     RUN_TEST(test_services_buffer_nan_values_become_invalid_sentinel);

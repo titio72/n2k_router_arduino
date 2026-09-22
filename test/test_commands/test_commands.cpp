@@ -700,6 +700,17 @@ void test_command_B_battery_capacity_range(void)
     TEST_ASSERT_EQUAL_UINT16(300, conf.get_batter_capacity());
 }
 
+void test_command_P_ble_passkey_range(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('P', "123456", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_UINT32(123456, conf.get_ble_passkey());
+    CommandHandler::on_command('P', "99999", conf, engineHours, data); // too short: 5 digits
+    TEST_ASSERT_EQUAL_UINT32(123456, conf.get_ble_passkey());
+    CommandHandler::on_command('P', "1000000", conf, engineHours, data); // too long: 7 digits
+    TEST_ASSERT_EQUAL_UINT32(123456, conf.get_ble_passkey());
+}
+
 int main(int argc, char **argv)
 {
     Log::enable();
@@ -717,6 +728,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_alpha_above_one_is_rejected);
     RUN_TEST(test_adjustment_saves_clamp_instead_of_overflowing);
     RUN_TEST(test_command_B_battery_capacity_range);
+    RUN_TEST(test_command_P_ble_passkey_range);
     RUN_TEST(test_command_S_service_parsing_index_0);
     RUN_TEST(test_command_S_service_parsing_index_6);
 
