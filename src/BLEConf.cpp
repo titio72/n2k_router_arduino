@@ -3,6 +3,7 @@
 #include "Utils.h"
 #include "Conf.h"
 #include <Log.h>
+#include <limits>
 
 static const char *BLE_LOG_TAG = "BLX";
 
@@ -98,7 +99,13 @@ static inline T to_int(double value, double factor, T invalid_value)
 {
   if (isnan(value))
     return invalid_value;
-  return (T)(value * factor);
+  double v = value * factor;
+  // a plain cast of an out-of-range double is undefined behaviour: saturate instead
+  if (v <= (double)std::numeric_limits<T>::min())
+    return std::numeric_limits<T>::min();
+  if (v >= (double)std::numeric_limits<T>::max())
+    return std::numeric_limits<T>::max();
+  return (T)v;
 }
 
 #define BUFFER_LAYOUT_VERSION 11

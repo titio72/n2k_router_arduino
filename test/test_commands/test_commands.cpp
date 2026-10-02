@@ -242,6 +242,26 @@ void test_command_H_very_large_hours_value(void)
     TEST_ASSERT_EQUAL_UINT64(31536000000ULL, engineHours.get_engine_hours());
 }
 
+void test_command_H_rejects_implausible_hours(void)
+{
+    MOCK_CONTEXT_TEST
+
+    // 100 001 h in seconds: above what EngineHours::init() accepts, would be read back as 0 after a reboot
+    CommandHandler::on_command('H', "360003600",conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(0, engineHours.save_engine_hours_calls);
+}
+
+void test_command_H_accepts_max_hours(void)
+{
+    MOCK_CONTEXT_TEST
+
+    CommandHandler::on_command('H', "360000000",conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(1, engineHours.save_engine_hours_calls);
+    TEST_ASSERT_EQUAL_UINT64(ENGINE_HOURS_MAX_MS, engineHours.get_engine_hours());
+}
+
 void test_command_H_single_second(void)
 {
     MOCK_CONTEXT_TEST
@@ -490,6 +510,33 @@ void test_command_lowercase_x_negative_rejected(void)
     CommandHandler::on_command('x', "-50", conf, engineHours, data);
 
     TEST_ASSERT_EQUAL_INT(0, conf.save_sea_temp_alpha_calls);
+}
+
+// ============== Tests: Command 'R' (Reset) ==============
+
+static int restart_calls = 0;
+static void count_restart() { restart_calls++; }
+
+void test_command_R_invokes_restart_handler(void)
+{
+    MOCK_CONTEXT_TEST
+    restart_calls = 0;
+    CommandHandler::set_restart_handler(count_restart);
+
+    CommandHandler::on_command('R', "", conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(1, restart_calls);
+    CommandHandler::set_restart_handler(nullptr);
+}
+
+void test_command_R_without_handler_is_ignored(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::set_restart_handler(nullptr);
+
+    CommandHandler::on_command('R', "", conf, engineHours, data);
+
+    TEST_ASSERT_EQUAL_INT(0, engineHours.save_engine_hours_calls);
 }
 
 // ============== Tests: Unknown Commands ==============
@@ -749,6 +796,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_command_H_zero_hours);
     RUN_TEST(test_command_H_positive_hours);
     RUN_TEST(test_command_H_large_hours_value);
+RUN_TEST(test_command_H_rejects_implausible_hours);
+RUN_TEST(test_command_H_accepts_max_hours);
     RUN_TEST(test_command_H_very_large_hours_value);
     RUN_TEST(test_command_H_single_second);
     RUN_TEST(test_command_H_negative_hours_rejected);
@@ -782,6 +831,9 @@ int main(int argc, char **argv)
     RUN_TEST(test_command_lowercase_x_sea_temp_alpha);
     RUN_TEST(test_command_lowercase_x_zero_rejected);
     RUN_TEST(test_command_lowercase_x_negative_rejected);
+
+    RUN_TEST(test_command_R_invokes_restart_handler);
+    RUN_TEST(test_command_R_without_handler_is_ignored);
 
     // Unknown Commands Tests
     RUN_TEST(test_command_unknown_command);

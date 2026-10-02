@@ -73,7 +73,10 @@ void BMV712::loop(unsigned long micros, Context &ctx)
   if (last_read_time == 0 || check_elapsed(micros, last_read_time, 10000000L))
   {
     // no activity for 10 seconds, reset values
-    Log::tracex(VE_LOG_PREFIX, "Reset cache", "No activity detected for 10 seconds");
+    if (last_read_time != 0)
+    {
+      Log::tracex(VE_LOG_PREFIX, "Reset cache", "No activity detected for 10 seconds");
+    }
     reset_cache(&data_eng);
     reset_cache(&data_svc);
     reset_cache(&ctx.data_cache.battery_eng); // the shared cache too, or BLE keeps showing the last values

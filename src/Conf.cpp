@@ -296,9 +296,6 @@ static BlePasskeyPersistenceMemory blePasskeyPersistenceDefault;
 #pragma endregion
 
 #pragma region EngineHours
-// 100 000 hours: anything above is corrupted storage, not a real engine
-static const uint64_t MAX_PLAUSIBLE_ENGINE_HOURS_MS = 100000ULL * 3600ULL * 1000ULL;
-
 EngineHours::EngineHours(EngineHoursPersistence *persistence)
     : engine_hours(0),
       initialized(false)
@@ -317,7 +314,7 @@ int EngineHours::init()
     {
         Log::tracex(CONF_LOG_TAG, "Init", "Persistence initialized, loading engine hours");
         engine_hours = persistence->load_engine_hours();
-        if (engine_hours > MAX_PLAUSIBLE_ENGINE_HOURS_MS)
+        if (engine_hours > ENGINE_HOURS_MAX_MS)
         {
             Log::tracex(CONF_LOG_TAG, "Init", "Implausible engine hours {%lu} - starting from 0", (uint32_t)(engine_hours / 1000));
             engine_hours = 0;

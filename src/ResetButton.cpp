@@ -15,7 +15,7 @@ static bool default_pin_reader(int pin)
 #endif
 }
 
-static void default_restarter()
+void default_restarter()
 {
 #ifndef NATIVE
     delay(50); // let the log drain

@@ -17,6 +17,14 @@ inline double to_n2k(double value)
     return value;
 }
 
+inline double to_n2k(double value, double (*conversion)(double))
+{
+  if (isnan(value))
+    return N2kDoubleNA;
+  else
+    return conversion?conversion(value):value;
+}
+
 #pragma region N2K_Router
 
 // The N2K task no longer writes flash or config (see DeferredEvents.h), but runs the whole NMEA2000 stack
@@ -247,11 +255,11 @@ bool N2KSenderAbstract::sendEnvironmentXRaymarine(const double pressure, const d
 
     double _pressure = to_n2k(pressure);
     double _humidity = to_n2k(humidity);
-    double _temperature = to_n2k(temperature);
+    double _temperature_k = to_n2k(temperature, CToKelvin);
 
     tN2kMsg N2kMsg(get_source());
     SetN2kEnvironmentalParameters(N2kMsg, 1,
-        tN2kTempSource::N2kts_OutsideTemperature, CToKelvin(_temperature),
+        tN2kTempSource::N2kts_OutsideTemperature, _temperature_k,
         tN2kHumiditySource::N2khs_OutsideHumidity, _humidity,
         _pressure);
 
@@ -264,11 +272,11 @@ bool N2KSenderAbstract::sendOutsideEnvironmentXRaymarine(const double pressure, 
         return false;
     
     double _pressure = to_n2k(pressure);
-    double _temperature = to_n2k(temperature);
-    double _sea_temperature = to_n2k(sea_temperature);
+    double _temperature_k = to_n2k(temperature, CToKelvin);
+    double _sea_temperature_k = to_n2k(sea_temperature, CToKelvin);
 
     tN2kMsg N2kMsg(get_source());
-    SetN2kOutsideEnvironmentalParameters(N2kMsg, 1, CToKelvin(_sea_temperature), CToKelvin(_temperature), _pressure);
+    SetN2kOutsideEnvironmentalParameters(N2kMsg, 1, _sea_temperature_k, _temperature_k, _pressure);
     return send_it(N2kMsg);
 }
 
@@ -351,7 +359,7 @@ bool N2KSenderAbstract::sendBattery(unsigned char sid, const double voltage, con
 
     tN2kMsg m(get_source());
     SetN2kPGN127508(m, instance,
-        to_n2k(voltage), to_n2k(current), CToKelvin(to_n2k(temperature)), sid);
+        to_n2k(voltage), to_n2k(current), to_n2k(temperature, CToKelvin), sid);
     return send_it(m);
 }
 
@@ -359,19 +367,16 @@ bool N2KSenderAbstract::sendBatteryStatus(unsigned char sid, const double soc, c
     if (isnan(soc) && isnan(capacity) && isnan(ttg))
         return false;
 
-    double capacity_wh = capacity * 3600;
+    double capacity_coulombs = capacity * 3600; // Ah -> As (C)
 
     tN2kMsg m(get_source());
     SetN2kPGN127506(m, sid, instance, tN2kDCType::N2kDCt_Battery,
-        to_n2k(soc), 100, to_n2k(ttg), N2kDoubleNA, to_n2k(capacity_wh));
+        to_n2k(soc), 100, to_n2k(ttg), N2kDoubleNA, to_n2k(capacity_coulombs));
     return send_it(m);
 }
 
 bool N2KSenderAbstract::sendEngineRPM(uint8_t instance, uint16_t rpm)
 {
-    if (isnan(rpm))
-        return false;
-
     tN2kMsg m(get_source());
     SetN2kPGN127488(m, instance, rpm);
     return send_it(m);

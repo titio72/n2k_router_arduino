@@ -1,6 +1,7 @@
 #ifndef _BLEConf_H
 #define _BLEConf_H
 
+#include <atomic>
 #include "Utils.h"
 #include "Agents.hpp"
 #include <BTInterface.h>
@@ -71,7 +72,7 @@ private:
     int ble_settings_handle;
     int ble_conf_handle;
     int ble_heartbeat_handle;
-    unsigned long last_activity;
+    std::atomic<unsigned long> last_activity; // written by the NimBLE task, read by the loop task
     uint32_t last_passkey;
 };
 

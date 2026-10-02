@@ -1105,6 +1105,22 @@ void test_services_buffer_contains_current() {
     TEST_ASSERT_EQUAL_INT(5000, current_val);
 }
 
+void test_services_buffer_current_saturates() {
+    MOCK_CONTEXT_X
+    mockConf.save_device_name("Device");
+    data.battery_svc.current = 1000.0; // x100 does not fit an int16_t
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+
+    ble.loop(10000000, context);
+
+    ByteBuffer buf = ble.get_services_buffer();
+    int16_t current_val = *((int16_t*)(buf.data() + BUFFER_OFFSET_CURRENT));
+    TEST_ASSERT_EQUAL_INT(32767, current_val);
+}
+
 void test_services_buffer_contains_soc() {
     MOCK_CONTEXT_X
     mockConf.save_device_name("Device");
@@ -1436,6 +1452,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_services_buffer_contains_engine_time);
     RUN_TEST(test_services_buffer_contains_voltage);
     RUN_TEST(test_services_buffer_contains_current);
+RUN_TEST(test_services_buffer_current_saturates);
     RUN_TEST(test_services_buffer_contains_soc);
     RUN_TEST(test_services_buffer_contains_battery_capacity);
     RUN_TEST(test_services_buffer_contains_ble_passkey_default_flag);

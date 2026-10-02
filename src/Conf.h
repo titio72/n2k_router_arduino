@@ -88,6 +88,9 @@ public:
   virtual bool load_configuration(Conf &conf) = 0;
 };
 
+// 100 000 hours: anything above is corrupted storage, not a real engine (also the limit for the 'H' command)
+static const uint64_t ENGINE_HOURS_MAX_MS = 100000ULL * 3600ULL * 1000ULL;
+
 class EngineHoursPersistence
 {
 public:

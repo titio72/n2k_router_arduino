@@ -3,6 +3,9 @@
 
 #include "Agents.hpp"
 
+/** Reboots the board (after a short pause so the log can drain). No-op in native builds. */
+void default_restarter();
+
 /**
  * Reboots the device when a push button (wired between RESET_PIN and GND, active low)
  * is held for RESET_HOLD_USEC.

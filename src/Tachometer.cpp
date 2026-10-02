@@ -46,16 +46,27 @@ void Tachometer::enable(Context &ctx)
 {
     if (!enabled && is_setup)
     {
-        enabled = true;
         #ifndef NATIVE
         esp_timer_create_args_t timer_args = {};
         timer_args.callback = &Tachometer::timer_callback;
         timer_args.arg = this;
         timer_args.dispatch_method = ESP_TIMER_TASK;
         timer_args.name = "tacho_loop";
-        esp_timer_create(&timer_args, &timer_handle);
-        esp_timer_start_periodic(timer_handle, 1000); // 1000 µs = 1 ms
+        if (esp_timer_create(&timer_args, &timer_handle) != ESP_OK)
+        {
+            timer_handle = NULL;
+            Log::tracex(RPM_LOG_TAG, "Enable", "Failed to create timer");
+            return;
+        }
+        if (esp_timer_start_periodic(timer_handle, 1000) != ESP_OK) // 1000 µs = 1 ms
+        {
+            esp_timer_delete(timer_handle);
+            timer_handle = NULL;
+            Log::tracex(RPM_LOG_TAG, "Enable", "Failed to start timer");
+            return;
+        }
         #endif
+        enabled = true;
         Log::tracex(RPM_LOG_TAG, "Enable", "Success {%d}", enabled);
     }
 }
@@ -103,7 +114,7 @@ void Tachometer::setup(Context &ctx)
         Log::tracex(RPM_LOG_TAG, "Setup", "Pin {%d}", speed_sensor.get_pin());
         speed_sensor.setup();
         is_setup = true;
-        current_engine_time = engine_hours_svc->get_engine_hours();
+        current_engine_time = engine_hours_svc ? engine_hours_svc->get_engine_hours() : 0;
         last_persisted_engine_time = current_engine_time;
         ctx.data_cache.engine.engine_time = current_engine_time;
         Log::tracex(RPM_LOG_TAG, "Setup", "Engine Hours loaded {%lu.%03d}", (uint32_t)(current_engine_time / 1000), (uint16_t)(current_engine_time % 1000));

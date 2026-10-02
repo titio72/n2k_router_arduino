@@ -26,6 +26,11 @@ static const char COMMAND_RESET = 'R';
 class CommandHandler
 {
 public:
+    typedef void (*RestartHandler)();
+
+    /** What the 'R' command does; without a handler it is ignored (e.g. in tests). Set once at startup. */
+    static void set_restart_handler(RestartHandler handler) { restart_handler = handler; }
+
     static void on_command(char command, const char *command_value, Configuration &conf, EngineHours &engineHours, Data &data)
     {
         switch (command)
@@ -84,7 +89,7 @@ public:
         {
             Log::tracex(CMD_LOG_TAG, "Command set engine time hhhh:mm", "H {%s}", command_value);
             int64_t engine_time_secs = atol(command_value);
-            if (engine_time_secs > 0)
+            if (engine_time_secs > 0 && (uint64_t)engine_time_secs <= ENGINE_HOURS_MAX_MS / 1000)
             {
                 uint64_t new_t = (uint64_t)1000 * engine_time_secs; // convert in milliseconds
                 Log::tracex(CMD_LOG_TAG, "Command set engine time", "ms {%lu-%03d}", (uint32_t)(new_t / 1000), (uint16_t)(new_t % 1000));
@@ -173,6 +178,15 @@ public:
             }
         }
         break;
+        case COMMAND_RESET: // reboot the device
+        {
+            Log::tracex(CMD_LOG_TAG, "Command reset", "R");
+            if (restart_handler)
+            {
+                restart_handler();
+            }
+        }
+        break;
         case COMMAND_HEARTBEAT: // heartbeat
         {
             // heartbeat
@@ -182,6 +196,9 @@ public:
             Log::tracex(CMD_LOG_TAG, "Unknown command", " CMD {%c} Value {%s}", command, command_value);
         }
     }
+
+private:
+    static inline RestartHandler restart_handler = nullptr;
 };
 
 #endif

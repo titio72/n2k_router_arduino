@@ -77,16 +77,27 @@ void SpeedThroughWater::enable(Context &ctx)
 {
   if (!enabled)
   {
-    enabled = true;
     #ifndef NATIVE
     esp_timer_create_args_t timer_args = {};
     timer_args.callback = &SpeedThroughWater::timer_callback;
     timer_args.arg = this;
     timer_args.dispatch_method = ESP_TIMER_TASK;
     timer_args.name = "stw_loop";
-    esp_timer_create(&timer_args, &timer_handle);
-    esp_timer_start_periodic(timer_handle, 1000); // 1000 µs = 1 ms
+    if (esp_timer_create(&timer_args, &timer_handle) != ESP_OK)
+    {
+      timer_handle = NULL;
+      Log::tracex("STW", "Enable", "Failed to create timer");
+      return;
+    }
+    if (esp_timer_start_periodic(timer_handle, 1000) != ESP_OK) // 1000 µs = 1 ms
+    {
+      esp_timer_delete(timer_handle);
+      timer_handle = NULL;
+      Log::tracex("STW", "Enable", "Failed to start timer");
+      return;
+    }
     #endif
+    enabled = true;
     Log::tracex("STW", "Enable", "Success {%d}", enabled);
   }
 }

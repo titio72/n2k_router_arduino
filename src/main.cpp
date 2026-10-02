@@ -239,7 +239,7 @@ void _loop()
     handle_agent_loop(resetButton, context, true, NULL, t, "RESET");
     app_stats.display_loop_time += handle_agent_loop(display, context, true, &app_stats.retry_display, t, "Display", &app_stats.retry_at_display);
     app_stats.gps_loop_time += handle_agent_loop(gps, context, conf.get_services().is_use_gps(), &app_stats.retry_gps, t, "GPS", &app_stats.retry_at_gps);
-    app_stats.bme_loop_time += handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BMP", &app_stats.retry_at_bme);
+    app_stats.bme_loop_time += handle_agent_loop(bme, context, conf.get_services().is_use_bme(), &app_stats.retry_bme, t, "BME", &app_stats.retry_at_bme);
     app_stats.dht_loop_time += handle_agent_loop(dht, context, conf.get_services().is_use_dht(), &app_stats.retry_dht, t, "DHT", &app_stats.retry_at_dht);
     app_stats.bmv712_loop_time += handle_agent_loop(bmv712, context, conf.get_services().is_use_vedirect(), &app_stats.retry_bmv712, t, "BMV712", &app_stats.retry_at_bmv712);
     app_stats.tacho_loop_time += handle_agent_loop(tacho, context, conf.get_services().is_use_tacho(), &app_stats.retry_tacho, t, "TACHO", &app_stats.retry_at_tacho);
@@ -254,8 +254,7 @@ void _loop()
   delay(5);
 }
 
-#if RESET_PIN != -1
-// runs on the loop task (the reset button is an agent) just before the board restarts
+// runs on the loop task (the reset button is an agent, the 'R' command is deferred) just before the board restarts
 static void flush_before_restart()
 {
 #if DO_TACHOMETER == 1
@@ -265,7 +264,12 @@ static void flush_before_restart()
   }
 #endif
 }
-#endif
+
+static void restart_from_command()
+{
+  flush_before_restart();
+  default_restarter();
+}
 
 void _setup()
 {  
@@ -304,6 +308,7 @@ void _setup()
 #if RESET_PIN != -1
   resetButton.set_before_restart(flush_before_restart);
 #endif
+  CommandHandler::set_restart_handler(restart_from_command);
   gps.setup(context);
   dht.setup(context);
   bme.setup(context);

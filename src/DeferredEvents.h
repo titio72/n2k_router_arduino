@@ -176,7 +176,7 @@ inline bool process_deferred_source_claim(DeferredEvents &events, Configuration 
     {
         conf.save_n2k_source(new_source);
     }
-    Log::tracex("APP", "New claimed n2k source", " New Source {%d} Old Source {%d} Save {%d}",
+    Log::tracex(APP_LOG_TAG, "New claimed n2k source", " New Source {%d} Old Source {%d} Save {%d}",
                 new_source, old_source, keep ? 0 : 1);
     return true;
 }
