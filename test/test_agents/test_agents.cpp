@@ -747,6 +747,29 @@ void test_agent_loop_microsecond_precision(void)
 
 #pragma endregion
 
+void test_handle_agent_loop_slot_keeps_retry_state(void)
+{
+    MockAgent agent;
+    agent.should_fail_enable = true;
+    AgentSlot slot;
+    MOCK_CONTEXT
+    unsigned long t = 1000000;
+
+    for (int i = 0; i < 10; i++)
+        handle_agent_loop(agent, context, true, slot, t, "A");
+    TEST_ASSERT_EQUAL_INT(MAX_RETRY, agent.enable_call_count);
+    TEST_ASSERT_EQUAL_UINT16(MAX_RETRY, slot.retry);
+    TEST_ASSERT_NOT_EQUAL(0, slot.retry_at);
+
+    agent.should_fail_enable = false;
+    t += AGENT_RETRY_COOLDOWN_USEC + 1000;
+    handle_agent_loop(agent, context, true, slot, t, "A");
+    TEST_ASSERT_TRUE(agent.is_enabled());
+    TEST_ASSERT_EQUAL_UINT16(0, slot.retry);
+    TEST_ASSERT_EQUAL_UINT32(0, slot.retry_at);
+    TEST_ASSERT_EQUAL_INT(1, agent.loop_call_count);
+}
+
 // Test runner
 void test_handle_agent_enable_retries_again_after_cooldown(void)
 {
@@ -839,6 +862,7 @@ void run_agent_tests(void)
     RUN_TEST(test_handle_agent_loop_without_retry_pointer);
     RUN_TEST(test_handle_agent_loop_without_description);
     RUN_TEST(test_handle_agent_loop_multiple_calls_enabled);
+RUN_TEST(test_handle_agent_loop_slot_keeps_retry_state);
     RUN_TEST(test_handle_agent_loop_toggle_enable_disable);
     RUN_TEST(test_handle_agent_loop_disable_when_already_disabled);
     RUN_TEST(test_handle_agent_loop_zero_timestamp);

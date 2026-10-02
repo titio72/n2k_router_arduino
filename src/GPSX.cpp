@@ -228,6 +228,46 @@ bool GPSX::is_enabled()
     return enabled;
 }
 
+/**
+ * Open the serial port towards the module. The module is tried at GPS_SERIAL_SPEED first and, if it does not
+ * answer, at each fallback speed once. A module found at a fallback speed is reconfigured (and the setting saved
+ * to its flash) to GPS_SERIAL_SPEED, then the port is reopened at that speed.
+ * Blocks for as long as the module takes to (not) answer, once per speed.
+ */
+bool GPSX::connectSerial()
+{
+    const int speeds[] = {GPS_SERIAL_SPEED, GPS_SERIAL_FALLBACK_SPEEDS[0], GPS_SERIAL_FALLBACK_SPEEDS[1], GPS_SERIAL_FALLBACK_SPEEDS[2]};
+    for (int speed : speeds)
+    {
+        Log::tracex(GPS_LOG_TAG, "Enabling", "Trying {%d} baud", speed);
+        serial_port->end();
+        serial_port->begin(speed, SERIAL_8N1, rx_pin, tx_pin); // RX, TX
+        if (!myGNSS.begin(*serial_port))
+            continue;
+
+        if (speed == GPS_SERIAL_SPEED)
+        {
+            Log::tracex(GPS_LOG_TAG, "Enabling", "Connected at {%d} baud", speed);
+            return true;
+        }
+
+        Log::tracex(GPS_LOG_TAG, "Enabling", "Found at {%d} baud, switching to {%d}", speed, GPS_SERIAL_SPEED);
+        myGNSS.setSerialRate(GPS_SERIAL_SPEED);
+        myGNSS.saveConfiguration(); // Save the new baud rate to flash and BBR
+        myGNSS.end();
+        serial_port->end();
+        serial_port->begin(GPS_SERIAL_SPEED, SERIAL_8N1, rx_pin, tx_pin);
+        if (myGNSS.begin(*serial_port))
+        {
+            Log::tracex(GPS_LOG_TAG, "Enabling", "Connected at {%d} baud", GPS_SERIAL_SPEED);
+            return true;
+        }
+        Log::tracex(GPS_LOG_TAG, "Enabling", "No answer after switching to {%d} baud", GPS_SERIAL_SPEED);
+        return false; // the module is now at GPS_SERIAL_SPEED: the next enable() attempt starts there
+    }
+    return false;
+}
+
 void GPSX::enable(Context &ctx)
 {
     if (!enabled)
@@ -250,35 +290,7 @@ void GPSX::enable(Context &ctx)
         else
         {
             Log::tracex(GPS_LOG_TAG, "Enabling", "Type {%s}", "Serial");
-            bool _enabled = false;
-            int retry_count = 0;
-            while (retry_count < GPS_SERIAL_FALLBACK_COUNT)
-            {
-                Log::tracex(GPS_LOG_TAG, "Enabling", "Trying %d baud", GPS_SERIAL_SPEED);
-                serial_port->end();
-                serial_port->begin(GPS_SERIAL_SPEED, SERIAL_8N1, rx_pin, tx_pin); // RX, TX
-                if (myGNSS.begin(*serial_port))
-                {
-                    _enabled = true;
-                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connected at %d baud", GPS_SERIAL_SPEED);
-                    break;
-                }
-                else
-                {
-                    Log::tracex(GPS_LOG_TAG, "Enabling", "Connection failed at %d baud, trying %d\n", GPS_SERIAL_SPEED, GPS_SERIAL_FALLBACK_SPEEDS[retry_count % GPS_SERIAL_FALLBACK_COUNT]);
-                    serial_port->end();
-                    serial_port->begin(GPS_SERIAL_FALLBACK_SPEEDS[retry_count % GPS_SERIAL_FALLBACK_COUNT], SERIAL_8N1, rx_pin, tx_pin);
-                    if (myGNSS.begin(*serial_port))
-                    {
-                        myGNSS.setSerialRate(GPS_SERIAL_SPEED); // Set the serial port to 57600 baud)
-                        myGNSS.saveConfiguration();             // Save the new baud rate to flash and BBR
-                        myGNSS.end();
-                        serial_port->end();
-                        Log::tracex(GPS_LOG_TAG, "Enabling", "Port speeed set to %d baud\n", GPS_SERIAL_SPEED);
-                    }
-                }
-                retry_count++;
-            }
+            bool _enabled = connectSerial();
 
             if (_enabled)
             {

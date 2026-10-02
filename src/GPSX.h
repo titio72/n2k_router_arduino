@@ -44,6 +44,7 @@ private:
     bool loadFix();
     bool loadSats();
     bool loadPVT();
+    bool connectSerial();
 };
 #endif
 

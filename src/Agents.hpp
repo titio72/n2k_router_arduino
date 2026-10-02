@@ -22,6 +22,14 @@ void setup(Context &ctx); \
 
 
 
+// Per-agent bookkeeping: enable-retry state (see handle_agent_enable) and loop time accumulated since the last stats dump
+struct AgentSlot
+{
+  unsigned short retry = 0;
+  unsigned long retry_at = 0;
+  unsigned long loop_time = 0;
+};
+
 /**
  * Try to enable an agent that is not enabled yet.
  *
@@ -98,6 +106,14 @@ unsigned long handle_agent_loop(T &agent, Context &ctx, bool enable, unsigned sh
   return NOW_MICROS - t;
 }
 
-
+/** Same as above, keeping the retry state in the agent's slot and adding the time spent to slot.loop_time. */
+template <typename T>
+unsigned long handle_agent_loop(T &agent, Context &ctx, bool enable, AgentSlot &slot, unsigned long now_micros,
+                                const char *desc = "")
+{
+  unsigned long elapsed = handle_agent_loop(agent, ctx, enable, &slot.retry, now_micros, desc, &slot.retry_at);
+  slot.loop_time += elapsed;
+  return elapsed;
+}
 
 #endif
