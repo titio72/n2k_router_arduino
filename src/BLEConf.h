@@ -36,6 +36,12 @@
 #define BUFFER_OFFSET_SEA_TEMP_ALPHA 74
 #define BUFFER_OFFSET_BATTERY_CAPACITY 78
 #define BUFFER_OFFSET_BLE_PASSKEY_DEFAULT 80
+#define BUFFER_OFFSET_MAGN_DEVIATION 81
+#define BUFFER_OFFSET_HDOP         83
+#define BUFFER_OFFSET_PDOP         85
+#define BUFFER_OFFSET_VDOP         87
+#define BUFFER_OFFSET_TDOP         89
+#define BUFFER_OFFSET_UERE         91
 
 typedef void (*command_callback)(char command, const char* command_value);
 

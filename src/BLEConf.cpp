@@ -145,6 +145,12 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
   const uint32_t _sea_temp_alpha = to_int(conf.get_sea_temp_alpha(), 100.0, INVALID_U32);
   const uint16_t _battery_capacity = conf.get_batter_capacity();
   const uint8_t _ble_passkey_default = conf.is_ble_passkey_default() ? 1 : 0;
+  const uint16_t _magn_deviation = to_int(data_cache.gps.magn_deviation, 100.0, INVALID_16);
+  const int16_t _hdop = to_int(data_cache.gps.hdop, 100.0, INVALID_16);
+  const int16_t _pdop = to_int(data_cache.gps.pdop, 100.0, INVALID_16);
+  const int16_t _vdop = to_int(data_cache.gps.vdop, 100.0, INVALID_16);
+  const int16_t _tdop = to_int(data_cache.gps.tdop, 100.0, INVALID_16);
+  const int16_t _uere = to_int(2.0, 100.0, INVALID_16); // hardcoded UERE (meters)
 
   buffer.reset()
       << (uint8_t)BUFFER_LAYOUT_VERSION   // version
@@ -176,7 +182,13 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
       << _sea_temp_adjustment // 4 74
       << _sea_temp_alpha      // 4 78 
       << _battery_capacity    // 2 80
-      << _ble_passkey_default; // 1 81 plenty of room in 128 byte buffer
+      << _ble_passkey_default  // 1 81
+      << _magn_deviation      // 2 83
+      << _hdop                // 2 85
+      << _pdop                // 2 87
+      << _vdop                // 2 89
+      << _tdop                // 2 91
+      << _uere;               // 2 93 plenty of room in 128 byte buffer
 }
 
 void BLEConf::loop(unsigned long ms, Context &ctx)

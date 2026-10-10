@@ -163,6 +163,8 @@ void handle_leds(unsigned long ms)
   if (check_elapsed(ms, t0, 1000000))
   {
     leds.switchLed(LED_GPS, cache.gps.fix > 1);
+    N2KStats n2k_stats = n2k.getStats();
+    leds.switchLed(LED_N2K, n2k_stats.sent, n2k_stats.canbus);
   }
 }
 

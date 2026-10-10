@@ -169,6 +169,11 @@ void GPSX::manageLowFrequency(unsigned long micros, Context &ctx)
             float variation = myDeclination.magneticDeclination(data.latitude_signed, data.longitude_signed,
                                                                 data.year - 2000, data.month, data.day);
             ctx.n2k.sendMagneticVariation(variation, data.gps_unix_time / 86400);
+            data.magn_deviation = variation;
+        }
+        else
+        {
+            data.magn_deviation = NAN;
         }
         if (ctx.conf.get_services().is_sog_2_stw())
         {

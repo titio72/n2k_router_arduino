@@ -83,6 +83,8 @@ public:
   sat satellites[MAX_SATS_SIZE];
   short sats[MAX_USED_SATS_SIZE];
 
+  double magn_deviation = NAN;
+
   char get_longitude_cardinal() const
   {
     return longitude_signed > 0.0 ? 'E' : 'W';

@@ -1179,8 +1179,8 @@ void test_services_buffer_total_length_is_58_bytes() {
     // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) +
     // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1) +
     // stw(2) + water_temp(2) + stw_adjustment(4) + stw_alpha(4) + sea_temp_adjustment(4) + sea_temp_alpha(4) +
-    // battery_capacity(2) + ble_passkey_default(1) = 81
-    TEST_ASSERT_EQUAL_INT(81, buf.length());
+    // battery_capacity(2) + ble_passkey_default(1) + magn_deviation(2) + hdop/pdop/vdop/tdop(4x2) + uere(2) = 93
+    TEST_ASSERT_EQUAL_INT(93, buf.length());
 }
 
 void test_services_buffer_contains_battery_capacity() {
@@ -1257,8 +1257,8 @@ void test_data_characteristic_value() {
     
     ByteBuffer buf = ble.get_services_buffer();
     ByteBuffer char_value = ble.get_field_value_buffer(0);
-    // 81 bytes: same layout as test_services_buffer_total_length_is_58_bytes
-    TEST_ASSERT_EQUAL_INT(81, char_value.length());
+    // 93 bytes: same layout as test_services_buffer_total_length_is_58_bytes
+    TEST_ASSERT_EQUAL_INT(93, char_value.length());
     TEST_ASSERT_TRUE(buf==char_value);
 }
 

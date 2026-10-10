@@ -4,8 +4,8 @@
 #ifndef DISABLE_LEDS
 #include <Arduino.h>
 #endif
-#define RGB_ON_ERROR 0,16,0
-#define RGB_ON 16,0,0
+#define RGB_ON_ERROR 0,8,0
+#define RGB_ON 8,0,0
 #define RGB_OFF 0,0,0
 
 #ifndef LED_RGB_N2K
@@ -126,7 +126,6 @@ void Leds::off(LEDS led)
     }
     #endif
 }
-
 
 void Leds::blink(LEDS led, unsigned long now_micros, unsigned long period_on, bool error)
 {
