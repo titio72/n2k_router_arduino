@@ -38,7 +38,17 @@ bool StwCalibration::upsert(double hz, double kn)
     if (!to_x100(hz, STW_TABLE_MAX_HZ, h) || !to_x100(kn, STW_TABLE_MAX_KN, k))
         return false;
 
-    StwPoint cand[STW_TABLE_MAX_POINTS];
+    // a full table only accepts a replacement of an existing frequency
+    if (count >= STW_TABLE_MAX_POINTS)
+    {
+        bool exists = false;
+        for (uint8_t i = 0; i < count; i++)
+            exists = exists || points[i].hz100 == h;
+        if (!exists)
+            return false;
+    }
+
+    StwPoint cand[STW_TABLE_MAX_POINTS + 1]; // room for one insertion
     uint8_t n = 0;
     bool placed = false;
     for (uint8_t i = 0; i < count; i++)
@@ -53,11 +63,7 @@ bool StwCalibration::upsert(double hz, double kn)
         cand[n++] = points[i];
     }
     if (!placed)
-    {
-        if (n >= STW_TABLE_MAX_POINTS)
-            return false;
         cand[n++] = {h, k};
-    }
     if (n > STW_TABLE_MAX_POINTS || !valid_points(cand, n))
         return false;
     for (uint8_t i = 0; i < n; i++)

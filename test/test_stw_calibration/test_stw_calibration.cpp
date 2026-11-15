@@ -105,17 +105,52 @@ void test_upsert_rejects_out_of_range(void)
     TEST_ASSERT_EQUAL_UINT8(0, t.size());
 }
 
+static void assert_full_table_unchanged(const StwCalibration &t)
+{
+    TEST_ASSERT_EQUAL_UINT8(5, t.size());
+    for (uint8_t i = 0; i < 5; i++)
+    {
+        TEST_ASSERT_EQUAL_UINT16((i + 1) * 200, t.point(i).hz100);
+        TEST_ASSERT_EQUAL_UINT16((i + 1) * 100, t.point(i).kn100);
+    }
+}
+
 void test_upsert_full_table(void)
 {
     StwCalibration t;
     for (int i = 1; i <= 5; i++)
         TEST_ASSERT_TRUE(t.upsert(i * 2.0, i * 1.0));
-    TEST_ASSERT_EQUAL_UINT8(5, t.size());
+    assert_full_table_unchanged(t);
+    // distinct Hz rejected: after the last, between points, before the first
     TEST_ASSERT_FALSE(t.upsert(11, 5.5));
+    assert_full_table_unchanged(t);
     TEST_ASSERT_FALSE(t.upsert(3, 1.2));
-    TEST_ASSERT_EQUAL_UINT8(5, t.size());
+    assert_full_table_unchanged(t);
+    TEST_ASSERT_FALSE(t.upsert(1, 0.5));
+    assert_full_table_unchanged(t);
+    TEST_ASSERT_FALSE(t.upsert(9, 4.5));
+    assert_full_table_unchanged(t);
+}
+
+void test_upsert_replace_on_full_table(void)
+{
+    StwCalibration t;
+    for (int i = 1; i <= 5; i++)
+        t.upsert(i * 2.0, i * 1.0);
     TEST_ASSERT_TRUE(t.upsert(6, 3.2));
     TEST_ASSERT_EQUAL_UINT8(5, t.size());
+    TEST_ASSERT_EQUAL_UINT16(600, t.point(2).hz100);
+    TEST_ASSERT_EQUAL_UINT16(320, t.point(2).kn100);
+    TEST_ASSERT_EQUAL_UINT16(400, t.point(1).hz100);
+    TEST_ASSERT_EQUAL_UINT16(800, t.point(3).hz100);
+    // replace first and last too
+    TEST_ASSERT_TRUE(t.upsert(2, 0.5));
+    TEST_ASSERT_TRUE(t.upsert(10, 6.0));
+    TEST_ASSERT_EQUAL_UINT8(5, t.size());
+    TEST_ASSERT_EQUAL_UINT16(50, t.point(0).kn100);
+    TEST_ASSERT_EQUAL_UINT16(600, t.point(4).kn100);
+    // a non monotonic replacement is still rejected
+    TEST_ASSERT_FALSE(t.upsert(6, 7.0));
     TEST_ASSERT_EQUAL_UINT16(320, t.point(2).kn100);
 }
 
@@ -249,6 +284,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_upsert_rejects_non_monotonic);
     RUN_TEST(test_upsert_rejects_out_of_range);
     RUN_TEST(test_upsert_full_table);
+    RUN_TEST(test_upsert_replace_on_full_table);
     RUN_TEST(test_remove);
     RUN_TEST(test_clear);
     RUN_TEST(test_store_load_roundtrip);
