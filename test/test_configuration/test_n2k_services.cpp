@@ -33,12 +33,14 @@ void test_n2k_services_constructor_default_values(void)
     TEST_ASSERT_EQUAL_INT(DEFAULT_USE_TMP, svc.is_use_tmp());
     TEST_ASSERT_EQUAL_INT(DEFAULT_STW_PADDLE, svc.is_use_stw_paddle());
     TEST_ASSERT_EQUAL_INT(DEFAULT_USE_LOGGER, svc.is_use_logger());
+    TEST_ASSERT_EQUAL_INT(DEFAULT_USE_STW_TABLE, svc.is_use_stw_table());
+    TEST_ASSERT_FALSE(svc.is_use_stw_table());
 }
 
 void test_n2k_services_size_returns_correct_value(void)
 {
     N2KServices svc;
-    TEST_ASSERT_EQUAL_INT(11, svc.size()); // MAX_CONF = 11
+    TEST_ASSERT_EQUAL_INT(12, svc.size()); // MAX_CONF = 12
 }
 
 #pragma endregion
@@ -332,9 +334,10 @@ void test_n2k_services_serialize_all_set(void)
     svc.set_use_tmp(true);
     svc.set_use_stw_paddle(true);
     svc.set_use_logger(true);
+    svc.set_use_stw_table(true);
 
     uint16_t serialized = svc.serialize();
-    TEST_ASSERT_EQUAL_HEX16(0x07FF, serialized); // bits 0-10 set = 11 services
+    TEST_ASSERT_EQUAL_HEX16(0x0FFF, serialized); // bits 0-11 set = 12 services
 }
 
 void test_n2k_services_serialize_mixed(void)
@@ -442,12 +445,13 @@ void test_n2k_services_to_string_all_enabled(void)
     svc.set_use_tmp(true);
     svc.set_use_stw_paddle(true);
     svc.set_use_logger(true);
+    svc.set_use_stw_table(true);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_STRING("11111111111", buffer);
+    TEST_ASSERT_EQUAL_STRING("111111111111", buffer);
 }
 
 void test_n2k_services_to_string_all_disabled(void)
@@ -464,12 +468,13 @@ void test_n2k_services_to_string_all_disabled(void)
     svc.set_use_tmp(false);
     svc.set_use_stw_paddle(false);
     svc.set_use_logger(false);
+    svc.set_use_stw_table(false);
 
     char buffer[16] = {0};
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_STRING("00000000000", buffer);
+    TEST_ASSERT_EQUAL_STRING("000000000000", buffer);
 }
 
 void test_n2k_services_to_string_mixed(void)
@@ -495,7 +500,7 @@ void test_n2k_services_to_string_mixed(void)
 
     TEST_ASSERT_TRUE(svc1==svc);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_STRING("11001010101", buffer);
+    TEST_ASSERT_EQUAL_STRING("110010101010", buffer);
 }
 
 void test_n2k_services_to_string_buffer_too_small(void)
@@ -503,7 +508,7 @@ void test_n2k_services_to_string_buffer_too_small(void)
     N2KServices svc;
     svc.set_use_gps(true);
 
-    char buffer[5] = {0}; // Too small for 11 chars + null terminator
+    char buffer[5] = {0}; // Too small for 12 chars + null terminator
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_FALSE(result);
@@ -519,13 +524,13 @@ void test_n2k_services_to_string_null_terminated(void)
     bool result = svc.to_string(buffer, sizeof(buffer));
 
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_CHAR('\0', buffer[11]); // Should be null terminated at position 11
+    TEST_ASSERT_EQUAL_CHAR('\0', buffer[12]); // Should be null terminated at position 12
 }
 
 void test_n2k_services_from_string_all_enabled(void)
 {
     N2KServices svc;
-    const char *input = "11111111111";
+    const char *input = "111111111111";
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
@@ -540,12 +545,13 @@ void test_n2k_services_from_string_all_enabled(void)
     TEST_ASSERT_TRUE(svc.is_use_tmp());
     TEST_ASSERT_TRUE(svc.is_use_stw_paddle());
     TEST_ASSERT_TRUE(svc.is_use_logger());
+    TEST_ASSERT_TRUE(svc.is_use_stw_table());
 }
 
 void test_n2k_services_from_string_all_disabled(void)
 {
     N2KServices svc;
-    const char *input = "00000000000";
+    const char *input = "000000000000";
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
@@ -560,12 +566,13 @@ void test_n2k_services_from_string_all_disabled(void)
     TEST_ASSERT_FALSE(svc.is_use_tmp());
     TEST_ASSERT_FALSE(svc.is_use_stw_paddle());
     TEST_ASSERT_FALSE(svc.is_use_logger());
+    TEST_ASSERT_FALSE(svc.is_use_stw_table());
 }
 
 void test_n2k_services_from_string_mixed(void)
 {
     N2KServices svc;
-    const char *input = "10101010101";
+    const char *input = "101010101010";
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
@@ -580,12 +587,13 @@ void test_n2k_services_from_string_mixed(void)
     TEST_ASSERT_TRUE(svc.is_use_tmp());      // bit 8 = '1'
     TEST_ASSERT_FALSE(svc.is_use_stw_paddle()); // bit 9 = '0'
     TEST_ASSERT_TRUE(svc.is_use_logger());   // bit 10 = '1'
+    TEST_ASSERT_FALSE(svc.is_use_stw_table()); // bit 11 = '0'
 }
 
 void test_n2k_services_from_string_non_binary_chars_treated_as_true(void)
 {
     N2KServices svc;
-    const char *input = "X010X01010X"; // Non-'0' chars treated as true
+    const char *input = "X010X01010X0"; // Non-'0' chars treated as true
     bool result = svc.from_string(input);
 
     TEST_ASSERT_TRUE(result);
@@ -600,6 +608,31 @@ void test_n2k_services_from_string_non_binary_chars_treated_as_true(void)
     TEST_ASSERT_TRUE(svc.is_use_tmp());      // '1'
     TEST_ASSERT_FALSE(svc.is_use_stw_paddle()); // '0'
     TEST_ASSERT_TRUE(svc.is_use_logger());   // 'X' treated as true
+}
+
+void test_n2k_services_from_string_short_input_leaves_stw_table_off(void)
+{
+    N2KServices svc;
+    bool result = svc.from_string("11111111111"); // 11 chars (pre-STW-table clients)
+
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_TRUE(svc.is_use_logger());
+    TEST_ASSERT_FALSE(svc.is_use_stw_table());
+}
+
+void test_n2k_services_set_use_stw_table_true(void)
+{
+    N2KServices svc;
+    svc.set_use_stw_table(true);
+    TEST_ASSERT_TRUE(svc.is_use_stw_table());
+}
+
+void test_n2k_services_set_use_stw_table_false(void)
+{
+    N2KServices svc;
+    svc.set_use_stw_table(true);
+    svc.set_use_stw_table(false);
+    TEST_ASSERT_FALSE(svc.is_use_stw_table());
 }
 
 void test_n2k_services_to_from_string_roundtrip(void)
@@ -685,6 +718,8 @@ void run_N2k_services_tests(void)
     RUN_TEST(test_n2k_services_set_use_stw_paddle_false);
     RUN_TEST(test_n2k_services_set_use_logger_true);
     RUN_TEST(test_n2k_services_set_use_logger_false);
+    RUN_TEST(test_n2k_services_set_use_stw_table_true);
+    RUN_TEST(test_n2k_services_set_use_stw_table_false);
 
     RUN_TEST(test_n2k_services_multiple_services_independent);
     RUN_TEST(test_n2k_services_toggle_multiple_times);
@@ -708,6 +743,7 @@ void run_N2k_services_tests(void)
     RUN_TEST(test_n2k_services_from_string_all_disabled);
     RUN_TEST(test_n2k_services_from_string_mixed);
     RUN_TEST(test_n2k_services_from_string_non_binary_chars_treated_as_true);
+    RUN_TEST(test_n2k_services_from_string_short_input_leaves_stw_table_off);
     RUN_TEST(test_n2k_services_to_from_string_roundtrip);
 
     RUN_TEST(test_n2k_services_assignment_operator);

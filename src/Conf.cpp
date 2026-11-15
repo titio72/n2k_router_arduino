@@ -36,7 +36,8 @@ static const char *CONF_LOG_TAG = "CONF";
 #define SVC_TMP_ID 8
 #define SVC_STW_PADDLE_ID 9
 #define SVC_LOGGER_ID 10
-#define MAX_CONF 11
+#define SVC_STW_TABLE_ID 11
+#define MAX_CONF 12
 
 #define SVC_ACCESSOR(name, id)                   \
     bool N2KServices::is_##name() const          \
@@ -70,7 +71,8 @@ N2KServices::N2KServices()
         DEFAULT_KEEP_N2K_SRC * BIT_MASK(SVC_N2K_SRC_ID) |
         DEFAULT_USE_TMP * BIT_MASK(SVC_TMP_ID) |
         DEFAULT_STW_PADDLE * BIT_MASK(SVC_STW_PADDLE_ID) |
-        DEFAULT_USE_LOGGER * BIT_MASK(SVC_LOGGER_ID);
+        DEFAULT_USE_LOGGER * BIT_MASK(SVC_LOGGER_ID) |
+        DEFAULT_USE_STW_TABLE * BIT_MASK(SVC_STW_TABLE_ID);
 }
 
 uint8_t N2KServices::size() const
@@ -134,6 +136,7 @@ SVC_ACCESSOR(keep_n2k_src, SVC_N2K_SRC_ID)
 SVC_ACCESSOR(use_tmp, SVC_TMP_ID)
 SVC_ACCESSOR(use_stw_paddle, SVC_STW_PADDLE_ID)
 SVC_ACCESSOR(use_logger, SVC_LOGGER_ID)
+SVC_ACCESSOR(use_stw_table, SVC_STW_TABLE_ID)
 
 #pragma endregion
 
@@ -293,6 +296,74 @@ private:
 
 static BlePasskeyPersistenceMemory blePasskeyPersistenceDefault;
 #endif
+
+#ifndef NATIVE
+/** The STW calibration table blob lives in NVS under its own key, independent of the Conf EEPROM layout. */
+class StwCalibrationPersistenceNVS : public StwCalibrationPersistence
+{
+public:
+    virtual bool init_persistence() override
+    {
+        if (!open)
+        {
+            open = prefs.begin(NVS_NAMESPACE, false);
+            Log::tracex(CONF_LOG_TAG, "Init NVS", "Namespace {%s} success {%d}", NVS_NAMESPACE, open ? 1 : 0);
+        }
+        return open;
+    }
+
+    virtual bool save_stw_calibration(const uint8_t *blob, size_t len) override
+    {
+        return open && prefs.putBytes(NVS_KEY, blob, len) == len;
+    }
+
+    virtual size_t load_stw_calibration(uint8_t *blob, size_t cap) override
+    {
+        if (!open)
+            return 0;
+        size_t len = prefs.getBytesLength(NVS_KEY);
+        if (len == 0 || len > cap)
+            return 0;
+        return prefs.getBytes(NVS_KEY, blob, len);
+    }
+
+private:
+    static constexpr const char *NVS_NAMESPACE = "n2krouter";
+    static constexpr const char *NVS_KEY = "stw_cal";
+    Preferences prefs;
+    bool open = false;
+};
+
+static StwCalibrationPersistenceNVS stwCalibrationPersistenceDefault;
+#else
+// desktop builds have no NVS: keep the blob in memory
+class StwCalibrationPersistenceMemory : public StwCalibrationPersistence
+{
+public:
+    virtual bool init_persistence() override { return true; }
+    virtual bool save_stw_calibration(const uint8_t *blob, size_t len) override
+    {
+        if (len > sizeof(data))
+            return false;
+        memcpy(data, blob, len);
+        size = len;
+        return true;
+    }
+    virtual size_t load_stw_calibration(uint8_t *blob, size_t cap) override
+    {
+        if (size == 0 || size > cap)
+            return 0;
+        memcpy(blob, data, size);
+        return size;
+    }
+
+private:
+    uint8_t data[StwCalibration::MAX_BLOB] = {};
+    size_t size = 0;
+};
+
+static StwCalibrationPersistenceMemory stwCalibrationPersistenceDefault;
+#endif
 #pragma endregion
 
 #pragma region EngineHours
@@ -363,7 +434,8 @@ static T to_fixed(double value, double scale)
     return (T)v;
 }
 
-Configuration::Configuration(ConfigurationPersistence *persistence, BlePasskeyPersistence *ble_passkey_persistence)
+Configuration::Configuration(ConfigurationPersistence *persistence, BlePasskeyPersistence *ble_passkey_persistence,
+                             StwCalibrationPersistence *stw_calibration_persistence)
     : initialized(false)
 {
     if (persistence == nullptr)
@@ -372,6 +444,9 @@ Configuration::Configuration(ConfigurationPersistence *persistence, BlePasskeyPe
     if (ble_passkey_persistence == nullptr)
         ble_passkey_persistence = &blePasskeyPersistenceDefault;
     this->ble_passkey_persistence = ble_passkey_persistence;
+    if (stw_calibration_persistence == nullptr)
+        stw_calibration_persistence = &stwCalibrationPersistenceDefault;
+    this->stw_calibration_persistence = stw_calibration_persistence;
 }
 
 int Configuration::init()
@@ -386,6 +461,20 @@ int Configuration::init()
     else
     {
         Log::tracex(CONF_LOG_TAG, "Init", "Failed to init BLE passkey persistence - defaulting to open access");
+    }
+
+    if (stw_calibration_persistence->init_persistence())
+    {
+        uint8_t blob[StwCalibration::MAX_BLOB];
+        size_t len = stw_calibration_persistence->load_stw_calibration(blob, sizeof(blob));
+        if (len > 0 && !stw_table.load(blob, len))
+        {
+            Log::tracex(CONF_LOG_TAG, "Init", "Corrupt STW calibration table - starting empty");
+        }
+    }
+    else
+    {
+        Log::tracex(CONF_LOG_TAG, "Init", "Failed to init STW calibration persistence - table empty");
     }
 
     if (!persistence->init_persistence())
@@ -594,6 +683,54 @@ bool Configuration::save_stw_paddle_adjustment(double a)
     SAVE_CONF
 }
 
+const StwCalibration &Configuration::get_stw_table() const
+{
+    return stw_table;
+}
+
+double Configuration::get_stw_speed(double frequency_hz) const
+{
+    if (conf.services.is_use_stw_table())
+        return stw_table.speed(frequency_hz);
+    return frequency_hz * get_stw_paddle_adjustment() / STW_DEFAULT_HZ_PER_KN;
+}
+
+// Persist the candidate table; the caller assigns it only if this succeeds.
+bool Configuration::persist_stw_table(const StwCalibration &t)
+{
+    uint8_t blob[StwCalibration::MAX_BLOB];
+    size_t len = t.store(blob, sizeof(blob));
+    return len > 0 && stw_calibration_persistence->save_stw_calibration(blob, len);
+}
+
+bool Configuration::save_stw_table_point(double hz, double kn)
+{
+    StwCalibration copy = stw_table;
+    if (!copy.upsert(hz, kn) || !persist_stw_table(copy))
+        return false;
+    stw_table = copy;
+    return true;
+}
+
+bool Configuration::delete_stw_table_point(double hz)
+{
+    StwCalibration copy = stw_table;
+    if (!copy.remove(hz) || !persist_stw_table(copy))
+        return false;
+    stw_table = copy;
+    return true;
+}
+
+bool Configuration::clear_stw_table()
+{
+    StwCalibration copy = stw_table;
+    copy.clear();
+    if (!persist_stw_table(copy))
+        return false;
+    stw_table = copy;
+    return true;
+}
+
 #pragma endregion
 
 class DummyPersistence : public ConfigurationPersistence
@@ -656,9 +793,17 @@ public:
     }
 } dummyBlePasskeyPersistence;
 
+class DummyStwCalibrationPersistence : public StwCalibrationPersistence
+{
+public:
+    virtual bool init_persistence() override { return true; }
+    virtual bool save_stw_calibration(const uint8_t *blob, size_t len) override { return true; }
+    virtual size_t load_stw_calibration(uint8_t *blob, size_t cap) override { return 0; }
+} dummyStwCalibrationPersistence;
+
 #ifdef PIO_UNIT_TESTING
 MockConfiguration::MockConfiguration()
-    : Configuration(&dummyPersistence, &dummyBlePasskeyPersistence)
+    : Configuration(&dummyPersistence, &dummyBlePasskeyPersistence, &dummyStwCalibrationPersistence)
 {
 }
 

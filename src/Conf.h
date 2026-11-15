@@ -4,6 +4,7 @@
 #include "Constants.h"
 #include <stdint.h>
 #include <string>
+#include "StwCalibration.h"
 
 #define CONF_VERSION 0x06
 
@@ -35,6 +36,7 @@ public:
   SVC_ACCESSOR_H(use_tmp)
   SVC_ACCESSOR_H(use_stw_paddle)
   SVC_ACCESSOR_H(use_logger)
+  SVC_ACCESSOR_H(use_stw_table)
 
   uint8_t size() const;
 
@@ -107,6 +109,15 @@ public:
   virtual uint32_t load_ble_passkey() = 0;
 };
 
+class StwCalibrationPersistence
+{
+public:
+  virtual bool init_persistence() = 0;
+  virtual bool save_stw_calibration(const uint8_t *blob, size_t len) = 0;
+  /** Returns the number of bytes loaded, 0 = nothing stored. */
+  virtual size_t load_stw_calibration(uint8_t *blob, size_t cap) = 0;
+};
+
 // Factory-default BLE pairing passkey (Victron-style: same known value on every device,
 // the app should prompt the user to change it the first time they connect).
 const uint32_t BLE_PASSKEY_FACTORY_DEFAULT = 666666;
@@ -114,7 +125,8 @@ const uint32_t BLE_PASSKEY_FACTORY_DEFAULT = 666666;
 class Configuration
 {
 public:
-  Configuration(ConfigurationPersistence *persistence = nullptr, BlePasskeyPersistence *ble_passkey_persistence = nullptr);
+  Configuration(ConfigurationPersistence *persistence = nullptr, BlePasskeyPersistence *ble_passkey_persistence = nullptr,
+                StwCalibrationPersistence *stw_calibration_persistence = nullptr);
   virtual ~Configuration() {}
 
   int init();
@@ -139,6 +151,15 @@ public:
   /** True when the passkey is still the factory default - the UI should prompt to change it. */
   virtual bool is_ble_passkey_default() const;
 
+  /** Hz -> knots calibration table of the STW paddle wheel (used when the use_stw_table service is on). */
+  virtual const StwCalibration &get_stw_table() const;
+
+  /**
+   * Speed through water in knots for a paddle frequency: the calibration table when the
+   * use_stw_table service is on, otherwise frequency * paddle adjustment / STW_DEFAULT_HZ_PER_KN.
+   */
+  virtual double get_stw_speed(double frequency_hz) const;
+
   virtual MeteoSource get_pressure_source() const;
   virtual MeteoSource get_temperature_source() const;
   virtual MeteoSource get_temperature_el_source() const;
@@ -155,12 +176,23 @@ public:
   virtual bool save_battery_capacity(uint16_t c);
   virtual bool save_ble_passkey(uint32_t pk);
 
+  /** Upsert a table point and persist the table. False if invalid or the write fails (table unchanged). */
+  virtual bool save_stw_table_point(double hz, double kn);
+  /** Remove the table point at this frequency and persist. False if absent or the write fails (table unchanged). */
+  virtual bool delete_stw_table_point(double hz);
+  /** Empty the table and persist. False if the write fails (table unchanged). */
+  virtual bool clear_stw_table();
+
 protected:
+  bool persist_stw_table(const StwCalibration &t);
+
   Conf conf;
   bool initialized = false;
   ConfigurationPersistence* persistence;
   BlePasskeyPersistence* ble_passkey_persistence;
   uint32_t ble_passkey = 0;
+  StwCalibrationPersistence* stw_calibration_persistence;
+  StwCalibration stw_table;
 };
 
 class EngineHours
@@ -268,6 +300,24 @@ public:
     return Configuration::save_ble_passkey(pk);
   }
 
+  virtual bool save_stw_table_point(double hz, double kn) override
+  {
+    save_stw_table_point_calls++;
+    return Configuration::save_stw_table_point(hz, kn);
+  }
+
+  virtual bool delete_stw_table_point(double hz) override
+  {
+    delete_stw_table_point_calls++;
+    return Configuration::delete_stw_table_point(hz);
+  }
+
+  virtual bool clear_stw_table() override
+  {
+    clear_stw_table_calls++;
+    return Configuration::clear_stw_table();
+  }
+
   int save_rpm_adjustment_calls = 0;
   int save_device_name_calls = 0;
   int save_services_calls = 0;
@@ -279,6 +329,9 @@ public:
   int save_sea_temp_adjustment_calls = 0;
   int save_stw_paddle_adjustment_calls = 0;
   int save_ble_passkey_calls = 0;
+  int save_stw_table_point_calls = 0;
+  int delete_stw_table_point_calls = 0;
+  int clear_stw_table_calls = 0;
 
   void reset_call_counts()
   {
@@ -293,6 +346,9 @@ public:
     save_sea_temp_adjustment_calls = 0;
     save_stw_paddle_adjustment_calls = 0;
     save_ble_passkey_calls = 0;
+    save_stw_table_point_calls = 0;
+    delete_stw_table_point_calls = 0;
+    clear_stw_table_calls = 0;
   }
 };
 #endif
