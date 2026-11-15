@@ -6,6 +6,7 @@
 #include "Constants.h"
 #include "Conf.h"
 #include "Context.h"
+#include "StwCalibration.h"
 
 static const char* CMD_LOG_TAG = "CMD";
 
@@ -22,6 +23,9 @@ static const char COMMAND_SEA_TEMP_ADJUSTMENT = 'w';
 static const char COMMAND_SEA_TEMP_ALPHA = 'x';
 static const char COMMAND_HEARTBEAT = 'h';
 static const char COMMAND_RESET = 'R';
+static const char COMMAND_STW_TABLE_UPSERT = 'U';
+static const char COMMAND_STW_TABLE_DELETE = 'D';
+static const char COMMAND_STW_TABLE_CLEAR = 'Z';
 
 class CommandHandler
 {
@@ -175,6 +179,43 @@ public:
             if (adj > 0 && adj <= SEA_TEMP_ALPHA_SCALE) // alpha is a smoothing factor in (0, 1]
             {
                 conf.save_sea_temp_alpha(adj / SEA_TEMP_ALPHA_SCALE);
+            }
+        }
+        break;
+        case COMMAND_STW_TABLE_UPSERT: // add or replace a point of the STW calibration table: "hz,kn"
+        {
+            Log::tracex(CMD_LOG_TAG, "Command STW table upsert", "U {%s}", command_value);
+            double hz, kn;
+            if (!parse_stw_point(command_value, hz, kn))
+            {
+                Log::tracex(CMD_LOG_TAG, "Error command STW table upsert - invalid payload");
+            }
+            else if (!conf.save_stw_table_point(hz, kn))
+            {
+                Log::tracex(CMD_LOG_TAG, "Error command STW table upsert - point rejected");
+            }
+        }
+        break;
+        case COMMAND_STW_TABLE_DELETE: // remove a point of the STW calibration table: "hz"
+        {
+            Log::tracex(CMD_LOG_TAG, "Command STW table delete", "D {%s}", command_value);
+            double hz;
+            if (!parse_stw_hz(command_value, hz))
+            {
+                Log::tracex(CMD_LOG_TAG, "Error command STW table delete - invalid payload");
+            }
+            else if (!conf.delete_stw_table_point(hz))
+            {
+                Log::tracex(CMD_LOG_TAG, "Error command STW table delete - point not found or write failed");
+            }
+        }
+        break;
+        case COMMAND_STW_TABLE_CLEAR: // empty the STW calibration table
+        {
+            Log::tracex(CMD_LOG_TAG, "Command STW table clear", "Z");
+            if (!conf.clear_stw_table())
+            {
+                Log::tracex(CMD_LOG_TAG, "Error command STW table clear - write failed");
             }
         }
         break;

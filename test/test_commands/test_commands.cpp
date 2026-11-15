@@ -758,6 +758,108 @@ void test_command_P_ble_passkey_range(void)
     TEST_ASSERT_EQUAL_UINT32(123456, conf.get_ble_passkey());
 }
 
+// ============== Tests: STW calibration table commands U / D / Z ==============
+
+void test_command_U_adds_point(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "9.6,2.0", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_INT(1, conf.save_stw_table_point_calls);
+    TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
+    TEST_ASSERT_EQUAL_INT(960, conf.get_stw_table().point(0).hz100);
+    TEST_ASSERT_EQUAL_INT(200, conf.get_stw_table().point(0).kn100);
+}
+
+void test_command_U_replaces_point(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "9.6,2.0", conf, engineHours, data);
+    CommandHandler::on_command('U', "9.6,2.5", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
+    TEST_ASSERT_EQUAL_INT(960, conf.get_stw_table().point(0).hz100);
+    TEST_ASSERT_EQUAL_INT(250, conf.get_stw_table().point(0).kn100);
+}
+
+void test_command_U_invalid_payloads_ignored(void)
+{
+    MOCK_CONTEXT_TEST
+    const char *payloads[] = {"", "abc", "9.6", "9.6,", "1,2,3", "9.6,2.0x", "nan,1", "9.6,-2", "0,1", "400,1"};
+    for (const char *p : payloads)
+    {
+        CommandHandler::on_command('U', p, conf, engineHours, data);
+        TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, conf.get_stw_table().size(), p);
+    }
+}
+
+void test_command_U_non_monotonic_rejected(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "4,1", conf, engineHours, data);
+    CommandHandler::on_command('U', "8,2", conf, engineHours, data);
+    CommandHandler::on_command('U', "12,3", conf, engineHours, data);
+    CommandHandler::on_command('U', "8,3.5", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_UINT8(3, conf.get_stw_table().size());
+    TEST_ASSERT_EQUAL_INT(200, conf.get_stw_table().point(1).kn100);
+}
+
+void test_command_D_removes_point(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "4,1", conf, engineHours, data);
+    CommandHandler::on_command('U', "8,2", conf, engineHours, data);
+    CommandHandler::on_command('D', "4", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_INT(1, conf.delete_stw_table_point_calls);
+    TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
+    TEST_ASSERT_EQUAL_INT(800, conf.get_stw_table().point(0).hz100);
+}
+
+void test_command_D_unknown_hz_is_harmless(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "4,1", conf, engineHours, data);
+    CommandHandler::on_command('D', "5", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
+    TEST_ASSERT_EQUAL_INT(400, conf.get_stw_table().point(0).hz100);
+}
+
+void test_command_D_invalid_payload(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "4,1", conf, engineHours, data);
+    const char *payloads[] = {"", "abc", "-4", "4x", "nan", "4,1"};
+    for (const char *p : payloads)
+    {
+        CommandHandler::on_command('D', p, conf, engineHours, data);
+        TEST_ASSERT_EQUAL_UINT8_MESSAGE(1, conf.get_stw_table().size(), p);
+    }
+    TEST_ASSERT_EQUAL_INT(0, conf.delete_stw_table_point_calls);
+}
+
+void test_command_Z_clears(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('U', "4,1", conf, engineHours, data);
+    CommandHandler::on_command('U', "8,2", conf, engineHours, data);
+    CommandHandler::on_command('Z', "", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_INT(1, conf.clear_stw_table_calls);
+    TEST_ASSERT_EQUAL_UINT8(0, conf.get_stw_table().size());
+}
+
+void test_command_Z_on_empty_is_harmless(void)
+{
+    MOCK_CONTEXT_TEST
+    CommandHandler::on_command('Z', "", conf, engineHours, data);
+    TEST_ASSERT_EQUAL_UINT8(0, conf.get_stw_table().size());
+}
+
+void test_command_S_toggles_table_flag(void)
+{
+    MOCK_CONTEXT_TEST
+    TEST_ASSERT_FALSE(conf.get_services().is_use_stw_table());
+    CommandHandler::on_command('S', "000000000001", conf, engineHours, data);
+    TEST_ASSERT_TRUE(conf.get_services().is_use_stw_table());
+}
+
 int main(int argc, char **argv)
 {
     Log::enable();
@@ -834,6 +936,18 @@ RUN_TEST(test_command_H_accepts_max_hours);
 
     RUN_TEST(test_command_R_invokes_restart_handler);
     RUN_TEST(test_command_R_without_handler_is_ignored);
+
+    // STW table commands
+    RUN_TEST(test_command_U_adds_point);
+    RUN_TEST(test_command_U_replaces_point);
+    RUN_TEST(test_command_U_invalid_payloads_ignored);
+    RUN_TEST(test_command_U_non_monotonic_rejected);
+    RUN_TEST(test_command_D_removes_point);
+    RUN_TEST(test_command_D_unknown_hz_is_harmless);
+    RUN_TEST(test_command_D_invalid_payload);
+    RUN_TEST(test_command_Z_clears);
+    RUN_TEST(test_command_Z_on_empty_is_harmless);
+    RUN_TEST(test_command_S_toggles_table_flag);
 
     // Unknown Commands Tests
     RUN_TEST(test_command_unknown_command);
