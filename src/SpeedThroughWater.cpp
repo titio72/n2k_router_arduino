@@ -58,7 +58,7 @@ void SpeedThroughWater::loop(unsigned long micros, Context &ctx)
   {
     //Log::tracex("STW", "Reading speed sensor data", "alpha {%.2f} freq {%.2f} cnt {%d}", conf.get_stw_paddle_alpha(), frequency, cnt);
     data.frequency = frequency;
-    data.speed = frequency * conf.get_stw_paddle_adjustment() / 4.8; // 4.8Hz = 1Kn
+    data.speed = conf.get_stw_speed(frequency);
     data.speed_error = STW_ERROR_OK;
     ctx.n2k.sendSTW(data.speed);
   }
