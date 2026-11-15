@@ -108,7 +108,7 @@ static inline T to_int(double value, double factor, T invalid_value)
   return (T)v;
 }
 
-#define BUFFER_LAYOUT_VERSION 11
+#define BUFFER_LAYOUT_VERSION 12
 
 void fill_buffer(ByteBuffer &buffer, Context &ctx)
 {
@@ -188,7 +188,19 @@ void fill_buffer(ByteBuffer &buffer, Context &ctx)
       << _pdop                // 2 87
       << _vdop                // 2 89
       << _tdop                // 2 91
-      << _uere;               // 2 93 plenty of room in 128 byte buffer
+      << _uere;               // 2 93
+  // STW calibration table: count (1) then always STW_TABLE_MAX_POINTS fixed slots
+  // of (hz100, kn100), unused slots zero, so the layout never changes: 94..113
+  const StwCalibration &table = conf.get_stw_table();
+  buffer << table.size();
+  for (uint8_t i = 0; i < STW_TABLE_MAX_POINTS; i++)
+  {
+    const bool used = i < table.size();
+    const uint16_t hz100 = used ? table.point(i).hz100 : 0;
+    const uint16_t kn100 = used ? table.point(i).kn100 : 0;
+    buffer << hz100 << kn100;
+  }
+  // 114 bytes used, plenty of room in 128 byte buffer
 }
 
 void BLEConf::loop(unsigned long ms, Context &ctx)

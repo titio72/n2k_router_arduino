@@ -1179,8 +1179,9 @@ void test_services_buffer_total_length_is_58_bytes() {
     // mem(4) + canbus(1) + canbus_s(4) + canbus_e(4) + sog(2) + cog(2) + rpm(2) +
     // engine_time(4) + timestamp(4) + services(2) + rpmAdj(4) + current(2) + voltage(2) + soc(2) + n2k_source(1) +
     // stw(2) + water_temp(2) + stw_adjustment(4) + stw_alpha(4) + sea_temp_adjustment(4) + sea_temp_alpha(4) +
-    // battery_capacity(2) + ble_passkey_default(1) + magn_deviation(2) + hdop/pdop/vdop/tdop(4x2) + uere(2) = 93
-    TEST_ASSERT_EQUAL_INT(93, buf.length());
+    // battery_capacity(2) + ble_passkey_default(1) + magn_deviation(2) + hdop/pdop/vdop/tdop(4x2) + uere(2) + stw_table_count(1) + 5 slots x (hz100 2 + kn100 2) = 114
+    TEST_ASSERT_EQUAL_INT(114, buf.length());
+    TEST_ASSERT_EQUAL_INT(128, (int)buf.size());
 }
 
 void test_services_buffer_contains_battery_capacity() {
@@ -1222,6 +1223,59 @@ void test_services_buffer_contains_ble_passkey_default_flag() {
     TEST_ASSERT_EQUAL_UINT8(0, buf_data[BUFFER_OFFSET_BLE_PASSKEY_DEFAULT]);
 }
 
+void test_services_buffer_version_is_12() {
+    MOCK_CONTEXT_X
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    ble.loop(10000000, context);
+
+    ByteBuffer buf = ble.get_services_buffer();
+    TEST_ASSERT_EQUAL_UINT8(12, buf.data()[BUFFER_OFFSET_VERSION]);
+}
+
+void test_services_buffer_contains_stw_table() {
+    MOCK_CONTEXT_X
+    TEST_ASSERT_TRUE(mockConf.save_stw_table_point(4.8, 1.0));
+    TEST_ASSERT_TRUE(mockConf.save_stw_table_point(9.6, 2.2));
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    ble.loop(10000000, context);
+
+    ByteBuffer buf = ble.get_services_buffer();
+    uint8_t* d = buf.data();
+    TEST_ASSERT_EQUAL_INT(114, buf.length());
+    TEST_ASSERT_EQUAL_UINT8(2, d[BUFFER_OFFSET_STW_TABLE_COUNT]);
+    uint16_t slot[5][2];
+    memcpy(slot, d + BUFFER_OFFSET_STW_TABLE, sizeof(slot));
+    TEST_ASSERT_EQUAL_UINT16(480, slot[0][0]);
+    TEST_ASSERT_EQUAL_UINT16(100, slot[0][1]);
+    TEST_ASSERT_EQUAL_UINT16(960, slot[1][0]);
+    TEST_ASSERT_EQUAL_UINT16(220, slot[1][1]);
+    for (int i = 2; i < 5; i++)
+    {
+        TEST_ASSERT_EQUAL_UINT16(0, slot[i][0]);
+        TEST_ASSERT_EQUAL_UINT16(0, slot[i][1]);
+    }
+}
+
+void test_services_buffer_stw_table_empty() {
+    MOCK_CONTEXT_X
+
+    BLEConf ble(mock_command_callback, mockBLEInternalImpl);
+    ble.setup(context);
+    ble.enable(context);
+    ble.loop(10000000, context);
+
+    ByteBuffer buf = ble.get_services_buffer();
+    uint8_t* d = buf.data();
+    TEST_ASSERT_EQUAL_UINT8(0, d[BUFFER_OFFSET_STW_TABLE_COUNT]);
+    for (int i = 0; i < 20; i++)
+        TEST_ASSERT_EQUAL_UINT8(0, d[BUFFER_OFFSET_STW_TABLE + i]);
+}
+
 void test_data_characteristic_value() {
     MOCK_CONTEXT_X
     mockConf.save_device_name("Device");
@@ -1257,8 +1311,8 @@ void test_data_characteristic_value() {
     
     ByteBuffer buf = ble.get_services_buffer();
     ByteBuffer char_value = ble.get_field_value_buffer(0);
-    // 93 bytes: same layout as test_services_buffer_total_length_is_58_bytes
-    TEST_ASSERT_EQUAL_INT(93, char_value.length());
+    // 114 bytes: same layout as test_services_buffer_total_length_is_58_bytes
+    TEST_ASSERT_EQUAL_INT(114, char_value.length());
     TEST_ASSERT_TRUE(buf==char_value);
 }
 
@@ -1457,6 +1511,9 @@ RUN_TEST(test_services_buffer_current_saturates);
     RUN_TEST(test_services_buffer_contains_battery_capacity);
     RUN_TEST(test_services_buffer_contains_ble_passkey_default_flag);
     RUN_TEST(test_services_buffer_total_length_is_58_bytes);
+    RUN_TEST(test_services_buffer_version_is_12);
+    RUN_TEST(test_services_buffer_contains_stw_table);
+    RUN_TEST(test_services_buffer_stw_table_empty);
     RUN_TEST(test_services_buffer_resets_on_loop_call);
     RUN_TEST(test_services_buffer_nan_values_become_invalid_sentinel);
     RUN_TEST(test_services_buffer_copy_is_independent);

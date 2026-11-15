@@ -42,6 +42,8 @@
 #define BUFFER_OFFSET_VDOP         87
 #define BUFFER_OFFSET_TDOP         89
 #define BUFFER_OFFSET_UERE         91
+#define BUFFER_OFFSET_STW_TABLE_COUNT 93
+#define BUFFER_OFFSET_STW_TABLE    94  // 5 slots x (uint16 hz100, uint16 kn100), unused slots zero
 
 typedef void (*command_callback)(char command, const char* command_value);
 
