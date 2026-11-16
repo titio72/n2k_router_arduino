@@ -12,3 +12,6 @@ pcb/n2k_meteo_gps_s3_tht/stuff
 n2k_router_arduino.code-workspace
 nmea.log
 .vscode/extensions.json
+pcb/n2k_meteo_gps_s3_v4.0/n2k_meteo_gps_s3.kicad_prl
+pcb/n2k_meteo_gps_s3_v4.0/n2k_meteo_gps_s3-backups
+pcb/n2k_meteo_gps_s3_v4.0/pre_*
