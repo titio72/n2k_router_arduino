@@ -43,7 +43,7 @@
 #define BUFFER_OFFSET_TDOP         89
 #define BUFFER_OFFSET_UERE         91
 #define BUFFER_OFFSET_STW_TABLE_COUNT 93
-#define BUFFER_OFFSET_STW_TABLE    94  // 5 slots x (uint16 hz100, uint16 kn100), unused slots zero
+#define BUFFER_OFFSET_STW_TABLE    94  // 5 slots x (uint16 raw100, uint16 kn100): raw speed and calibrated speed, knots x100, unused slots zero
 
 typedef void (*command_callback)(char command, const char* command_value);
 

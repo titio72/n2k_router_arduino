@@ -55,9 +55,8 @@
 
 #define STW_TABLE_MAX_POINTS 5     // max points in the STW paddle calibration table
 #define STW_TABLE_SCALE 100.0      // table values are stored x100 (uint16)
-#define STW_TABLE_MAX_HZ 300.0     // max frequency accepted in the table (Hz)
-#define STW_TABLE_MAX_KN 50.0      // max speed accepted in the table (kn)
-#define STW_DEFAULT_HZ_PER_KN 4.8  // factor used when the table is empty (Hz per knot)
+#define STW_TABLE_MAX_KN 50.0      // max value accepted in the table, raw and calibrated speed (kn)
+#define STW_DEFAULT_HZ_PER_KN 4.8  // paddle Hz per knot: converts frequency to raw speed (ST810 spec)
 
 #define MAX_RETRY 3 // number of quick retries to start an agent
 #define AGENT_RETRY_COOLDOWN_USEC 30000000UL // then one more attempt every 30 s

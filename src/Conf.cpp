@@ -690,9 +690,10 @@ const StwCalibration &Configuration::get_stw_table() const
 
 double Configuration::get_stw_speed(double frequency_hz) const
 {
+    const double raw_kn = frequency_hz / STW_DEFAULT_HZ_PER_KN;
     if (conf.services.is_use_stw_table())
-        return stw_table.speed(frequency_hz);
-    return frequency_hz * get_stw_paddle_adjustment() / STW_DEFAULT_HZ_PER_KN;
+        return stw_table.speed(raw_kn);
+    return raw_kn * get_stw_paddle_adjustment();
 }
 
 // Persist the candidate table; the caller assigns it only if this succeeds.
@@ -703,19 +704,19 @@ bool Configuration::persist_stw_table(const StwCalibration &t)
     return len > 0 && stw_calibration_persistence->save_stw_calibration(blob, len);
 }
 
-bool Configuration::save_stw_table_point(double hz, double kn)
+bool Configuration::save_stw_table_point(double raw_kn, double kn)
 {
     StwCalibration copy = stw_table;
-    if (!copy.upsert(hz, kn) || !persist_stw_table(copy))
+    if (!copy.upsert(raw_kn, kn) || !persist_stw_table(copy))
         return false;
     stw_table = copy;
     return true;
 }
 
-bool Configuration::delete_stw_table_point(double hz)
+bool Configuration::delete_stw_table_point(double raw_kn)
 {
     StwCalibration copy = stw_table;
-    if (!copy.remove(hz) || !persist_stw_table(copy))
+    if (!copy.remove(raw_kn) || !persist_stw_table(copy))
         return false;
     stw_table = copy;
     return true;

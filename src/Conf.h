@@ -151,12 +151,13 @@ public:
   /** True when the passkey is still the factory default - the UI should prompt to change it. */
   virtual bool is_ble_passkey_default() const;
 
-  /** Hz -> knots calibration table of the STW paddle wheel (used when the use_stw_table service is on). */
+  /** Raw speed -> true speed (knots -> knots) calibration table of the STW paddle wheel (used when the use_stw_table service is on). */
   virtual const StwCalibration &get_stw_table() const;
 
   /**
-   * Speed through water in knots for a paddle frequency: the calibration table when the
-   * use_stw_table service is on, otherwise frequency * paddle adjustment / STW_DEFAULT_HZ_PER_KN.
+   * Speed through water in knots for a paddle frequency. The raw speed is frequency / STW_DEFAULT_HZ_PER_KN;
+   * with the use_stw_table service on it goes through the calibration table (the adjustment is ignored),
+   * otherwise it is multiplied by the paddle adjustment.
    */
   virtual double get_stw_speed(double frequency_hz) const;
 
@@ -177,9 +178,9 @@ public:
   virtual bool save_ble_passkey(uint32_t pk);
 
   /** Upsert a table point and persist the table. False if invalid or the write fails (table unchanged). */
-  virtual bool save_stw_table_point(double hz, double kn);
-  /** Remove the table point at this frequency and persist. False if absent or the write fails (table unchanged). */
-  virtual bool delete_stw_table_point(double hz);
+  virtual bool save_stw_table_point(double raw_kn, double kn);
+  /** Remove the table point at this raw speed and persist. False if absent or the write fails (table unchanged). */
+  virtual bool delete_stw_table_point(double raw_kn);
   /** Empty the table and persist. False if the write fails (table unchanged). */
   virtual bool clear_stw_table();
 
@@ -300,16 +301,16 @@ public:
     return Configuration::save_ble_passkey(pk);
   }
 
-  virtual bool save_stw_table_point(double hz, double kn) override
+  virtual bool save_stw_table_point(double raw_kn, double kn) override
   {
     save_stw_table_point_calls++;
-    return Configuration::save_stw_table_point(hz, kn);
+    return Configuration::save_stw_table_point(raw_kn, kn);
   }
 
-  virtual bool delete_stw_table_point(double hz) override
+  virtual bool delete_stw_table_point(double raw_kn) override
   {
     delete_stw_table_point_calls++;
-    return Configuration::delete_stw_table_point(hz);
+    return Configuration::delete_stw_table_point(raw_kn);
   }
 
   virtual bool clear_stw_table() override

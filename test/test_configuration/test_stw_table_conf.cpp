@@ -60,8 +60,8 @@ void test_get_stw_speed_table_on_ignores_adjustment(void)
 {
     MockConfiguration conf;
     conf.save_stw_paddle_adjustment(1.1);
-    TEST_ASSERT_TRUE(conf.save_stw_table_point(4.8, 1.0));
-    TEST_ASSERT_TRUE(conf.save_stw_table_point(9.6, 2.2));
+    TEST_ASSERT_TRUE(conf.save_stw_table_point(1.0, 1.0));
+    TEST_ASSERT_TRUE(conf.save_stw_table_point(2.0, 2.2));
     enable_table(conf);
     TEST_ASSERT_DOUBLE_WITHIN(0.0001, 1.0, conf.get_stw_speed(4.8));
     TEST_ASSERT_DOUBLE_WITHIN(0.0001, 1.6, conf.get_stw_speed(7.2));
@@ -82,17 +82,17 @@ void test_table_persisted_and_loaded(void)
     {
         Configuration conf(&ok, nullptr, &fake);
         TEST_ASSERT_EQUAL_INT(CONFIG_RES_OK, conf.init());
-        TEST_ASSERT_TRUE(conf.save_stw_table_point(4.8, 1.0));
-        TEST_ASSERT_TRUE(conf.save_stw_table_point(9.6, 2.2));
+        TEST_ASSERT_TRUE(conf.save_stw_table_point(1.0, 1.0));
+        TEST_ASSERT_TRUE(conf.save_stw_table_point(2.0, 2.2));
         TEST_ASSERT_EQUAL_INT(2, fake.saves);
     }
     Configuration conf2(&ok, nullptr, &fake);
     TEST_ASSERT_EQUAL_INT(CONFIG_RES_OK, conf2.init());
     const StwCalibration &t = conf2.get_stw_table();
     TEST_ASSERT_EQUAL_UINT8(2, t.size());
-    TEST_ASSERT_EQUAL_UINT16(480, t.point(0).hz100);
+    TEST_ASSERT_EQUAL_UINT16(100, t.point(0).raw100);
     TEST_ASSERT_EQUAL_UINT16(100, t.point(0).kn100);
-    TEST_ASSERT_EQUAL_UINT16(960, t.point(1).hz100);
+    TEST_ASSERT_EQUAL_UINT16(200, t.point(1).raw100);
     TEST_ASSERT_EQUAL_UINT16(220, t.point(1).kn100);
 }
 
@@ -102,15 +102,15 @@ void test_table_delete_and_clear_persisted(void)
     FakeStwPersistence fake;
     Configuration conf(&ok, nullptr, &fake);
     conf.init();
-    conf.save_stw_table_point(4.8, 1.0);
-    conf.save_stw_table_point(9.6, 2.2);
-    TEST_ASSERT_TRUE(conf.delete_stw_table_point(4.8));
+    conf.save_stw_table_point(1.0, 1.0);
+    conf.save_stw_table_point(2.0, 2.2);
+    TEST_ASSERT_TRUE(conf.delete_stw_table_point(1.0));
     TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
     {
         Configuration conf2(&ok, nullptr, &fake);
         conf2.init();
         TEST_ASSERT_EQUAL_UINT8(1, conf2.get_stw_table().size());
-        TEST_ASSERT_EQUAL_UINT16(960, conf2.get_stw_table().point(0).hz100);
+        TEST_ASSERT_EQUAL_UINT16(200, conf2.get_stw_table().point(0).raw100);
     }
     TEST_ASSERT_TRUE(conf.clear_stw_table());
     TEST_ASSERT_EQUAL_UINT8(0, conf.get_stw_table().size());
@@ -125,15 +125,15 @@ void test_table_write_failure_leaves_table(void)
     FakeStwPersistence fake;
     Configuration conf(&ok, nullptr, &fake);
     conf.init();
-    TEST_ASSERT_TRUE(conf.save_stw_table_point(4.8, 1.0));
-    TEST_ASSERT_TRUE(conf.save_stw_table_point(9.6, 2.2));
+    TEST_ASSERT_TRUE(conf.save_stw_table_point(1.0, 1.0));
+    TEST_ASSERT_TRUE(conf.save_stw_table_point(2.0, 2.2));
 
     fake.save_ok = false;
-    TEST_ASSERT_FALSE(conf.save_stw_table_point(14.4, 3.0));
+    TEST_ASSERT_FALSE(conf.save_stw_table_point(3.0, 3.0));
     TEST_ASSERT_EQUAL_UINT8(2, conf.get_stw_table().size());
-    TEST_ASSERT_FALSE(conf.save_stw_table_point(4.8, 1.1)); // replace existing
+    TEST_ASSERT_FALSE(conf.save_stw_table_point(1.0, 1.1)); // replace existing
     TEST_ASSERT_EQUAL_UINT16(100, conf.get_stw_table().point(0).kn100);
-    TEST_ASSERT_FALSE(conf.delete_stw_table_point(4.8));
+    TEST_ASSERT_FALSE(conf.delete_stw_table_point(1.0));
     TEST_ASSERT_EQUAL_UINT8(2, conf.get_stw_table().size());
     TEST_ASSERT_FALSE(conf.clear_stw_table());
     TEST_ASSERT_EQUAL_UINT8(2, conf.get_stw_table().size());
@@ -145,11 +145,11 @@ void test_invalid_point_not_persisted(void)
     FakeStwPersistence fake;
     Configuration conf(&ok, nullptr, &fake);
     conf.init();
-    TEST_ASSERT_TRUE(conf.save_stw_table_point(4.8, 1.0));
+    TEST_ASSERT_TRUE(conf.save_stw_table_point(1.0, 1.0));
     int saves = fake.saves;
     TEST_ASSERT_FALSE(conf.save_stw_table_point(-1.0, 1.0));
-    TEST_ASSERT_FALSE(conf.save_stw_table_point(9.6, 0.5)); // not monotonic
-    TEST_ASSERT_FALSE(conf.save_stw_table_point(9999.0, 1.0));
+    TEST_ASSERT_FALSE(conf.save_stw_table_point(2.0, 0.5)); // not monotonic
+    TEST_ASSERT_FALSE(conf.save_stw_table_point(50.01, 1.0));
     TEST_ASSERT_EQUAL_INT(saves, fake.saves);
     TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
 }
@@ -160,9 +160,9 @@ void test_delete_missing_point_not_persisted(void)
     FakeStwPersistence fake;
     Configuration conf(&ok, nullptr, &fake);
     conf.init();
-    conf.save_stw_table_point(4.8, 1.0);
+    conf.save_stw_table_point(1.0, 1.0);
     int saves = fake.saves;
-    TEST_ASSERT_FALSE(conf.delete_stw_table_point(7.7));
+    TEST_ASSERT_FALSE(conf.delete_stw_table_point(1.6));
     TEST_ASSERT_EQUAL_INT(saves, fake.saves);
 }
 
@@ -189,9 +189,9 @@ void test_table_persistence_init_failure_is_non_fatal(void)
 void test_mock_configuration_counts_table_calls(void)
 {
     MockConfiguration conf;
-    conf.save_stw_table_point(4.8, 1.0);
-    conf.save_stw_table_point(9.6, 2.2);
-    conf.delete_stw_table_point(4.8);
+    conf.save_stw_table_point(1.0, 1.0);
+    conf.save_stw_table_point(2.0, 2.2);
+    conf.delete_stw_table_point(1.0);
     conf.clear_stw_table();
     TEST_ASSERT_EQUAL_INT(2, conf.save_stw_table_point_calls);
     TEST_ASSERT_EQUAL_INT(1, conf.delete_stw_table_point_calls);

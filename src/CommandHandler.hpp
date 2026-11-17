@@ -182,29 +182,29 @@ public:
             }
         }
         break;
-        case COMMAND_STW_TABLE_UPSERT: // add or replace a point of the STW calibration table: "hz,kn"
+        case COMMAND_STW_TABLE_UPSERT: // add or replace a point of the STW calibration table: "raw_kn,kn"
         {
             Log::tracex(CMD_LOG_TAG, "Command STW table upsert", "U {%s}", command_value);
-            double hz, kn;
-            if (!parse_stw_point(command_value, hz, kn))
+            double raw_kn, kn;
+            if (!parse_stw_point(command_value, raw_kn, kn))
             {
                 Log::tracex(CMD_LOG_TAG, "Error command STW table upsert - invalid payload");
             }
-            else if (!conf.save_stw_table_point(hz, kn))
+            else if (!conf.save_stw_table_point(raw_kn, kn))
             {
                 Log::tracex(CMD_LOG_TAG, "Error command STW table upsert - point rejected");
             }
         }
         break;
-        case COMMAND_STW_TABLE_DELETE: // remove a point of the STW calibration table: "hz"
+        case COMMAND_STW_TABLE_DELETE: // remove a point of the STW calibration table: "raw_kn"
         {
             Log::tracex(CMD_LOG_TAG, "Command STW table delete", "D {%s}", command_value);
-            double hz;
-            if (!parse_stw_hz(command_value, hz))
+            double raw_kn;
+            if (!parse_stw_raw(command_value, raw_kn))
             {
                 Log::tracex(CMD_LOG_TAG, "Error command STW table delete - invalid payload");
             }
-            else if (!conf.delete_stw_table_point(hz))
+            else if (!conf.delete_stw_table_point(raw_kn))
             {
                 Log::tracex(CMD_LOG_TAG, "Error command STW table delete - point not found or write failed");
             }

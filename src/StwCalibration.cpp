@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define STW_BLOB_VERSION 1
+#define STW_BLOB_VERSION 2 // v1 stored Hz -> kn points: rejected on load, the table reads as empty
 
 static bool to_x100(double v, double max, uint16_t &out)
 {
@@ -15,35 +15,35 @@ static bool to_x100(double v, double max, uint16_t &out)
     return true;
 }
 
-/** points sorted by hz100 (strictly), all values in range, kn100 strictly increasing. */
+/** points sorted by raw100 (strictly), all values in range, kn100 strictly increasing. */
 static bool valid_points(const StwPoint *p, uint8_t n)
 {
     if (n > STW_TABLE_MAX_POINTS)
         return false;
     for (uint8_t i = 0; i < n; i++)
     {
-        if (p[i].hz100 == 0 || p[i].kn100 == 0 ||
-            p[i].hz100 > (uint16_t)(STW_TABLE_MAX_HZ * STW_TABLE_SCALE) ||
+        if (p[i].raw100 == 0 || p[i].kn100 == 0 ||
+            p[i].raw100 > (uint16_t)(STW_TABLE_MAX_KN * STW_TABLE_SCALE) ||
             p[i].kn100 > (uint16_t)(STW_TABLE_MAX_KN * STW_TABLE_SCALE))
             return false;
-        if (i > 0 && (p[i].hz100 <= p[i - 1].hz100 || p[i].kn100 <= p[i - 1].kn100))
+        if (i > 0 && (p[i].raw100 <= p[i - 1].raw100 || p[i].kn100 <= p[i - 1].kn100))
             return false;
     }
     return true;
 }
 
-bool StwCalibration::upsert(double hz, double kn)
+bool StwCalibration::upsert(double raw_kn, double kn)
 {
     uint16_t h, k;
-    if (!to_x100(hz, STW_TABLE_MAX_HZ, h) || !to_x100(kn, STW_TABLE_MAX_KN, k))
+    if (!to_x100(raw_kn, STW_TABLE_MAX_KN, h) || !to_x100(kn, STW_TABLE_MAX_KN, k))
         return false;
 
-    // a full table only accepts a replacement of an existing frequency
+    // a full table only accepts a replacement of an existing raw speed
     if (count >= STW_TABLE_MAX_POINTS)
     {
         bool exists = false;
         for (uint8_t i = 0; i < count; i++)
-            exists = exists || points[i].hz100 == h;
+            exists = exists || points[i].raw100 == h;
         if (!exists)
             return false;
     }
@@ -53,11 +53,11 @@ bool StwCalibration::upsert(double hz, double kn)
     bool placed = false;
     for (uint8_t i = 0; i < count; i++)
     {
-        if (!placed && points[i].hz100 >= h)
+        if (!placed && points[i].raw100 >= h)
         {
             cand[n++] = {h, k};
             placed = true;
-            if (points[i].hz100 == h)
+            if (points[i].raw100 == h)
                 continue; // replace
         }
         cand[n++] = points[i];
@@ -72,14 +72,14 @@ bool StwCalibration::upsert(double hz, double kn)
     return true;
 }
 
-bool StwCalibration::remove(double hz)
+bool StwCalibration::remove(double raw_kn)
 {
-    if (!isfinite(hz))
+    if (!isfinite(raw_kn))
         return false;
-    double r = round(hz * STW_TABLE_SCALE);
+    double r = round(raw_kn * STW_TABLE_SCALE);
     for (uint8_t i = 0; i < count; i++)
     {
-        if ((double)points[i].hz100 == r)
+        if ((double)points[i].raw100 == r)
         {
             for (uint8_t j = i + 1; j < count; j++)
                 points[j - 1] = points[j];
@@ -90,20 +90,20 @@ bool StwCalibration::remove(double hz)
     return false;
 }
 
-double StwCalibration::speed(double f) const
+double StwCalibration::speed(double f) const // f: raw speed (kn)
 {
     if (isnan(f))
         return f;
     if (f <= 0.0)
         return 0.0;
     if (count == 0)
-        return f / STW_DEFAULT_HZ_PER_KN;
+        return f; // empty table: identity
 
     double x0 = 0.0, y0 = 0.0;
     double x1 = 0.0, y1 = 0.0;
     for (uint8_t i = 0; i < count; i++)
     {
-        x1 = points[i].hz100 / STW_TABLE_SCALE;
+        x1 = points[i].raw100 / STW_TABLE_SCALE;
         y1 = points[i].kn100 / STW_TABLE_SCALE;
         if (f == x1)
             return y1;
@@ -115,7 +115,7 @@ double StwCalibration::speed(double f) const
     // above the last point: extend the last segment (from origin when there is only one point)
     if (count >= 2)
     {
-        x0 = points[count - 2].hz100 / STW_TABLE_SCALE;
+        x0 = points[count - 2].raw100 / STW_TABLE_SCALE;
         y0 = points[count - 2].kn100 / STW_TABLE_SCALE;
     }
     else
@@ -138,7 +138,7 @@ bool StwCalibration::load(const uint8_t *blob, size_t len)
     for (uint8_t i = 0; i < n; i++)
     {
         const uint8_t *b = blob + 2 + 4 * i;
-        p[i].hz100 = (uint16_t)(b[0] | (b[1] << 8));
+        p[i].raw100 = (uint16_t)(b[0] | (b[1] << 8));
         p[i].kn100 = (uint16_t)(b[2] | (b[3] << 8));
     }
     if (!valid_points(p, n))
@@ -159,8 +159,8 @@ size_t StwCalibration::store(uint8_t *blob, size_t cap) const
     for (uint8_t i = 0; i < count; i++)
     {
         uint8_t *b = blob + 2 + 4 * i;
-        b[0] = points[i].hz100 & 0xFF;
-        b[1] = points[i].hz100 >> 8;
+        b[0] = points[i].raw100 & 0xFF;
+        b[1] = points[i].raw100 >> 8;
         b[2] = points[i].kn100 & 0xFF;
         b[3] = points[i].kn100 >> 8;
     }
@@ -180,17 +180,17 @@ static bool parse_number(const char *s, double &v, const char *&end)
     return true;
 }
 
-bool parse_stw_hz(const char *s, double &hz)
+bool parse_stw_raw(const char *s, double &raw_kn)
 {
     double v;
     const char *end;
     if (!parse_number(s, v, end) || *end != '\0')
         return false;
-    hz = v;
+    raw_kn = v;
     return true;
 }
 
-bool parse_stw_point(const char *s, double &hz, double &kn)
+bool parse_stw_point(const char *s, double &raw_kn, double &kn)
 {
     double h, k;
     const char *end;
@@ -198,7 +198,7 @@ bool parse_stw_point(const char *s, double &hz, double &kn)
         return false;
     if (!parse_number(end + 1, k, end) || *end != '\0')
         return false;
-    hz = h;
+    raw_kn = h;
     kn = k;
     return true;
 }

@@ -85,3 +85,11 @@ bad payloads), `test_bleconf` (layout v12), `test_n2k_router`/agents as needed f
 
 Exact text parsing helper for `hz,kn` (strict: reject trailing junk, NaN, negatives), log wording, mock class shape
 (follow `MockConfiguration` conventions), whether the blob helper is a free function or a method.
+
+## Revision 2026-11-17: table is knots -> knots
+
+The table no longer stores Hz -> kn. Points are `raw_kn -> kn`, where raw speed = Hz / 4.8 (`STW_DEFAULT_HZ_PER_KN`),
+so a calibration is independent of the paddle's nominal factor and reads as "when the log says X, the true speed is Y".
+Both columns are in (0, 50] kn. Interpolation, monotonicity, replace/full-table rules and the on/off switch are
+unchanged; an empty table is now the identity (calibrated = raw, same result as before: Hz / 4.8). Commands `U raw,kn`,
+`D raw`; BLE blob layout 13 (same size and offsets, slot meaning changed); NVS blob version 2 (version 1 reads as empty).

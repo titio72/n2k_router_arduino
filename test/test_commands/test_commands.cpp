@@ -766,7 +766,7 @@ void test_command_U_adds_point(void)
     CommandHandler::on_command('U', "9.6,2.0", conf, engineHours, data);
     TEST_ASSERT_EQUAL_INT(1, conf.save_stw_table_point_calls);
     TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
-    TEST_ASSERT_EQUAL_INT(960, conf.get_stw_table().point(0).hz100);
+    TEST_ASSERT_EQUAL_INT(960, conf.get_stw_table().point(0).raw100);
     TEST_ASSERT_EQUAL_INT(200, conf.get_stw_table().point(0).kn100);
 }
 
@@ -776,7 +776,7 @@ void test_command_U_replaces_point(void)
     CommandHandler::on_command('U', "9.6,2.0", conf, engineHours, data);
     CommandHandler::on_command('U', "9.6,2.5", conf, engineHours, data);
     TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
-    TEST_ASSERT_EQUAL_INT(960, conf.get_stw_table().point(0).hz100);
+    TEST_ASSERT_EQUAL_INT(960, conf.get_stw_table().point(0).raw100);
     TEST_ASSERT_EQUAL_INT(250, conf.get_stw_table().point(0).kn100);
 }
 
@@ -810,16 +810,16 @@ void test_command_D_removes_point(void)
     CommandHandler::on_command('D', "4", conf, engineHours, data);
     TEST_ASSERT_EQUAL_INT(1, conf.delete_stw_table_point_calls);
     TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
-    TEST_ASSERT_EQUAL_INT(800, conf.get_stw_table().point(0).hz100);
+    TEST_ASSERT_EQUAL_INT(800, conf.get_stw_table().point(0).raw100);
 }
 
-void test_command_D_unknown_hz_is_harmless(void)
+void test_command_D_unknown_raw_is_harmless(void)
 {
     MOCK_CONTEXT_TEST
     CommandHandler::on_command('U', "4,1", conf, engineHours, data);
     CommandHandler::on_command('D', "5", conf, engineHours, data);
     TEST_ASSERT_EQUAL_UINT8(1, conf.get_stw_table().size());
-    TEST_ASSERT_EQUAL_INT(400, conf.get_stw_table().point(0).hz100);
+    TEST_ASSERT_EQUAL_INT(400, conf.get_stw_table().point(0).raw100);
 }
 
 void test_command_D_invalid_payload(void)
@@ -943,7 +943,7 @@ RUN_TEST(test_command_H_accepts_max_hours);
     RUN_TEST(test_command_U_invalid_payloads_ignored);
     RUN_TEST(test_command_U_non_monotonic_rejected);
     RUN_TEST(test_command_D_removes_point);
-    RUN_TEST(test_command_D_unknown_hz_is_harmless);
+    RUN_TEST(test_command_D_unknown_raw_is_harmless);
     RUN_TEST(test_command_D_invalid_payload);
     RUN_TEST(test_command_Z_clears);
     RUN_TEST(test_command_Z_on_empty_is_harmless);
