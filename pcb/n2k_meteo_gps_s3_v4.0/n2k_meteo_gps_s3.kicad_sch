@@ -5,199 +5,6 @@
 	(uuid "3b67725e-3e35-4b17-ad45-e2c8b25a7b25")
 	(paper "A4")
 	(lib_symbols
-	(symbol "Power_Management:LM66100DCK"
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "U"
-				(at -5.08 6.096 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left)
-				)
-			)
-			(property "Value" "LM66100DCK"
-				(at 0.254 -6.35 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left)
-				)
-			)
-			(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
-				(at 0 1.27 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm66100.pdf"
-				(at 0 -1.016 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Ideal Diode With Input Polarity Protection 1.5 - 5.5V  Input Voltage, 1.5A Output Current, Ron 141 mOhm, SC-70-6"
-				(at 0 -18.034 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_keywords" "Texas Instruments"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_fp_filters" "*SC?70*"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "LM66100DCK_0_1"
-				(rectangle
-					(start -5.08 5.08)
-					(end 5.08 -5.08)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type background)
-					)
-				)
-			)
-			(symbol "LM66100DCK_1_1"
-				(pin power_in line
-					(at -7.62 2.54 0)
-					(length 2.54)
-					(name "VIN"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -7.62 -2.54 0)
-					(length 2.54)
-					(name "~{CE}"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin no_connect line
-					(at 0 5.08 270)
-					(length 2.54)
-					(hide yes)
-					(name "NC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at 0 -7.62 90)
-					(length 2.54)
-					(name "GND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_out line
-					(at 7.62 2.54 180)
-					(length 2.54)
-					(name "VOUT"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "6"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin open_collector line
-					(at 7.62 -2.54 180)
-					(length 2.54)
-					(name "ST"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "5"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "1267:1267"
 			(pin_names
 				(offset 1.016)
@@ -3137,6 +2944,199 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Power_Management:LM66100DCK"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at -5.08 6.096 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "LM66100DCK"
+				(at 0.254 -6.35 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
+				(at 0 1.27 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm66100.pdf"
+				(at 0 -1.016 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Ideal Diode With Input Polarity Protection 1.5 - 5.5V  Input Voltage, 1.5A Output Current, Ron 141 mOhm, SC-70-6"
+				(at 0 -18.034 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "Texas Instruments"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "*SC?70*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "LM66100DCK_0_1"
+				(rectangle
+					(start -5.08 5.08)
+					(end 5.08 -5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "LM66100DCK_1_1"
+				(pin power_in line
+					(at -7.62 2.54 0)
+					(length 2.54)
+					(name "VIN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -7.62 -2.54 0)
+					(length 2.54)
+					(name "~{CE}"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin no_connect line
+					(at 0 5.08 270)
+					(length 2.54)
+					(hide yes)
+					(name "NC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -7.62 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_out line
+					(at 7.62 2.54 180)
+					(length 2.54)
+					(name "VOUT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin open_collector line
+					(at 7.62 -2.54 180)
+					(length 2.54)
+					(name "ST"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Power_Protection:NUP2105L"
 			(pin_names
 				(hide yes)
@@ -4189,10 +4189,10 @@
 		(uuid "2cbe6bb6-8361-4f9b-8f1d-f9da6d6bc932")
 	)
 	(junction
-		(at 86.36 31.75)
+		(at 149.86 30.48)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "2d93d08e-17ef-4f0a-826a-5469f0e8813e")
+		(uuid "35f27a7e-33b3-4aad-8562-5cd7064eb5b7")
 	)
 	(junction
 		(at 119.38 119.38)
@@ -4303,6 +4303,12 @@
 		(uuid "cbe605d8-c46d-4313-a7df-1a828b1b47bd")
 	)
 	(junction
+		(at 116.84 63.5)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "ccd196c5-d7d9-4d98-865b-85b2e30a29c9")
+	)
+	(junction
 		(at 144.78 82.55)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -4382,7 +4388,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 91.44) (xy 114.3 91.44)
+			(xy 111.76 91.44) (xy 116.84 91.44)
 		)
 		(stroke
 			(width 0)
@@ -4489,16 +4495,6 @@
 			(type default)
 		)
 		(uuid "103d0776-74cd-4c9a-9551-9d7290cb9e26")
-	)
-	(wire
-		(pts
-			(xy 86.36 31.75) (xy 86.36 27.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "10ef0215-ce41-4586-8b44-be2fff21362c")
 	)
 	(wire
 		(pts
@@ -4612,6 +4608,16 @@
 	)
 	(wire
 		(pts
+			(xy 116.84 63.5) (xy 121.92 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1d4f7254-762e-4484-a458-b1bb8520ec33")
+	)
+	(wire
+		(pts
 			(xy 144.78 55.88) (xy 153.67 55.88)
 		)
 		(stroke
@@ -4619,6 +4625,16 @@
 			(type default)
 		)
 		(uuid "1ea05523-31cb-48c5-83e3-b227df855042")
+	)
+	(wire
+		(pts
+			(xy 81.28 55.88) (xy 83.82 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1f1c551d-0bd0-4391-b874-22aaecc7be65")
 	)
 	(wire
 		(pts
@@ -4732,7 +4748,7 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 22.86) (xy 166.37 22.86)
+			(xy 179.07 22.86) (xy 166.37 22.86)
 		)
 		(stroke
 			(width 0)
@@ -4912,16 +4928,6 @@
 	)
 	(wire
 		(pts
-			(xy 121.92 22.86) (xy 121.92 30.48)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "48952be1-8910-452f-8c0d-c10b72d3d7fb")
-	)
-	(wire
-		(pts
 			(xy 130.81 48.26) (xy 153.67 48.26)
 		)
 		(stroke
@@ -4939,6 +4945,16 @@
 			(type default)
 		)
 		(uuid "4a96b184-9a25-4fec-8b93-806a772d2410")
+	)
+	(wire
+		(pts
+			(xy 116.84 91.44) (xy 116.84 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4accedf4-7b5e-48f1-9898-d6934519c2b5")
 	)
 	(wire
 		(pts
@@ -5102,6 +5118,16 @@
 	)
 	(wire
 		(pts
+			(xy 116.84 63.5) (xy 114.3 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "64a037bd-47bd-4a50-815f-2c1d1e806960")
+	)
+	(wire
+		(pts
 			(xy 196.85 63.5) (xy 196.85 68.58)
 		)
 		(stroke
@@ -5229,6 +5255,16 @@
 			(type default)
 		)
 		(uuid "76045251-516a-4d78-9f0f-9c865ee5252c")
+	)
+	(wire
+		(pts
+			(xy 60.96 55.88) (xy 66.04 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "774217aa-9cba-4393-af8d-591dd1defbda")
 	)
 	(wire
 		(pts
@@ -5682,6 +5718,16 @@
 	)
 	(wire
 		(pts
+			(xy 83.82 63.5) (xy 83.82 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c0a378db-9fa1-4b57-b169-efdec480e82b")
+	)
+	(wire
+		(pts
 			(xy 34.29 88.9) (xy 34.29 96.52)
 		)
 		(stroke
@@ -5692,7 +5738,7 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 25.4) (xy 157.48 22.86)
+			(xy 179.07 25.4) (xy 179.07 22.86)
 		)
 		(stroke
 			(width 0)
@@ -5822,6 +5868,16 @@
 	)
 	(wire
 		(pts
+			(xy 157.48 38.1) (xy 157.48 39.37)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dcc7fcc2-99df-493d-bb10-715a7689720d")
+	)
+	(wire
+		(pts
 			(xy 119.38 87.63) (xy 119.38 93.98)
 		)
 		(stroke
@@ -5829,6 +5885,16 @@
 			(type default)
 		)
 		(uuid "dff35330-f41e-49fb-ae4c-854250f11e0f")
+	)
+	(wire
+		(pts
+			(xy 149.86 30.48) (xy 157.48 30.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e234ec62-5cf5-47e7-b05b-9e66b1356ce4")
 	)
 	(wire
 		(pts
@@ -5952,6 +6018,16 @@
 	)
 	(wire
 		(pts
+			(xy 121.92 30.48) (xy 134.62 30.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f7c324cc-99d5-4cd5-b84f-fcee189fc771")
+	)
+	(wire
+		(pts
 			(xy 52.07 76.2) (xy 55.88 76.2)
 		)
 		(stroke
@@ -5979,6 +6055,36 @@
 			(type default)
 		)
 		(uuid "f9fcda3e-d6f4-492a-8c61-e232b855fa67")
+	)
+	(label "5V_REG"
+		(at 60.96 55.88 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "3bfde2d4-8e78-4c29-a544-c8891444814e")
+	)
+	(label "5V_REG"
+		(at 76.2 31.75 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "483ad2ae-cdfc-4fd6-bffb-035900295c60")
+	)
+	(label "3V3_TSR"
+		(at 124.46 30.48 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "d0a20645-5afb-435d-8d24-faf3be024018")
 	)
 	(symbol
 		(lib_id "power:GND")
@@ -6315,6 +6421,75 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C")
+		(at 121.92 67.31 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "060ee223-f9f6-4486-9076-85e319bb9e06")
+		(property "Reference" "C10"
+			(at 125.73 66.0401 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1uF"
+			(at 125.73 68.5801 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 122.8852 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 121.92 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 121.92 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "7eb47114-eeff-4d62-afef-7506ebf5ce78")
+		)
+		(pin "1"
+			(uuid "7c732426-f507-4250-9e87-bf1f2328f5ad")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "C10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+3.3V")
 		(at 20.32 161.29 0)
 		(unit 1)
@@ -6445,6 +6620,72 @@
 			(project "n2k_meteo_gps"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "R8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3.3V")
+		(at 134.62 35.56 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "0ff0b6ed-4c80-4012-844b-d1a471595aa3")
+		(property "Reference" "#PWR0306"
+			(at 134.62 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 134.62 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 134.62 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 134.62 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 134.62 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "003d5f77-7bbb-4efe-a81d-4443c6291dd4")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0306")
 					(unit 1)
 				)
 			)
@@ -7233,72 +7474,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:+5V")
-		(at 86.36 27.94 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "33fd5966-46eb-4b5e-9cec-645ea0c2ccf8")
-		(property "Reference" "#PWR014"
-			(at 86.36 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+5V"
-			(at 86.36 22.86 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 86.36 27.94 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 86.36 27.94 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 86.36 27.94 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "995061b0-d9bd-4f06-ba14-b637d2481256")
-		)
-		(instances
-			(project "n2k_meteo_gps"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "#PWR014")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Device:R")
 		(at 30.48 175.26 270)
 		(unit 1)
@@ -7699,6 +7874,72 @@
 			(project "n2k_meteo_gps"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "#PWR010")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+5V")
+		(at 81.28 55.88 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "455ad8c7-be90-4796-acb0-f0098f069c17")
+		(property "Reference" "#PWR0304"
+			(at 81.28 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5V"
+			(at 81.28 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 81.28 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 81.28 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 81.28 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "6ecdae0e-5efc-4a6a-9515-99433680e655")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0304")
 					(unit 1)
 				)
 			)
@@ -8164,6 +8405,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 142.24 40.64 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "573cccfd-932d-4c68-a4d9-664fe1d6c2f9")
+		(property "Reference" "#PWR0308"
+			(at 142.24 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 142.24 45.034 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 142.24 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 142.24 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 142.24 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "2478838f-cd49-48f2-ae62-a07afe48c399")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0308")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Diode:1N4148")
 		(at 120.65 165.1 270)
 		(unit 1)
@@ -8341,6 +8648,75 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C")
+		(at 83.82 59.69 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "5ab5a1c7-3125-4c98-9fc9-783bb533d9b5")
+		(property "Reference" "C11"
+			(at 87.63 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10uF"
+			(at 87.63 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+			(at 84.785 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 83.82 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 83.82 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "613cd81c-899c-40a9-af7f-f2a790cbe3dc")
+		)
+		(pin "1"
+			(uuid "c6932b7b-bd22-4cce-aab0-d64ef85c6bc2")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "C11")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "1267:1267")
 		(at 157.48 173.99 0)
 		(unit 1)
@@ -8453,6 +8829,138 @@
 			(project "n2k_meteo_gps_s3"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "J_ALT_G1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 121.92 71.12 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "66cb29ca-bc21-4a5b-b342-c2b3a958d7e6")
+		(property "Reference" "#PWR0204"
+			(at 121.92 77.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 121.92 75.5142 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 121.92 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 121.92 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 121.92 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8842c1be-4033-4ea9-ad73-3f42ffa0047b")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0204")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 81.28 60.96 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "685893e4-0532-4d6a-a284-b18e0650eff0")
+		(property "Reference" "#PWR0302"
+			(at 81.28 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 81.28 65.354 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 81.28 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 81.28 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 81.28 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "467ba079-6dfa-4aa2-b8b4-4d5d6ec2bbd2")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0302")
 					(unit 1)
 				)
 			)
@@ -8591,6 +9099,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 149.86 35.56 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "761bf4f8-a226-4b52-9788-adca7098c4a6")
+		(property "Reference" "#PWR0307"
+			(at 149.86 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 149.86 39.954 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 149.86 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 149.86 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 149.86 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "0e927305-35d2-47b2-bd38-3829597a48b5")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0307")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector_Generic:Conn_01x04")
 		(at 153.67 106.68 0)
 		(mirror x)
@@ -8661,6 +9235,72 @@
 			(project "n2k_meteo_gps"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "J_I2C1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 73.66 66.04 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "7a1b2438-4a1c-4dd9-8d04-1f3fd40fe7a8")
+		(property "Reference" "#PWR0303"
+			(at 73.66 72.39 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 73.66 70.434 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 73.66 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 73.66 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 73.66 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c448be8b-25bb-4983-9bcb-c4ff53dde156")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0303")
 					(unit 1)
 				)
 			)
@@ -9098,6 +9738,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 106.68 73.66 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "84549fa7-aed5-4004-9d0e-a73bdc635b27")
+		(property "Reference" "#PWR0203"
+			(at 106.68 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 106.68 78.0542 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 106.68 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 106.68 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 106.68 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "500a46c3-dc43-41ad-ad02-b44ecbf7b29a")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0203")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "1267:1267")
 		(at 50.8 166.37 0)
 		(unit 1)
@@ -9217,7 +9923,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 157.48 29.21 0)
+		(at 179.07 29.21 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -9226,7 +9932,7 @@
 		(fields_autoplaced yes)
 		(uuid "8cbd5c86-6d91-4db1-ab32-518e8de44739")
 		(property "Reference" "C3"
-			(at 161.29 27.9399 0)
+			(at 182.88 27.9399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9235,7 +9941,7 @@
 			)
 		)
 		(property "Value" "100nF"
-			(at 161.29 30.4799 0)
+			(at 182.88 30.4799 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9244,7 +9950,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
-			(at 158.4452 33.02 0)
+			(at 180.0352 33.02 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9253,7 +9959,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 157.48 29.21 0)
+			(at 179.07 29.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9262,7 +9968,7 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 157.48 29.21 0)
+			(at 179.07 29.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9280,6 +9986,72 @@
 			(project "n2k_meteo_gps_s3"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "C3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 83.82 66.04 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "92b96b48-2d93-41d7-a211-a79639ffc641")
+		(property "Reference" "#PWR0305"
+			(at 83.82 72.39 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 83.82 70.434 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 83.82 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 83.82 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 83.82 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "2f6acf72-4422-45ce-bda9-127fa50cafd3")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0305")
 					(unit 1)
 				)
 			)
@@ -10018,72 +10790,6 @@
 	)
 	(symbol
 		(lib_id "power:+3.3V")
-		(at 121.92 22.86 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a94156c8-03ae-4d84-999a-b9a59a4a9af8")
-		(property "Reference" "#PWR026"
-			(at 121.92 26.67 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+3.3V"
-			(at 121.92 17.78 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 121.92 22.86 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 121.92 22.86 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 121.92 22.86 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "cbcf0dc4-41e0-42e5-93d5-1b51f81ad616")
-		)
-		(instances
-			(project "n2k_meteo_gps"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "#PWR026")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+3.3V")
 		(at 144.78 45.72 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -10274,6 +10980,96 @@
 			(project "n2k_meteo_gps_s3"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "#PWR08")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Power_Management:LM66100DCK")
+		(at 142.24 33.02 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "b21ff0e9-5825-4d17-96f3-5cb74aa8fb5e")
+		(property "Reference" "U9"
+			(at 144.78 24.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "LM66100DCK"
+			(at 144.78 26.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
+			(at 142.24 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm66100.pdf"
+			(at 142.24 32.004 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Ideal diode TSR1-2433E (3V3_TSR) -> +3.3V rail (CE tied to VOUT = always-on reverse current blocking; stops the ESP32 LDO back-feeding the TSR)"
+			(at 142.24 15.02 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "LM66100DCKR"
+			(at 142.24 33.02 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "0f930619-18fa-4298-b548-a512541352e0")
+		)
+		(pin "3"
+			(uuid "499db078-198d-49b9-a5e9-d4857054e0bd")
+		)
+		(pin "4"
+			(uuid "04d31426-0ad6-4692-bb0f-e19a2aff73e0")
+		)
+		(pin "2"
+			(uuid "02924e33-b1af-46b7-a8a5-6c51fba67738")
+		)
+		(pin "6"
+			(uuid "15af1bb8-2e37-4c02-9187-d690c2d0957f")
+		)
+		(pin "5"
+			(uuid "3b643802-fed6-42d4-9f13-a3aa933dd95a")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "U9")
 					(unit 1)
 				)
 			)
@@ -10516,6 +11312,97 @@
 		)
 	)
 	(symbol
+		(lib_id "Power_Management:LM66100DCK")
+		(at 106.68 66.04 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c0078a8a-3560-4999-b77c-3c6c7557f804")
+		(property "Reference" "U8"
+			(at 109.22 57.15 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "LM66100DCK"
+			(at 109.22 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
+			(at 106.68 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm66100.pdf"
+			(at 106.68 65.024 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Ideal diode ESP32 5V pin -> +5V rail (CE tied to VOUT = always-on reverse current blocking)"
+			(at 106.68 48.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "LM66100DCKR"
+			(at 106.68 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "caae8991-e84e-4113-995c-a800b2bbf617")
+		)
+		(pin "3"
+			(uuid "9502c489-5e27-4036-972d-9d5ebf2b8934")
+		)
+		(pin "4"
+			(uuid "36adc076-2175-4be8-8b03-5837c37ffd3b")
+		)
+		(pin "2"
+			(uuid "0d8da0a7-e6fc-4650-a268-1fcb0ac071b7")
+		)
+		(pin "6"
+			(uuid "55a47932-4a47-40ec-8992-579540dd0857")
+		)
+		(pin "5"
+			(uuid "0d3c3946-7c77-46c6-8eb7-f27c35f63407")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "U8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+5V")
 		(at 166.37 22.86 0)
 		(unit 1)
@@ -10658,6 +11545,96 @@
 		)
 	)
 	(symbol
+		(lib_id "Power_Management:LM66100DCK")
+		(at 73.66 58.42 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c2b3a6d6-628c-435d-bcdd-51e8d517d9dc")
+		(property "Reference" "U10"
+			(at 76.2 49.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "LM66100DCK"
+			(at 76.2 52.07 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
+			(at 73.66 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm66100.pdf"
+			(at 73.66 57.404 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Ideal diode 7805 (5V_REG) -> +5V rail (CE tied to VOUT = always-on reverse current blocking; stops USB 5V back-feeding the 7805)"
+			(at 73.66 40.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "LM66100DCKR"
+			(at 73.66 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "d9fa9da0-7ee3-4b65-9f75-060415bbf353")
+		)
+		(pin "3"
+			(uuid "80cea93c-100c-42d5-9198-8e3e606c7ce1")
+		)
+		(pin "4"
+			(uuid "fa802223-742e-44a8-9886-bce048b7bc53")
+		)
+		(pin "2"
+			(uuid "93937bf9-2ccb-4427-adf4-a21a77905785")
+		)
+		(pin "6"
+			(uuid "959be368-5c44-4399-aa3a-12ed20ca094f")
+		)
+		(pin "5"
+			(uuid "cdfa073e-53c8-4ac3-8b5a-6b8e54b72e74")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "U10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 236.22 54.61 0)
 		(mirror y)
@@ -10793,6 +11770,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+5V")
+		(at 114.3 68.58 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c5bf160d-cdc0-4b62-b33b-f6c96f971337")
+		(property "Reference" "#PWR0201"
+			(at 114.3 72.39 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5V"
+			(at 114.3 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 114.3 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 114.3 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 114.3 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e70eefc0-2e7c-4a7a-8f99-4d70be580d3e")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0201")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:LED")
 		(at 53.34 111.76 0)
 		(mirror x)
@@ -10921,6 +11964,75 @@
 			(project "n2k_meteo_gps_s3"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "#PWR027")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
+		(at 157.48 34.29 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "cd32efb9-f30e-4975-a313-a6c92b930e78")
+		(property "Reference" "C12"
+			(at 163.83 33.02 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "10uF"
+			(at 165.1 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+			(at 158.445 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 157.48 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 157.48 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "334df8dd-a0b7-4eab-8f5a-2fd436b7658f")
+		)
+		(pin "1"
+			(uuid "b9915295-ebae-4e71-803c-f06916b184de")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "C12")
 					(unit 1)
 				)
 			)
@@ -11252,7 +12364,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 157.48 33.02 0)
+		(at 179.07 33.02 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -11260,7 +12372,7 @@
 		(dnp no)
 		(uuid "dd779c5b-0d47-48ca-a5e8-29240391907a")
 		(property "Reference" "#PWR019"
-			(at 157.48 39.37 0)
+			(at 179.07 39.37 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11269,7 +12381,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 157.607 37.4142 0)
+			(at 179.197 37.4142 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11277,7 +12389,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 157.48 33.02 0)
+			(at 179.07 33.02 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11286,7 +12398,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 157.48 33.02 0)
+			(at 179.07 33.02 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11295,7 +12407,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 157.48 33.02 0)
+			(at 179.07 33.02 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11443,6 +12555,204 @@
 			(project "n2k_meteo_gps"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "R10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+5V")
+		(at 66.04 60.96 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "e6a5c774-89ce-40fa-84b7-ed6a5b014429")
+		(property "Reference" "#PWR0301"
+			(at 66.04 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5V"
+			(at 66.04 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 66.04 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 66.04 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 66.04 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e235cabe-4c49-4176-8b73-ebf43488af75")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0301")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 99.06 68.58 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "ea85e7de-9357-44be-bb81-e78b3086ea2a")
+		(property "Reference" "#PWR0202"
+			(at 99.06 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 99.06 72.9742 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 99.06 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 99.06 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 99.06 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e02617d6-cb18-465e-a672-3427be698ef3")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0202")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 157.48 39.37 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "eddfb871-179a-4c7f-8bed-1aaf0225bbd5")
+		(property "Reference" "#PWR0310"
+			(at 157.48 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 157.48 43.764 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 157.48 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 157.48 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 157.48 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5bee5121-d19e-499e-a732-af958bf640bc")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0310")
 					(unit 1)
 				)
 			)
@@ -11659,6 +12969,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+3.3V")
+		(at 149.86 30.48 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "f382538c-f138-40d4-bee4-7b9bcb999406")
+		(property "Reference" "#PWR0309"
+			(at 149.86 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 149.86 25.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Footprint" ""
+			(at 149.86 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 149.86 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 149.86 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4aef7e57-9c30-46d6-9c79-1ff28b0ad8b8")
+		)
+		(instances
+			(project "n2k_meteo_gps_s3"
+				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
+					(reference "#PWR0309")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Polarized")
 		(at 121.92 35.56 0)
 		(mirror y)
@@ -11858,476 +13234,6 @@
 			(project "n2k_meteo_gps_s3"
 				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
 					(reference "R7")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(wire
-		(pts
-			(xy 114.3 91.44) (xy 116.84 91.44)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "106cab16-ee17-42ee-ae6f-d0ad4b362b40")
-	)
-	(wire
-		(pts
-			(xy 116.84 91.44) (xy 116.84 63.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "4accedf4-7b5e-48f1-9898-d6934519c2b5")
-	)
-	(wire
-		(pts
-			(xy 116.84 63.5) (xy 114.3 63.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "64a037bd-47bd-4a50-815f-2c1d1e806960")
-	)
-	(wire
-		(pts
-			(xy 116.84 63.5) (xy 121.92 63.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1d4f7254-762e-4484-a458-b1bb8520ec33")
-	)
-	(junction
-		(at 116.84 63.5)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "ccd196c5-d7d9-4d98-865b-85b2e30a29c9")
-	)
-	(symbol
-		(lib_id "Power_Management:LM66100DCK")
-		(at 106.68 66.04 0)
-		(mirror y)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "c0078a8a-3560-4999-b77c-3c6c7557f804")
-		(property "Reference" "U8"
-			(at 109.22 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "LM66100DCK"
-			(at 109.22 59.69 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
-			(at 106.68 67.31 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm66100.pdf"
-			(at 106.68 65.024 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Ideal diode ESP32 5V pin -> +5V rail (CE tied to VOUT = always-on reverse current blocking)"
-			(at 106.68 48.040000000000006 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "MPN" "LM66100DCKR"
-			(at 106.68 66.04 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "caae8991-e84e-4113-995c-a800b2bbf617")
-		)
-		(pin "3"
-			(uuid "9502c489-5e27-4036-972d-9d5ebf2b8934")
-		)
-		(pin "4"
-			(uuid "36adc076-2175-4be8-8b03-5837c37ffd3b")
-		)
-		(pin "2"
-			(uuid "0d8da0a7-e6fc-4650-a268-1fcb0ac071b7")
-		)
-		(pin "6"
-			(uuid "55a47932-4a47-40ec-8992-579540dd0857")
-		)
-		(pin "5"
-			(uuid "0d3c3946-7c77-46c6-8eb7-f27c35f63407")
-		)
-		(instances
-			(project "n2k_meteo_gps_s3"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "U8")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C")
-		(at 121.92 67.31 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "060ee223-f9f6-4486-9076-85e319bb9e06")
-		(property "Reference" "C10"
-			(at 125.73 66.0401 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "1uF"
-			(at 125.73 68.5801 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 122.8852 71.12 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 121.92 67.31 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Unpolarized capacitor"
-			(at 121.92 67.31 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "2"
-			(uuid "7eb47114-eeff-4d62-afef-7506ebf5ce78")
-		)
-		(pin "1"
-			(uuid "7c732426-f507-4250-9e87-bf1f2328f5ad")
-		)
-		(instances
-			(project "n2k_meteo_gps_s3"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "C10")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+5V")
-		(at 114.3 68.58 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "c5bf160d-cdc0-4b62-b33b-f6c96f971337")
-		(property "Reference" "#PWR0201"
-			(at 114.3 72.39 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+5V"
-			(at 114.3 63.5 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Footprint" ""
-			(at 114.3 68.58 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 114.3 68.58 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 114.3 68.58 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "e70eefc0-2e7c-4a7a-8f99-4d70be580d3e")
-		)
-		(instances
-			(project "n2k_meteo_gps_s3"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "#PWR0201")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 99.06 68.58 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "ea85e7de-9357-44be-bb81-e78b3086ea2a")
-		(property "Reference" "#PWR0202"
-			(at 99.06 74.92999999999999 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 99.06 72.9742 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Footprint" ""
-			(at 99.06 68.58 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 99.06 68.58 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 99.06 68.58 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "e02617d6-cb18-465e-a672-3427be698ef3")
-		)
-		(instances
-			(project "n2k_meteo_gps_s3"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "#PWR0202")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 106.68 73.66 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "84549fa7-aed5-4004-9d0e-a73bdc635b27")
-		(property "Reference" "#PWR0203"
-			(at 106.68 80.00999999999999 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 106.68 78.0542 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Footprint" ""
-			(at 106.68 73.66 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 106.68 73.66 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 106.68 73.66 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "500a46c3-dc43-41ad-ad02-b44ecbf7b29a")
-		)
-		(instances
-			(project "n2k_meteo_gps_s3"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "#PWR0203")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 121.92 71.12 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "66cb29ca-bc21-4a5b-b342-c2b3a958d7e6")
-		(property "Reference" "#PWR0204"
-			(at 121.92 77.47 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 121.92 75.5142 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Footprint" ""
-			(at 121.92 71.12 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 121.92 71.12 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 121.92 71.12 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "8842c1be-4033-4ea9-ad73-3f42ffa0047b")
-		)
-		(instances
-			(project "n2k_meteo_gps_s3"
-				(path "/3b67725e-3e35-4b17-ad45-e2c8b25a7b25"
-					(reference "#PWR0204")
 					(unit 1)
 				)
 			)
